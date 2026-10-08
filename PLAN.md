@@ -30,19 +30,23 @@ WPT conformance numbers, and real projects migrating.
 
 ## Status
 
-Stage 1 data collection is complete for a first report (2026-10-08): 20
-projects, 4,151 test files, jsdom and happy-dom, all traced with the same
-tracer version on Node 22.23.3, and every project passes the same tests with
-and without the tracer. Next: write the report (`REPORT-OUTLINE.md`).
+Stage 1 data collection is complete (2026-10-08): 20 projects, 4,151 test
+files, ~80,000 tests, jsdom and happy-dom, traced with the final tracer on
+Node 22.23.3; every project passes the same tests with and without the
+tracer. First report draft: `docs/stage1-report.md` (figures from
+`scripts/report-data.mjs`).
 
 Corpus result (`.corpus/report/`, regenerate with the harness):
 
 - 1,159 DOM members used. The catalog (7,431) is the union of several jsdom
   and happy-dom versions, so per-environment coverage is the fairer figure
   for the report.
-- 165 members are used by at least half of the projects ("core"); 821 by at
-  least two.
-- 57 members cover 90% of the 285.6M recorded operations; 9 cover 50%.
+- 1,148 members used; per environment 17.1% of jsdom's catalog, 17.4% of
+  happy-dom's. 165 members are used by at least half of the projects
+  ("core"); 815 by at least two.
+- 56 members cover 90% of the 282M recorded operations; 8 cover 50%. Three
+  projects (AG Grid, React Spectrum, Mantine) make 76% of operations, so the
+  report ranks members with every project weighted equally.
 - Used by every project except Svelte's runtime suite (which reads almost
   nothing outside its own compiled output): `Document#body`,
   `Document#createElement`, `Node#appendChild`,
@@ -165,6 +169,16 @@ web-components package).
   lock so only one run is active, and removes wrapper configs left by killed
   runs. Large suites (Handsontable core, AG Grid) are run by Sonu when
   convenient, not started from a chat session.
+- **2026-10-08: Every window on a shared global is instrumented.** Vitest 2
+  with `isolate: false` (solid) installs a new jsdom window per test file on
+  the same global; the tracer only instrumented the first, so solid recorded
+  nothing. Fixed; solid re-traced.
+- **2026-10-08: Private-symbol members are not DOM API.** happy-dom keys
+  ~50 internal methods with private symbols (`[getTokenList]`, ...). The
+  report leaves them out of every figure; only well-known symbols count.
+- **2026-10-08: Host APIs reported separately.** `Performance#now` (62.5M
+  calls, React Spectrum and Mantine) and `navigator` are host services, not
+  the document tree: 29% of operations.
 - **2026-10-08: Listener wrappers are transparent.** zone.js stores what
   `addEventListener` receives and Angular's DebugElement identifies its own
   listeners by their source text (`__ngUnwrap__`); the wrappers broke 18
@@ -226,8 +240,9 @@ web-components package).
 
 ## Next steps
 
-1. Write the stage 1 report from `.corpus/report/` (outline:
-   `REPORT-OUTLINE.md`), with per-environment coverage and concentration.
+1. Review the report draft; resolve its open items (publish raw data,
+   figures, confirm the `Performance#now` source, decide on counting
+   constructors).
 2. Optional corpus additions: Taiga UI (needs Node >= 26 and an Nx build),
    Ant Design, Vue core, PrimeVue/Reka UI, motion.
 3. Decide the DOM project's name and repository; move this plan there.
