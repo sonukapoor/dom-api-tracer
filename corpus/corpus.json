@@ -3,6 +3,11 @@
     {
       "name": "floating-ui",
       "repo": "https://github.com/floating-ui/floating-ui",
+      "frameworks": [
+        "React",
+        "Vue"
+      ],
+      "kind": "positioning library",
       "packages": [
         {
           "dir": "packages/react",
@@ -25,6 +30,10 @@
     {
       "name": "solid",
       "repo": "https://github.com/solidjs/solid",
+      "frameworks": [
+        "Solid"
+      ],
+      "kind": "framework runtime",
       "packages": [
         {
           "dir": "packages/solid",
@@ -36,6 +45,10 @@
       "name": "analog",
       "repo": "https://github.com/analogjs/analog",
       "path": "~/Projects/cve-lite-cli-v1.0.1/examples/analog",
+      "frameworks": [
+        "Angular"
+      ],
+      "kind": "meta-framework",
       "notes": "Tests import workspace packages from node_modules/@analogjs, produced by the release build. libs/my-package runs in browser mode; packages/trpc has no tests.",
       "build": "NX_NO_CLOUD=true pnpm exec nx run-many -t build --projects=tag:type:release --parallel=1",
       "packages": [
@@ -80,6 +93,13 @@
     {
       "name": "CopilotKit",
       "repo": "https://github.com/CopilotKit/CopilotKit",
+      "frameworks": [
+        "React",
+        "Vue",
+        "Angular",
+        "Web components"
+      ],
+      "kind": "app components",
       "notes": "Tests import built workspace packages. The vue, angular and channels-core builds fail at the traced commit, but the outputs the tests need are produced, so build failures are tolerated. react-native is excluded (no web DOM).",
       "build": "NX_NO_CLOUD=true pnpm exec nx run-many -t build -p @copilotkit/react-core @copilotkit/vue @copilotkit/angular @copilotkit/web-inspector @copilotkit/web-components @copilotkit/a2ui-renderer @copilotkit/mcp-apps-renderer --nxBail=false || true",
       "packages": [
@@ -116,6 +136,13 @@
     {
       "name": "handsontable",
       "repo": "https://github.com/handsontable/handsontable",
+      "frameworks": [
+        "Vanilla",
+        "React",
+        "Vue",
+        "Angular"
+      ],
+      "kind": "data grid",
       "notes": "Data grid; reported very slow under jsdom. Core unit tests mock the generated stylesheet because it makes jsdom's getComputedStyle ~10x slower per grid. E2E tests run in a real browser (Puppeteer) and are out of scope. Wrappers import the built core package (handsontable/tmp). The core suite needs BABEL_ENV=commonjs and the HOT_* constants that its scripts load from hot.config.js via env-cmd.",
       "build": "pnpm --filter handsontable run build",
       "packages": [
@@ -150,6 +177,10 @@
       "name": "ag-grid",
       "repo": "https://github.com/ag-grid/ag-grid",
       "ref": "b36.2.0",
+      "frameworks": [
+        "Vanilla"
+      ],
+      "kind": "data grid",
       "notes": "Data grid; uses happy-dom for all unit and behavioural tests (Playwright only for benchmarks). testing/behavioural renders real grids (728 files). Tests resolve package sources through aliases, so no build step. Traced at release branch b36.2.0 (36.2.0 on npm): main depends on unpublished nightly ag-charts builds from AG Grid's internal registry and cannot be installed. b36.2.0 uses Yarn 1 and declares node ^22.21.1; installed with YARN_IGNORE_ENGINES=true (the env var also covers yarn calls in postinstall) on Node 22.17 (a patch-level difference; untraced baseline runs on the same Node).",
       "install": "YARN_IGNORE_ENGINES=true yarn install --frozen-lockfile",
       "packages": [
@@ -174,6 +205,10 @@
     {
       "name": "material-ui",
       "repo": "https://github.com/mui/material-ui",
+      "frameworks": [
+        "React"
+      ],
+      "kind": "design system",
       "notes": "React design system. Per-package vitest.config.mts with jsdom; *.browser.* tests run in Vitest browser mode via separate configs and are not traced. TZ=UTC as in the repo's test script.",
       "packages": [
         {
@@ -209,6 +244,11 @@
     {
       "name": "ariakit",
       "repo": "https://github.com/ariakit/ariakit",
+      "frameworks": [
+        "React",
+        "Solid"
+      ],
+      "kind": "headless components",
       "notes": "React + Solid accessibility components on happy-dom (chosen by the project for speed). Root config with inline projects (extends: true); the node project is excluded.",
       "packages": [
         {
@@ -228,6 +268,10 @@
     {
       "name": "element-plus",
       "repo": "https://github.com/element-plus/element-plus",
+      "frameworks": [
+        "Vue"
+      ],
+      "kind": "design system",
       "notes": "Vue design system, jsdom. SSR tests use a separate config and are not traced.",
       "packages": [
         {
@@ -239,6 +283,10 @@
     {
       "name": "ngx-formly",
       "repo": "https://github.com/ngx-formly/ngx-formly",
+      "frameworks": [
+        "Angular"
+      ],
+      "kind": "forms",
       "notes": "Angular forms on Jest + happy-dom (@happy-dom/jest-environment), TypeScript Jest config. First Jest + happy-dom suite in the corpus.",
       "packages": [
         {
@@ -250,6 +298,10 @@
     {
       "name": "kobalte",
       "repo": "https://github.com/kobaltedev/kobalte",
+      "frameworks": [
+        "Solid"
+      ],
+      "kind": "headless components",
       "notes": "Solid headless components, jsdom with isolate: false.",
       "packages": [
         {
@@ -261,6 +313,10 @@
     {
       "name": "radix-primitives",
       "repo": "https://github.com/radix-ui/primitives",
+      "frameworks": [
+        "React"
+      ],
+      "kind": "headless components",
       "notes": "React headless components, jsdom. Root config with inline projects; only the jsdom 'unit' project is run (the 'rsc' project is node).",
       "packages": [
         {
@@ -276,6 +332,10 @@
     {
       "name": "react-hook-form",
       "repo": "https://github.com/react-hook-form/react-hook-form",
+      "frameworks": [
+        "React"
+      ],
+      "kind": "forms",
       "notes": "React forms, Jest + jest-fixed-jsdom. TEST_ENV=web selects the web project only, as in the repo's test:web script.",
       "packages": [
         {
@@ -291,6 +351,10 @@
     {
       "name": "vuetify",
       "repo": "https://github.com/vuetifyjs/vuetify",
+      "frameworks": [
+        "Vue"
+      ],
+      "kind": "design system",
       "notes": "Vue design system. Config has a jsdom 'unit' project and a real-browser 'browser' project; only 'unit' is run. Declares node >=24.11.1 (not enforced; run on 22.23.3).",
       "packages": [
         {
@@ -306,6 +370,10 @@
     {
       "name": "svelte",
       "repo": "https://github.com/sveltejs/svelte",
+      "frameworks": [
+        "Svelte"
+      ],
+      "kind": "framework runtime",
       "notes": "Svelte runtime. Environment is set per file (// @vitest-environment jsdom); node-environment files are skipped by the tracer. Few test files drive thousands of samples, so per-file data is coarse.",
       "packages": [
         {
@@ -317,6 +385,10 @@
     {
       "name": "mantine",
       "repo": "https://github.com/mantinedev/mantine",
+      "frameworks": [
+        "React"
+      ],
+      "kind": "design system",
       "notes": "React design system, Jest + jsdom, TypeScript Jest config. Runs plain jest (the repo's test script also formats, lints and typechecks).",
       "packages": [
         {
@@ -328,6 +400,10 @@
     {
       "name": "react-spectrum",
       "repo": "https://github.com/adobe/react-spectrum",
+      "frameworks": [
+        "React"
+      ],
+      "kind": "design system",
       "notes": "React design system and a11y primitives, Jest + jsdom. STRICT_MODE=1 VIRT_ON=1 as in the repo's test script. Its config sets projects: ['<rootDir>'], which the harness drops so the wrapper is used.",
       "packages": [
         {
@@ -343,6 +419,10 @@
     {
       "name": "nuxt-ui",
       "repo": "https://github.com/nuxt/ui",
+      "frameworks": [
+        "Vue"
+      ],
+      "kind": "design system",
       "notes": "Vue/Nuxt design system. Only the 'vue' project (happy-dom) is run; the 'nuxt' project uses the Nuxt test environment. Tests need the generated .nuxt/tsconfig.json, so the repo's dev:prepare script runs as the build step.",
       "build": "pnpm run dev:prepare",
       "packages": [
@@ -359,6 +439,13 @@
     {
       "name": "ark-ui",
       "repo": "https://github.com/chakra-ui/ark",
+      "frameworks": [
+        "React",
+        "Vue",
+        "Solid",
+        "Svelte"
+      ],
+      "kind": "headless components",
       "notes": "Headless components for four frameworks from one codebase: React and Vue on happy-dom, Solid and Svelte on jsdom. bun monorepo (declares bun 1.4.2; installed with bun 1.4.2 via npx, because its lockfile format needs bun >= 1.4).",
       "install": "npx -y bun@1.4.2 install --frozen-lockfile",
       "packages": [
@@ -383,6 +470,10 @@
     {
       "name": "emoji-picker-element",
       "repo": "https://github.com/nolanlawson/emoji-picker-element",
+      "frameworks": [
+        "Web components"
+      ],
+      "kind": "web component",
       "notes": "Vanilla custom element with shadow DOM, jsdom. The only jsdom-tested web component library found; most (lit, shoelace, FAST, ionic) test in real browsers.",
       "packages": [
         {
