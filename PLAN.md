@@ -169,6 +169,14 @@ web-components package).
   lock so only one run is active, and removes wrapper configs left by killed
   runs. Large suites (Handsontable core, AG Grid) are run by Sonu when
   convenient, not started from a chat session.
+- **2026-10-08: The case is jsdom compatibility at happy-dom speed, not
+  "faster than happy-dom".** Experiment on 9 suites (`docs/env-experiment.md`):
+  jsdom is a median 37% of CPU time in jsdom suites, happy-dom 9%; switching
+  to happy-dom gives a median 1.4x wall-time speedup but every jsdom suite
+  lost tests (behavior gaps, plus tests coupled to jsdom's object shapes such
+  as spying on prototype getters). A DOM faster than happy-dom could save at
+  most ~10% of test time. Routes to weigh: improve happy-dom's compatibility,
+  speed up jsdom, or build a jsdom-shaped, happy-dom-fast DOM.
 - **2026-10-08: Report review decisions.** An independent fact-check
   verified ~190 figures and flagged overstated wording, all fixed: causal
   claims about tooling are framed as measured in a controlled test, "returns
@@ -253,8 +261,9 @@ web-components package).
 
 ## Next steps
 
-1. Publish the report: choose the venue, add figures, attach per-file
+1. Choose the route (Sonu): upstream happy-dom compatibility, upstream jsdom
+   speed, or a new jsdom-shaped DOM scoped to the ~800 used members. Inputs:
+   `docs/env-experiment.md` and the stage 1 report.
+2. Publish the stage 1 report: choose the venue, add figures, attach per-file
    traces as a release download.
-2. Optional corpus additions: Taiga UI (needs Node >= 26 and an Nx build),
-   Ant Design, Vue core, PrimeVue/Reka UI, motion.
-3. Decide the DOM project's name and repository; move this plan there.
+3. Decide the project's name and repository; move this plan there.

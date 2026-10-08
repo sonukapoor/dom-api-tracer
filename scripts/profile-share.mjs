@@ -5,6 +5,9 @@
 // the DOM implementation, the UI framework, Testing Library, the test runner,
 // code transforms, project code (tests and the library under test), garbage
 // collection and other. Idle time is reported separately and excluded.
+// Built-in and Node-internal frames (no source file of their own, e.g. an
+// Array method or Map lookup called by jsdom) are charged to their nearest
+// caller that has one, so work done on behalf of the DOM counts as DOM.
 //
 //   node scripts/profile-share.mjs <profiles-dir> [--json]
 import fs from 'node:fs';
@@ -29,13 +32,39 @@ function categorize(node) {
   return 'project';
 }
 
+// Frames without their own source: V8 built-ins and natives (no url) and
+// Node internals (node: urls).
+const inherits = (node) => {
+  const { url, functionName } = node.callFrame;
+  if (['(idle)', '(garbage collector)', '(program)', '(root)'].includes(functionName)) return false;
+  return !url || url.startsWith('node:');
+};
+
 function profileTimes(file) {
   const p = JSON.parse(fs.readFileSync(file, 'utf8'));
   const byId = new Map(p.nodes.map((n) => [n.id, n]));
+  const parent = new Map();
+  for (const n of p.nodes) for (const c of n.children ?? []) parent.set(c, n.id);
+  const memo = new Map();
+  const categoryOf = (id) => {
+    if (memo.has(id)) return memo.get(id);
+    const node = byId.get(id);
+    let cat;
+    if (!node) cat = 'other';
+    else if (!inherits(node)) cat = categorize(node);
+    else {
+      // Walk up to the nearest caller with its own source.
+      let up = parent.get(id);
+      while (up !== undefined && inherits(byId.get(up))) up = parent.get(up);
+      const caller = up === undefined ? null : byId.get(up);
+      cat = caller && caller.callFrame.functionName !== '(root)' ? categoryOf(up) : categorize(node);
+    }
+    memo.set(id, cat);
+    return cat;
+  };
   const times = {};
   for (let i = 0; i < p.samples.length; i++) {
-    const node = byId.get(p.samples[i]);
-    const cat = node ? categorize(node) : 'other';
+    const cat = categoryOf(p.samples[i]);
     times[cat] = (times[cat] || 0) + (p.timeDeltas[i] || 0);
   }
   return times;
