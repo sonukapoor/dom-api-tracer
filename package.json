@@ -1,0 +1,49 @@
+{
+  "name": "dom-api-tracer",
+  "version": "0.1.0",
+  "description": "Measure which DOM APIs real test suites actually use under jsdom or happy-dom.",
+  "license": "MIT",
+  "author": "Sonu Kapoor",
+  "type": "commonjs",
+  "main": "./src/tracer.cjs",
+  "bin": {
+    "dom-trace": "./bin/dom-trace.cjs"
+  },
+  "exports": {
+    ".": "./src/tracer.cjs",
+    "./vitest": "./src/vitest-setup.mjs",
+    "./jest": "./src/jest-setup.cjs",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "src",
+    "bin",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "jsdom",
+    "happy-dom",
+    "dom",
+    "testing",
+    "vitest",
+    "jest",
+    "instrumentation"
+  ],
+  "scripts": {
+    "test": "node test/verify.mjs",
+    "trace:report": "node bin/dom-trace.cjs report"
+  },
+  "devDependencies": {
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/user-event": "^14.6.1",
+    "happy-dom": "^20.14.5",
+    "jest": "^30.5.2",
+    "jest-environment-jsdom": "^30.5.2",
+    "jsdom": "^30.1.2",
+    "vitest": "^5.0.3"
+  }
+}

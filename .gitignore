@@ -1,0 +1,8 @@
+node_modules/
+.dom-trace/
+.dom-trace-verify/
+dom-trace-report/
+*.tgz
+.corpus/
+.DS_Store
+CLAUDE.md
