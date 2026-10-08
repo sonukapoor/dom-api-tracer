@@ -38,6 +38,7 @@
     "trace:report": "node bin/dom-trace.cjs report"
   },
   "devDependencies": {
+    "@happy-dom/jest-environment": "^20.14.5",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/user-event": "^14.6.1",
     "happy-dom": "^20.14.5",

@@ -122,6 +122,22 @@ suites do not saturate the machine. Only one run can be active at a time
 (`.corpus/run.lock`), and wrapper configs left behind by an interrupted run
 are removed when the next one starts.
 
+**Environment mode** runs each suite once on a chosen DOM, without the
+tracer, to compare jsdom and happy-dom on the same tests:
+
+```sh
+node scripts/trace-corpus.mjs --only ariakit --environment jsdom --out .corpus-env/jsdom
+node scripts/trace-corpus.mjs --only ariakit --environment happy-dom --profile --out .corpus-env/happy-dom
+node scripts/profile-share.mjs .corpus-env/happy-dom/profiles   # where CPU time went
+```
+
+Projects on jsdom or happy-dom are switched to the chosen one (node projects
+and per-file `@vitest-environment` comments are not). A DOM package the
+project lacks is linked from this repository for the run and removed
+afterwards. `--profile` writes a CPU profile per test process;
+`profile-share.mjs` splits sampled CPU time into the DOM implementation, UI
+framework, Testing Library, test runner, transforms, project code and GC.
+
 Suites that run in Vitest browser mode are skipped, and a package that writes
 no traces is reported as failed. Logs for every run are in `.corpus/logs/`,
 and the aggregated report in `.corpus/report/`. Run

@@ -17,3 +17,8 @@ describe("corpus options", () => {
     expect(process.env.FIXTURE_ENV).toBe("from-corpus");
   });
 });
+
+test("records which DOM it ran on", async () => {
+  const log = process.env.FIXTURE_ENV_LOG;
+  if (log) (await import("node:fs")).appendFileSync(log, `vitest ${navigator.userAgent}\n`);
+});

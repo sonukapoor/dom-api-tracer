@@ -8,3 +8,8 @@ test('builds a list', () => {
   document.body.appendChild(ul);
   expect(document.querySelectorAll('li')).toHaveLength(1);
 });
+
+test("records which DOM it ran on", () => {
+  const log = process.env.FIXTURE_ENV_LOG;
+  if (log) require("node:fs").appendFileSync(log, `jest ${navigator.userAgent}\n`);
+});

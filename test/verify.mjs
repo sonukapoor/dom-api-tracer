@@ -164,8 +164,8 @@ try {
   assert.equal(project.build?.exitCode, 0, 'corpus: build command ran');
   assert.match(fs.readFileSync(path.join(corpusOut, 'logs/fixture-corpus/build.log'), 'utf8'), /fixture build ran/, 'corpus: build log');
   const pkgs = Object.fromEntries(project.packages.map((p) => [p.dir, p]));
-  // vitest-pkg has a third test that checks the corpus-supplied env.
-  for (const [dir, passes] of [['vitest-pkg', 3], ['jest-pkg', 2]]) {
+  // vitest-pkg checks the corpus-supplied env; both record their DOM.
+  for (const [dir, passes] of [['vitest-pkg', 4], ['jest-pkg', 3]]) {
     assert.equal(pkgs[dir].status, 'traced', `${dir}: status (${pkgs[dir].error || ''})`);
     assert.equal(pkgs[dir].baseline.passed, passes, `${dir}: baseline passes`);
     assert.equal(pkgs[dir].traced.passed, passes, `${dir}: traced passes`);
@@ -194,6 +194,49 @@ try {
 } catch (err) {
   failures++;
   console.log('• corpus harness          FAILED\n' + (String(err.stdout || '') + String(err.stderr || '') || '') + err.message);
+}
+
+// Environment mode: the same suites on another DOM, untraced, with CPU
+// profiles, and a profile breakdown by where the time went.
+try {
+  const corpusDir = path.join(root, 'test/fixtures/corpus');
+  const envOut = path.join(out, 'corpus-env');
+  const envLog = path.join(out, 'env.log');
+  execFileSync(process.execPath, [path.join(root, 'scripts/trace-corpus.mjs'), path.join(corpusDir, 'corpus.json'),
+    '--out', envOut, '--environment', 'happy-dom', '--profile', '--max-workers', '1'],
+    { cwd: root, stdio: 'pipe', env: { ...process.env, FIXTURE_ENV_LOG: envLog } });
+  const envStatus = JSON.parse(fs.readFileSync(path.join(envOut, 'status.json'), 'utf8')).projects['fixture-corpus'];
+  const pk = Object.fromEntries(envStatus.packages.map((p) => [p.dir, p]));
+  for (const [dir, passes] of [['vitest-pkg', 4], ['jest-pkg', 3]]) {
+    assert.equal(pk[dir].status, 'ran', `env mode: ${dir} status (${pk[dir].error || ''})`);
+    assert.equal(pk[dir].environment, 'happy-dom', `env mode: ${dir} environment recorded`);
+    assert.equal(pk[dir].run.passed, passes, `env mode: ${dir} passes`);
+  }
+  const ran = fs.readFileSync(envLog, 'utf8').trim().split('\n');
+  assert.ok(ran.some((l) => l.startsWith('vitest ') && /HappyDOM/.test(l)), 'env mode: vitest ran on happy-dom');
+  assert.ok(ran.some((l) => l.startsWith('jest ') && /HappyDOM/.test(l)), 'env mode: jest ran on happy-dom');
+  assert.ok(!fs.existsSync(path.join(envOut, 'traces', 'fixture-corpus')), 'env mode: no tracing');
+
+  const profiles = fs.readdirSync(path.join(envOut, 'profiles', 'fixture-corpus'), { recursive: true }).filter((f) => String(f).endsWith('.cpuprofile'));
+  assert.ok(profiles.length >= 2, 'env mode: CPU profiles written');
+  const shareOut = execFileSync(process.execPath, [path.join(root, 'scripts/profile-share.mjs'), path.join(envOut, 'profiles'), '--json'], { cwd: root });
+  const share = JSON.parse(String(shareOut))['fixture-corpus'];
+  const total = Object.values(share.categories).reduce((a, b) => a + b, 0);
+  assert.ok(Math.abs(total - 1) < 1e-6, 'profile share: categories sum to 100%');
+  assert.ok(share.categories.dom > 0, 'profile share: time in the DOM implementation');
+
+  // A DOM package the project lacks is linked from this repo, then removed.
+  const { provideDomPackage, removeWrappers } = await import(path.join(root, 'scripts/trace-corpus.mjs'));
+  const fakeModules = path.join(out, 'fake-project', 'node_modules');
+  fs.mkdirSync(fakeModules, { recursive: true });
+  const link = provideDomPackage(fakeModules, 'happy-dom');
+  assert.equal(fs.realpathSync(link), fs.realpathSync(path.join(root, 'node_modules', 'happy-dom')), 'env mode: package linked');
+  removeWrappers([link]);
+  assert.ok(!fs.existsSync(link) && fs.existsSync(path.join(root, 'node_modules', 'happy-dom', 'package.json')), 'env mode: link removed, package intact');
+  console.log('• environment mode        ok');
+} catch (err) {
+  failures++;
+  console.log('• environment mode        FAILED\n' + (String(err.stdout || '') + String(err.stderr || '')).slice(-1500) + err.message);
 }
 
 // Listener wrappers must be transparent to code that inspects registered
