@@ -6,3 +6,4 @@ dom-trace-report/
 .corpus/
 .DS_Store
 CLAUDE.md
+.corpus-env/
