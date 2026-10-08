@@ -27,7 +27,7 @@ const perProject = {};
 const fileOps = []; // { project, file, ops }
 for (const name of fs.readdirSync(path.join(out, 'traces'))) {
   const dir = path.join(out, 'traces', name);
-  const p = { files: 0, ops: 0, members: new Set(), environments: new Set() };
+  const p = { files: 0, ops: 0, members: new Set(), memberOps: new Map(), environments: new Set() };
   for (const f of fs.readdirSync(dir).filter((n) => n.startsWith('run-'))) {
     const run = readJson(path.join(dir, f));
     let ops = 0;
@@ -36,6 +36,7 @@ for (const name of fs.readdirSync(path.join(out, 'traces'))) {
       const n = (c.call || 0) + (c.get || 0) + (c.set || 0);
       ops += n;
       p.members.add(id);
+      p.memberOps.set(id, (p.memberOps.get(id) || 0) + n);
     }
     p.files++; p.ops += ops; p.environments.add(run.environment);
     fileOps.push({ project: name, file: run.testFile, ops });
@@ -72,6 +73,13 @@ const pick = (m) => ({ id: m.id, projects: m.projects, files: m.files, ops: m.op
 const byBreadth = [...usage.members].sort((a, b) => b.projects - a.projects || b.files - a.files || b.ops - a.ops);
 const byOps = [...usage.members].sort((a, b) => b.ops - a.ops);
 const hostOps = usage.members.filter((m) => isHost(m.id)).reduce((a, m) => a + m.ops, 0);
+
+// Equal-weight hotness: a member's share of each project's operations,
+// averaged over all projects (0 where unused). Three projects make ~3/4 of
+// raw operations; this ranking gives every project the same say.
+const projectShare = (id) => projectNames.reduce((a, n) => a + (perProject[n].ops ? (perProject[n].memberOps.get(id) || 0) / perProject[n].ops : 0), 0) / projectNames.length;
+const byShare = usage.members.map((m) => ({ ...pick(m), meanProjectShare: +projectShare(m.id).toFixed(4) }))
+  .sort((a, b) => b.meanProjectShare - a.meanProjectShare);
 
 // 4. Distinctive members per kind of library: used by at least half of that
 //    kind's projects and by no more than 20% of the others.
@@ -131,6 +139,7 @@ const data = {
   breadthTop: byBreadth.slice(0, 40).map(pick),
   hotDom: byOps.filter((m) => !isHost(m.id)).slice(0, 30).map(pick),
   hotHost: byOps.filter((m) => isHost(m.id)).slice(0, 10).map(pick),
+  hotEqualWeight: byShare.filter((m) => !isHost(m.id)).slice(0, 30),
   hostShareOfOps: +(hostOps / totalOps).toFixed(3),
   distinctive,
   unusedInterfaces,
