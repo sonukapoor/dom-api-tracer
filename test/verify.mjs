@@ -220,6 +220,27 @@ try {
   console.log('• listener wrapper        FAILED\n' + err.message);
 }
 
+// A runner may replace the window on the same global between test files
+// (Vitest 2 with isolate: false, as in solid): each new window must be
+// instrumented, not just the first.
+try {
+  const { JSDOM } = await import('jsdom');
+  const { default: tracer } = await import(path.join(root, 'src/tracer.cjs'));
+  const g = {};
+  const first = new JSDOM('<!doctype html><body></body>');
+  Object.assign(g, { window: first.window, document: first.window.document });
+  const registry = tracer.install(g);
+  const second = new JSDOM('<!doctype html><body></body>');
+  Object.assign(g, { window: second.window, document: second.window.document });
+  assert.equal(tracer.install(g), registry, 'window swap: same registry');
+  second.window.document.createElement('div');
+  assert.equal(tracer.snapshot(registry, { reset: true })['Document#createElement']?.call, 1, 'window swap: new window instrumented');
+  console.log('• window swap             ok');
+} catch (err) {
+  failures++;
+  console.log('• window swap             FAILED\n' + err.message);
+}
+
 // The generated Vitest wrapper, evaluated directly: mixed configs keep their
 // DOM projects (vuetify: jsdom "unit" + real-browser "browser"), browser
 // projects never get the tracer, and all-browser configs are skipped.

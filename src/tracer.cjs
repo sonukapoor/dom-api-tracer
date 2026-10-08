@@ -51,6 +51,7 @@ function createRegistry() {
     instrumentedPrototypes: new WeakSet(),
     environment: 'unknown',
     state: { depth: 0, outermostOnly: false },
+    windows: new WeakSet(),   // windows already instrumented
     listeners: new WeakMap(), // user listener -> counting wrapper
     originals: new WeakMap(), // counting wrapper -> user listener
   };
@@ -372,22 +373,35 @@ function mirrorOnGlobal(registry, globalObj, key, id, original, wrapped) {
  * Safe to call more than once; returns the shared registry.
  */
 function install(globalObj = globalThis) {
-  if (globalObj[REGISTRY]) return globalObj[REGISTRY];
-
   const win = resolveWindow(globalObj);
   if (!win) {
     throw new Error('[dom-api-tracer] No DOM found on the global object. Run tests with a jsdom or happy-dom environment.');
   }
 
-  const registry = createRegistry();
-  registry.environment = detectEnvironment(win);
-  // Implementations call their own public API internally: happy-dom for
-  // ordinary operations, jsdom for selector matching and style resolution.
-  // By default only the outermost DOM call is counted (user code reached from
-  // inside a DOM call, such as listeners, re-opens counting).
-  registry.state.outermostOnly = process.env.DOM_TRACE_NESTING !== 'all';
-  Object.defineProperty(globalObj, REGISTRY, { value: registry, configurable: true });
+  let registry = globalObj[REGISTRY];
+  if (!registry) {
+    registry = createRegistry();
+    registry.environment = detectEnvironment(win);
+    // Implementations call their own public API internally: happy-dom for
+    // ordinary operations, jsdom for selector matching and style resolution.
+    // By default only the outermost DOM call is counted (user code reached from
+    // inside a DOM call, such as listeners, re-opens counting).
+    registry.state.outermostOnly = process.env.DOM_TRACE_NESTING !== 'all';
+    Object.defineProperty(globalObj, REGISTRY, { value: registry, configurable: true });
+  }
+  // A runner may put a new window on the same global for the next test file
+  // (Vitest 2 with isolate: false). Instrument every window once; the counters
+  // are shared.
+  if (registry.windows.has(win)) return registry;
+  registry.windows.add(win);
+  instrumentWindow(registry, globalObj, win);
 
+  // Discard anything recorded while sampling nodes during installation.
+  snapshot(registry, { reset: true });
+  return registry;
+}
+
+function instrumentWindow(registry, globalObj, win) {
   // 1. Every DOM interface constructor: instrument its prototype and statics.
   for (const key of Object.getOwnPropertyNames(win)) {
     if (ES_GLOBALS.has(key) || HOST_GLOBALS.has(key)) continue;
@@ -473,10 +487,6 @@ function install(globalObj = globalThis) {
 
   // 5. Custom element lifecycle callbacks run user code inside DOM calls.
   instrumentCustomElements(registry, win);
-
-  // Discard anything recorded while sampling nodes during installation.
-  snapshot(registry, { reset: true });
-  return registry;
 }
 
 /** True when a DOM is installed (false for files opting into a node environment). */
