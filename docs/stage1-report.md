@@ -3,46 +3,48 @@
 **Measurements from 20 open-source test suites under jsdom and happy-dom**
 
 *Draft, 2026-10-08. Data: commit SHAs in the corpus table; figures computed by
-`scripts/report-data.mjs`.*
+`scripts/report-data.mjs`; aggregated data in `docs/data/`.*
 
 ## Summary
 
 We traced every DOM method call, property read and property write made by the
-unit and component tests of 20 open-source projects: 4,151 test files and about
-80,000 tests, covering React, Vue, Angular, Svelte, Solid, web components and
-two data grids, on jsdom (17 projects) and happy-dom (6 projects; some
-projects use both). Every suite passed exactly the same tests with and without
-the tracer.
+unit and component tests of 20 open-source projects: about 80,000 tests,
+4,151 of whose test files touched the DOM, covering React, Vue, Angular,
+Svelte, Solid, web components and two data grids, on jsdom (17 projects) and
+happy-dom (6 projects; some projects use both). Each suite was also run
+without the tracer, and both runs had identical pass, fail and skip counts.
 
-- **Tests use a small part of the DOM.** 1,006 of 5,887 members jsdom
+- **Tests use a small part of the DOM.** 1,006 of the 5,887 members jsdom
   exposes were used (17.1%), and 518 of 2,983 in happy-dom (17.4%).
   1,148 members were used at all, and 165 were used by at least half of the
   projects.
 - **A few members carry the load.** 8 members account for half of all 282
   million recorded operations, 56 for 90%.
-- **The hot core is the same everywhere.** Weighting every project equally,
-  the busiest members are `nodeType`, `addEventListener`, `ownerDocument`,
-  `matches`, `setAttribute`, `tagName`, `getAttribute`, `insertBefore` and
-  `createTextNode`, each used by 17 to 20 of the 20 projects.
-- **Much of the hot work is tree walking done by test tooling**, not by the
-  components under test: for example, Testing Library's `waitFor` +
-  `getBy*` polling serializes the whole DOM into an error message on every
-  failed attempt.
-- **Layout-driven components measure constantly, and get zeros.** Grids and
-  virtualized lists call `getComputedStyle` hundreds of times per test file
-  and read `clientHeight`/`offsetWidth`/... hundreds more, in an environment
-  with no layout engine.
+- **The hot core of the document tree is the same everywhere.** Weighting
+  every project equally, the busiest tree members are `nodeType`,
+  `addEventListener`, `ownerDocument`, `matches`, `setAttribute`, `tagName`,
+  `getAttribute`, `insertBefore` and `createTextNode`, each used by 17 to 20
+  of the 20 projects.
+- **Test tooling appears to be a large source of tree walking.** In a
+  controlled test, Testing Library's `waitFor` + `getBy*` polling serialized
+  the whole DOM into an error message on every failed attempt, which caused
+  all of the attribute reads and 86% of the `nodeType` reads. The tracer
+  cannot tell who made a call, so the corpus-wide share is unknown.
+- **Styles are read constantly.** Many libraries call `getComputedStyle`
+  hundreds of times per test file (Ariakit 1,066, Handsontable 940, React
+  Spectrum 886, Element Plus 699, floating-ui 684); Handsontable also reads
+  element sizes hundreds of times per file. Neither jsdom nor happy-dom
+  computes layout.
 
 ## 1. Why measure
 
 Unit and component tests run on a simulated DOM because a real browser is too
 slow to start and to drive for thousands of small tests. The two common
 choices trade speed against correctness: jsdom follows the specs closely,
-happy-dom is faster. Neither was scoped from data about what tests use.
-
-Some suites are known to suffer. Handsontable mocks its own stylesheet in unit
-tests because, in its words, the stylesheet "makes jsdom's `getComputedStyle`
-about 10x slower per grid". AG Grid runs its tests on happy-dom. We wanted to
+happy-dom is faster. Ariakit's test config says it runs on happy-dom "because
+it is ~2x faster than jsdom"; AG Grid also runs its tests on happy-dom.
+Handsontable mocks its own stylesheet in unit tests because the stylesheet
+"makes jsdom's `getComputedStyle` about 10x slower per grid". We wanted to
 know what a DOM built for tests has to implement, and which parts must be
 fastest.
 
@@ -53,7 +55,9 @@ method, getter and setter on the prototypes of all DOM interfaces, on the
 window, and on the prototype chains of sample live nodes (happy-dom uses
 internal subclasses not reachable from the global constructors). Each wrapper
 increments a counter and forwards the call unchanged. One report is written
-per test file.
+per test file. As an independent check, a separate probe counted
+`performance.now()` calls in one React Spectrum test file at 200,051, exactly
+the tracer's figure.
 
 **What counts as a use.** DOM implementations call their own public API
 internally: happy-dom for ordinary operations (`classList.add` calls
@@ -64,14 +68,18 @@ implementation: on floating-ui's suite, 92% of all calls (7.6M of 8.3M) were
 jsdom calling itself. So only the outermost DOM call is counted. Counting
 resumes while user code runs inside a DOM call: event listeners and `on*`
 handlers (wrapped when registered) and custom element lifecycle callbacks.
+Methods keyed by private symbols (happy-dom's `[getTokenList]` and about 50
+others) are implementation internals and are left out of every figure.
 
 **Harness.** For each project, the tracer is injected through a temporary
 config file that imports the project's own Vitest or Jest config; no project
 file is changed. Each suite runs twice, untraced and traced, with the
 project's own runner binary and two workers. Data is kept only when both runs
-pass the same tests; all 20 did. The corpus is defined in
-`corpus/corpus.json`, with each project's install, build and environment
-requirements.
+have the same pass, fail and skip counts; all 20 did. Some suites had failing
+tests or files that failed to load in both runs (369 tests in total, mostly in
+React Spectrum, CopilotKit, Nuxt UI and Mantine); 78,660 tests passed. The
+corpus is defined in `corpus/corpus.json`, with each project's install, build
+and environment requirements.
 
 **Corpus selection.** Popular projects whose unit or component tests run on
 jsdom or happy-dom, chosen for coverage of frameworks and library types. We
@@ -99,20 +107,22 @@ counted and that listener and custom element code is.
 | [ark-ui](https://github.com/chakra-ui/ark) `eb6abb0` | React, Vue, Solid, Svelte | headless components | happy-dom + jsdom | 174 | 1,245 | 61 / 64 |
 | [element-plus](https://github.com/element-plus/element-plus) `6f7016e` | Vue | design system | jsdom (+ happy-dom) | 161 | 2,634 | 54 / 56 |
 | [nuxt-ui](https://github.com/nuxt/ui) `9c4e33b` | Vue | design system | happy-dom | 143 | 4,056 | 59 / 59 |
-| [react-hook-form](https://github.com/react-hook-form/react-hook-form) `e76876b` | React | forms | jsdom (Jest) | 124 | 1,515 | 6 / 8 |
+| [react-hook-form](https://github.com/react-hook-form/react-hook-form) `e76876b` | React | forms | jsdom (Jest) | 124 | 1,515 | 5.9 / 8.3 |
 | [vuetify](https://github.com/vuetifyjs/vuetify) `e23a3c1` | Vue | design system | jsdom | 73 | 947 | 15 / 17 |
 | [ngx-formly](https://github.com/ngx-formly/ngx-formly) `1f88133` | Angular | forms | happy-dom (Jest) | 60 | 854 | 10 / 11 |
 | [radix-primitives](https://github.com/radix-ui/primitives) `4e8b0db` | React | headless components | jsdom | 45 | 982 | 17 / 18 |
 | [emoji-picker-element](https://github.com/nolanlawson/emoji-picker-element) `5d1c8bf` | web components | web component | jsdom | 31 | 160 | 22 / 22 |
-| [solid](https://github.com/solidjs/solid) `aa12352` | Solid | framework runtime | jsdom | 27 | 482 | 1 / 2 |
-| [floating-ui](https://github.com/floating-ui/floating-ui) `414e093` | React, Vue | positioning | jsdom | 24 | 340 | 10 / 11 |
-| [kobalte](https://github.com/kobaltedev/kobalte) `675b4a1` | Solid | headless components | jsdom | 23 | 192 | 3 / 4 |
+| [solid](https://github.com/solidjs/solid) `aa12352` | Solid | framework runtime | jsdom | 27 | 482 | 1.2 / 1.6 |
+| [floating-ui](https://github.com/floating-ui/floating-ui) `414e093` | React, Vue | positioning | jsdom | 24 | 340 | 9.8 / 11.1 |
+| [kobalte](https://github.com/kobaltedev/kobalte) `675b4a1` | Solid | headless components | jsdom | 23 | 192 | 3.2 / 3.7 |
 | [analog](https://github.com/analogjs/analog) `3b9463e` | Angular | meta-framework | jsdom | 18 | 194 | 14 / 16 |
 | [svelte](https://github.com/sveltejs/svelte) `707c281` | Svelte | framework runtime | jsdom | 9 | 7,879 | 36 / 50 |
 
-Times are wall clock with two test workers on one laptop. They show tracer
-overhead (median about 1.1x; up to 1.9x for the busiest Jest + jsdom suites),
-not comparable speeds between projects.
+*Test files* counts files that produced a DOM trace (4,151 of the 4,278 files
+the runners ran; files without a DOM, such as Svelte's compiler tests, write
+none). *Tests* counts all tests in the run. Times are wall clock with two test
+workers on one laptop. They show tracer overhead (median about 1.1x, maximum
+1.9x for Mantine), not comparable speeds between projects.
 
 ## 4. Results
 
@@ -143,10 +153,11 @@ and `PerformanceResourceTiming`.
 | Document | 14 | `createElement`, `body`, `activeElement`, `createTextNode`, `querySelector(All)`, `getElementById`, `createRange`, `getSelection` |
 | HTMLElement | 12 | `style`, `hidden`, `dataset`, `tabIndex`, `focus`, `blur`, `click`, `offsetWidth`/`Height`/`Left`/`Top` |
 | HTMLInputElement | 12 | `type`, `value`, `checked`, `indeterminate`, `selectionStart`/`End`, `labels`, `select` |
-| window | 12 | `getComputedStyle`, `requestAnimationFrame`, `customElements`, `navigator`, `performance`, timers |
+| window | 12 | `getComputedStyle`, `requestAnimationFrame`, `cancelAnimationFrame`, `clearTimeout`, `customElements`, `navigator`, `performance` |
 | Event + subclasses | 27 | `type`, `target`, `defaultPrevented`, `composedPath`, `preventDefault`; mouse buttons and coordinates; key and modifiers; `relatedTarget` |
 | CSSStyleDeclaration | 10 | `setProperty`, `getPropertyValue`, `removeProperty`, `cssText`, `width`, `height`, `position`, `display`, `transform`, `opacity` |
-| other | 27 | `DOMTokenList` (`contains`, `add`, `remove`), `MutationObserver` (`observe`, `disconnect`), `NodeList`/`HTMLCollection` iteration, `Attr#value`, `CharacterData#data`, form controls |
+| EventTarget | 3 | `addEventListener`, `removeEventListener`, `dispatchEvent` |
+| other | 24 | `DOMTokenList` (`contains`, `add`, `remove`), `MutationObserver` (`observe`, `disconnect`), `NodeList`/`HTMLCollection` iteration, `Attr#value`, `CharacterData#data`, form controls |
 
 ### 4.3 Coverage curve
 
@@ -165,7 +176,8 @@ Raw operation counts are concentrated. Three projects (AG Grid 97M, React
 Spectrum 77M, Mantine 42M) produce 76% of all operations, and the 100 busiest
 test files (2.4% of files) produce half. The median test file makes about
 3,900 DOM operations. We therefore rank by each member's average share of a
-project's operations, giving every project the same weight:
+project's operations, giving every project the same weight. The table shows
+document-tree members; host APIs are discussed below.
 
 | Member | Mean share per project | Projects |
 | --- | --- | --- |
@@ -185,23 +197,26 @@ project's operations, giving every project the same weight:
 | `Node#nextSibling` | 1.6% | 20 |
 | `Node#parentElement` | 1.5% | 18 |
 
-Two patterns explain much of this list.
-
 **Test tooling walks the tree.** Testing Library queries (`getByRole`,
 `getByText`) visit every element and read `nodeType`, `tagName`, attributes
 and text. Inside `waitFor`, every failed attempt builds an error whose message
-is a `prettyDOM` dump of the whole tree, and `waitFor` throws it away and
-retries. In a 200-element test we measured, that dump caused all of the
-attribute iteration and 86% of the `nodeType` reads; disabling it
+is a `prettyDOM` dump of the whole tree; `waitFor` throws it away and retries.
+In a controlled 200-element test, that dump caused all of the attribute
+iteration and 86% of the `nodeType` reads; disabling it
 (`configure({ getElementError })`) removed them. In the corpus, three
-CopilotKit test files built this way produced 48% of all attribute iteration
-across the 20 projects.
+CopilotKit test files that poll this way account for 48% of all attribute
+iteration. The tracer cannot attribute calls to callers, so we cannot say how
+much of the corpus-wide tree walking comes from tooling.
 
-**Host APIs are a large share.** 29% of operations go to window-level
-services rather than the document tree. `Performance#now` alone is 62.5M
-calls, almost all in React Spectrum and Mantine (React's scheduler reads the
-clock while rendering is the likely source); `navigator` is read in all 20
-projects, typically by tooling detecting its environment.
+**Host APIs depend on the test runner.** 29% of raw operations go to
+window-level services rather than the document tree, but this is almost all
+`Performance#now` (62.5M calls) in two Jest suites, React Spectrum and
+Mantine. A stack-sampling probe attributed every sampled call in both to
+React's scheduler. Other React projects in the corpus, all running on Vitest,
+record none: there, the `performance` object React reads is evidently not the
+DOM implementation's, so the tracer does not see it. The median project spends
+about 5% of its operations on host APIs. `navigator` is read in all 20
+projects, probably by tooling detecting its environment.
 
 ### 4.5 By kind of library
 
@@ -216,9 +231,10 @@ Members used by at least half of one kind of project and by few others:
   (`position`, `display`, `overflow`, `visibility`, `pointerEvents`,
   `opacity`) for visibility and positioning logic.
 
-Style members appear under two interface names because newer jsdom versions
-call the declaration object `CSSStyleProperties`; a new implementation should
-treat these as one surface.
+Style members appear under two interface names, because newer jsdom versions
+call the declaration object `CSSStyleProperties`. All figures in this report
+count them separately; treated as one surface, 1,067 members are used, 179 by
+at least half of the projects and 781 by at least two.
 
 ### 4.6 Layout-driven components
 
@@ -234,29 +250,38 @@ Per test file:
 | `scrollWidth` / `scrollHeight` | 168 / 165 | 21 / 14 | 0 / 0 | 3 / 3 | 4 / 2 | 4 / 20 |
 | `getBoundingClientRect` | 35 | 117 | 0 | 68 | 79 | 4 |
 
-jsdom has no layout engine, so every size and position read returns 0. Grid
-and virtualized-list code measures constantly and gets zeros; how much test
-logic depends on those zeros we did not measure. React Spectrum and AG Grid
-make about 200,000 and 135,000 DOM operations per test file; most component
-libraries make between 1,000 and 50,000.
+`getComputedStyle` is not a grid speciality: Ariakit (1,066 per file),
+Element Plus (699) and floating-ui (684) call it about as often as the grids.
+Heavy reads of element sizes are concentrated in Handsontable (and AG Grid's
+`clientHeight`). Neither jsdom nor happy-dom computes layout, so these reads
+return zeros unless a test mocks them; the tracer does not see mocked values,
+and we did not measure how often tests mock them.
+
+Per test file, Svelte (330,000 operations, from 9 files that each drive many
+samples), React Spectrum (200,000) and AG Grid (135,000) are the most
+DOM-intensive suites; 12 of the 20 projects make between 1,000 and 50,000
+operations per file.
 
 ## 5. Implications for a test DOM
 
-1. **Scope.** The 165-member core plus the members used by at least two
-   projects (815 in total) are what a first implementation has to get right;
-   most of the catalog can follow later or never.
+1. **Scope.** The 815 members used by at least two projects, including the
+   165-member core, are what a first implementation has to get right (781 and
+   179 once the two style interfaces are merged); most of the catalog can
+   follow later or never.
 2. **Fast paths.** Tree navigation (`nodeType`, `parentNode`,
    `parentElement`, `childNodes`, `nextSibling`, `ownerDocument`), attribute
-   access and iteration, `matches`, event listener registration and dispatch,
-   and node creation and insertion.
-3. **Serialization is hot.** Fast attribute iteration and text access make
-   Testing Library's error dumps cheap; this pattern deserves its own
-   benchmark.
-4. **Styles and layout.** A cheap `getComputedStyle` matters for grids and
-   virtualized components; an optional, simple layout model is worth
-   evaluating, since these suites currently test against zeros.
+   access, `matches`, event listener registration and dispatch, and node
+   creation and insertion.
+3. **Serialization can be hot.** In suites that poll with `waitFor`, fast
+   attribute iteration and text access make Testing Library's error dumps
+   cheap; this pattern deserves its own benchmark.
+4. **Styles and layout.** A cheap `getComputedStyle` matters across many
+   libraries, not only grids. An optional, simple layout model is worth
+   evaluating for grids and positioning code, which read sizes and positions
+   that currently come back as zero unless mocked.
 5. **Host services** (`performance.now`, timers, `requestAnimationFrame`,
-   `navigator`) must be cheap; they are 29% of all operations.
+   `navigator`) must be cheap; in Jest suites with React they can be the
+   largest single source of calls.
 
 ## 6. Limitations
 
@@ -265,16 +290,25 @@ libraries make between 1,000 and 50,000.
   in real browsers; Angular and Svelte have few suites.
 - **Unit and component tests only.** Browser-mode and end-to-end suites are
   excluded by design.
-- **Not counted:** constructors (`new Event()`, `new MutationObserver()`),
-  non-configurable members (jsdom's `[LegacyUnforgeable]` members such as
-  `location`), and user code that runs synchronously inside DOM calls other
-  than listeners, handlers and custom element callbacks (for example custom
-  element constructors and `TreeWalker` filters).
+- **Not counted:** constructors (`new Event()`, `new MutationObserver()`;
+  counting them would mean replacing global constructors, which changes the
+  `instanceof` and identity checks frameworks rely on), non-configurable
+  members (jsdom's `[LegacyUnforgeable]` members such as `location`), and user
+  code that runs synchronously inside DOM calls other than listeners, handlers
+  and custom element callbacks (for example custom element constructors and
+  `TreeWalker` filters).
+- **Runner-provided globals.** Where the test runner supplies its own
+  `performance`, `setTimeout` and similar globals instead of the DOM
+  implementation's (Vitest), those calls are not seen; this is why
+  `setTimeout` appears in only 7 projects and `performance.now` only in Jest
+  suites.
 - **Runner and tooling code is counted.** Test environments, Testing Library
   and framework schedulers are measured together with component code; we can
   infer but not measure who made a call.
 - **Concentration.** A few projects and files dominate raw counts; we report
   equal-weight rankings next to totals.
+- **Pre-existing failures.** Some suites had failing tests or unloadable files
+  in both runs (369 tests); their DOM use is missing from the data.
 - **One commit per project**, mixed jsdom and happy-dom versions, Node 22.23.3.
 - **Overhead.** Traced runs were up to 1.9x slower, so traced timings are not
   benchmarks.
@@ -289,14 +323,14 @@ node scripts/report-data.mjs                            # figures used in this r
 ```
 
 `corpus/corpus.json` lists each project with its repository, install and
-build commands, environment variables and notes. `.corpus/report/usage.json`,
-`usage.csv` and `report-data.json` hold the full member table and every figure
-above.
+build commands, environment variables and notes. `docs/data/` holds the
+aggregated results: `usage.json` and `usage.csv` (every member, with
+operations, files, projects, environments and concentration),
+`report-data.json` (every figure above) and `summary.md`.
 
 ## Open items before publishing
 
-- Publish the raw data (per-file traces, usage tables) next to the report.
-- Figures: coverage curve, breadth vs operations, interface-by-project heatmap.
-- Confirm the `Performance#now` source in React Spectrum and Mantine.
-- Decide whether to count constructors before publishing.
+- Attach the per-file traces (21 MB) as a release download.
+- Figures (coverage curve, breadth vs operations, interface-by-project
+  heatmap), once the publication venue is chosen.
 - Name and home of the project the report introduces.

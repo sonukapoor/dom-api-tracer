@@ -169,6 +169,19 @@ web-components package).
   lock so only one run is active, and removes wrapper configs left by killed
   runs. Large suites (Handsontable core, AG Grid) are run by Sonu when
   convenient, not started from a chat session.
+- **2026-10-08: Report review decisions.** An independent fact-check
+  verified ~190 figures and flagged overstated wording, all fixed: causal
+  claims about tooling are framed as measured in a controlled test, "returns
+  zero" is qualified (mocks are invisible to the tracer), host share is given
+  per project (median 5.4%, raw 29% is mostly two Jest suites), pass parity
+  is stated as identical pass/fail/skip counts with the 369 pre-existing
+  failures disclosed, and merged CSSStyleProperties/CSSStyleDeclaration
+  figures are given. `performance.now` was confirmed by stack sampling to
+  come from React's scheduler; it is only visible under Jest because Vitest
+  supplies its own `performance`. Constructors are not counted for this
+  report (it would mean replacing global constructors and risks breaking
+  `instanceof` checks). Aggregated data is in `docs/data/`; per-file traces
+  go in a release at publication; figures wait for the publication venue.
 - **2026-10-08: Every window on a shared global is instrumented.** Vitest 2
   with `isolate: false` (solid) installs a new jsdom window per test file on
   the same global; the tracer only instrumented the first, so solid recorded
@@ -240,9 +253,8 @@ web-components package).
 
 ## Next steps
 
-1. Review the report draft; resolve its open items (publish raw data,
-   figures, confirm the `Performance#now` source, decide on counting
-   constructors).
+1. Publish the report: choose the venue, add figures, attach per-file
+   traces as a release download.
 2. Optional corpus additions: Taiga UI (needs Node >= 26 and an Nx build),
    Ant Design, Vue core, PrimeVue/Reka UI, motion.
 3. Decide the DOM project's name and repository; move this plan there.

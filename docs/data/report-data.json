@@ -1,0 +1,3152 @@
+{
+  "generatedAt": "2026-10-08T18:10:23.261Z",
+  "projects": 20,
+  "testFiles": 4151,
+  "environmentCoverage": [
+    {
+      "environment": "jsdom",
+      "testFiles": 2864,
+      "projects": 17,
+      "catalog": 5887,
+      "used": 1006
+    },
+    {
+      "environment": "happy-dom",
+      "testFiles": 1287,
+      "projects": 6,
+      "catalog": 2983,
+      "used": 518
+    }
+  ],
+  "membersUsed": 1148,
+  "coverage": {
+    "total": 282289565,
+    "curve": [
+      {
+        "threshold": 0.5,
+        "members": 8
+      },
+      {
+        "threshold": 0.8,
+        "members": 32
+      },
+      {
+        "threshold": 0.9,
+        "members": 56
+      },
+      {
+        "threshold": 0.95,
+        "members": 84
+      },
+      {
+        "threshold": 0.99,
+        "members": 174
+      },
+      {
+        "threshold": 1,
+        "members": 1148
+      }
+    ]
+  },
+  "corpus": [
+    {
+      "name": "floating-ui",
+      "repo": "https://github.com/floating-ui/floating-ui",
+      "commit": "414e093d7cc8762ae0c207784aa98110bf67c9e6",
+      "frameworks": [
+        "React",
+        "Vue"
+      ],
+      "kind": "positioning library",
+      "environments": [
+        "jsdom"
+      ],
+      "packages": 4,
+      "testFiles": 24,
+      "tests": 340,
+      "passedTraced": 334,
+      "passedBaseline": 334,
+      "baselineSeconds": 10,
+      "tracedSeconds": 11,
+      "opsPerFile": 27758,
+      "membersUsed": 204
+    },
+    {
+      "name": "solid",
+      "repo": "https://github.com/solidjs/solid",
+      "commit": "aa123525b0421d63ad2476680b4444bc1fb30b4a",
+      "frameworks": [
+        "Solid"
+      ],
+      "kind": "framework runtime",
+      "environments": [
+        "jsdom"
+      ],
+      "packages": 1,
+      "testFiles": 27,
+      "tests": 482,
+      "passedTraced": 482,
+      "passedBaseline": 482,
+      "baselineSeconds": 1,
+      "tracedSeconds": 2,
+      "opsPerFile": 325,
+      "membersUsed": 40
+    },
+    {
+      "name": "analog",
+      "repo": "https://github.com/analogjs/analog",
+      "commit": "3b9463ecf9782dc792a049c2e1741060cfdf2dcc",
+      "frameworks": [
+        "Angular"
+      ],
+      "kind": "meta-framework",
+      "environments": [
+        "jsdom"
+      ],
+      "packages": 8,
+      "testFiles": 18,
+      "tests": 194,
+      "passedTraced": 187,
+      "passedBaseline": 187,
+      "baselineSeconds": 14,
+      "tracedSeconds": 16,
+      "opsPerFile": 833,
+      "membersUsed": 121
+    },
+    {
+      "name": "CopilotKit",
+      "repo": "https://github.com/CopilotKit/CopilotKit",
+      "commit": "85fbc557bc2e48194e11311d5d434612dab56dd2",
+      "frameworks": [
+        "React",
+        "Vue",
+        "Angular",
+        "Web components"
+      ],
+      "kind": "app components",
+      "environments": [
+        "jsdom"
+      ],
+      "packages": 7,
+      "testFiles": 327,
+      "tests": 3860,
+      "passedTraced": 3754,
+      "passedBaseline": 3754,
+      "baselineSeconds": 203,
+      "tracedSeconds": 211,
+      "opsPerFile": 46061,
+      "membersUsed": 529
+    },
+    {
+      "name": "handsontable",
+      "repo": "https://github.com/handsontable/handsontable",
+      "commit": "fff66b1a306479df42a53fc9f7f6ce39231ec138",
+      "frameworks": [
+        "Vanilla",
+        "React",
+        "Vue",
+        "Angular"
+      ],
+      "kind": "data grid",
+      "environments": [
+        "jsdom"
+      ],
+      "packages": 4,
+      "testFiles": 554,
+      "tests": 8082,
+      "passedTraced": 8082,
+      "passedBaseline": 8082,
+      "baselineSeconds": 538,
+      "tracedSeconds": 960,
+      "opsPerFile": 21694,
+      "membersUsed": 383
+    },
+    {
+      "name": "ag-grid",
+      "repo": "https://github.com/ag-grid/ag-grid",
+      "commit": "73997c5528d5f9333c42f474f95650af9f223992",
+      "frameworks": [
+        "Vanilla"
+      ],
+      "kind": "data grid",
+      "environments": [
+        "happy-dom"
+      ],
+      "packages": 4,
+      "testFiles": 717,
+      "tests": 11694,
+      "passedTraced": 11669,
+      "passedBaseline": 11669,
+      "baselineSeconds": 303,
+      "tracedSeconds": 313,
+      "opsPerFile": 135181,
+      "membersUsed": 317
+    },
+    {
+      "name": "material-ui",
+      "repo": "https://github.com/mui/material-ui",
+      "commit": "bd66a84d810d5ec34230d5b3da97622717386a24",
+      "frameworks": [
+        "React"
+      ],
+      "kind": "design system",
+      "environments": [
+        "jsdom"
+      ],
+      "packages": 4,
+      "testFiles": 266,
+      "tests": 6770,
+      "passedTraced": 5894,
+      "passedBaseline": 5894,
+      "baselineSeconds": 96,
+      "tracedSeconds": 97,
+      "opsPerFile": 16132,
+      "membersUsed": 323
+    },
+    {
+      "name": "ariakit",
+      "repo": "https://github.com/ariakit/ariakit",
+      "commit": "51eb28a7ca75b5d9f722fa5035137c5ec69e0c3a",
+      "frameworks": [
+        "React",
+        "Solid"
+      ],
+      "kind": "headless components",
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ],
+      "packages": 1,
+      "testFiles": 264,
+      "tests": 1857,
+      "passedTraced": 1857,
+      "passedBaseline": 1857,
+      "baselineSeconds": 119,
+      "tracedSeconds": 123,
+      "opsPerFile": 71220,
+      "membersUsed": 369
+    },
+    {
+      "name": "element-plus",
+      "repo": "https://github.com/element-plus/element-plus",
+      "commit": "6f7016e434cc64d152940698a5fd3bc5f373ec97",
+      "frameworks": [
+        "Vue"
+      ],
+      "kind": "design system",
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ],
+      "packages": 1,
+      "testFiles": 161,
+      "tests": 2634,
+      "passedTraced": 2629,
+      "passedBaseline": 2629,
+      "baselineSeconds": 54,
+      "tracedSeconds": 56,
+      "opsPerFile": 29706,
+      "membersUsed": 321
+    },
+    {
+      "name": "ngx-formly",
+      "repo": "https://github.com/ngx-formly/ngx-formly",
+      "commit": "1f881333468a13d45edff1a8806f4ef882311930",
+      "frameworks": [
+        "Angular"
+      ],
+      "kind": "forms",
+      "environments": [
+        "happy-dom"
+      ],
+      "packages": 1,
+      "testFiles": 60,
+      "tests": 854,
+      "passedTraced": 853,
+      "passedBaseline": 853,
+      "baselineSeconds": 10,
+      "tracedSeconds": 11,
+      "opsPerFile": 163,
+      "membersUsed": 137
+    },
+    {
+      "name": "kobalte",
+      "repo": "https://github.com/kobaltedev/kobalte",
+      "commit": "675b4a11f4f074007c98b47a573760a1b60849ff",
+      "frameworks": [
+        "Solid"
+      ],
+      "kind": "headless components",
+      "environments": [
+        "jsdom"
+      ],
+      "packages": 1,
+      "testFiles": 23,
+      "tests": 192,
+      "passedTraced": 189,
+      "passedBaseline": 189,
+      "baselineSeconds": 3,
+      "tracedSeconds": 4,
+      "opsPerFile": 2438,
+      "membersUsed": 128
+    },
+    {
+      "name": "radix-primitives",
+      "repo": "https://github.com/radix-ui/primitives",
+      "commit": "4e8b0dbc76d3e0189ab1a0ef0ff2245758506840",
+      "frameworks": [
+        "React"
+      ],
+      "kind": "headless components",
+      "environments": [
+        "jsdom"
+      ],
+      "packages": 1,
+      "testFiles": 45,
+      "tests": 982,
+      "passedTraced": 976,
+      "passedBaseline": 976,
+      "baselineSeconds": 17,
+      "tracedSeconds": 18,
+      "opsPerFile": 16322,
+      "membersUsed": 297
+    },
+    {
+      "name": "react-hook-form",
+      "repo": "https://github.com/react-hook-form/react-hook-form",
+      "commit": "e76876b02550b3ad48a351c638845d9dc1aaa3c8",
+      "frameworks": [
+        "React"
+      ],
+      "kind": "forms",
+      "environments": [
+        "jsdom"
+      ],
+      "packages": 1,
+      "testFiles": 124,
+      "tests": 1515,
+      "passedTraced": 1515,
+      "passedBaseline": 1515,
+      "baselineSeconds": 6,
+      "tracedSeconds": 8,
+      "opsPerFile": 9668,
+      "membersUsed": 144
+    },
+    {
+      "name": "vuetify",
+      "repo": "https://github.com/vuetifyjs/vuetify",
+      "commit": "e23a3c152930e9d504130ee194adfce63f84d66e",
+      "frameworks": [
+        "Vue"
+      ],
+      "kind": "design system",
+      "environments": [
+        "jsdom"
+      ],
+      "packages": 1,
+      "testFiles": 73,
+      "tests": 947,
+      "passedTraced": 943,
+      "passedBaseline": 943,
+      "baselineSeconds": 15,
+      "tracedSeconds": 17,
+      "opsPerFile": 1111,
+      "membersUsed": 268
+    },
+    {
+      "name": "svelte",
+      "repo": "https://github.com/sveltejs/svelte",
+      "commit": "707c28146b0f0a6d5404a1bd4769874c3c24851a",
+      "frameworks": [
+        "Svelte"
+      ],
+      "kind": "framework runtime",
+      "environments": [
+        "jsdom"
+      ],
+      "packages": 1,
+      "testFiles": 9,
+      "tests": 7879,
+      "passedTraced": 7824,
+      "passedBaseline": 7824,
+      "baselineSeconds": 36,
+      "tracedSeconds": 50,
+      "opsPerFile": 330465,
+      "membersUsed": 228
+    },
+    {
+      "name": "mantine",
+      "repo": "https://github.com/mantinedev/mantine",
+      "commit": "f7ab1ef52579366e2310fc12b1a12e88a821053a",
+      "frameworks": [
+        "React"
+      ],
+      "kind": "design system",
+      "environments": [
+        "jsdom"
+      ],
+      "packages": 1,
+      "testFiles": 727,
+      "tests": 17861,
+      "passedTraced": 17785,
+      "passedBaseline": 17785,
+      "baselineSeconds": 900,
+      "tracedSeconds": 1700,
+      "opsPerFile": 57139,
+      "membersUsed": 372
+    },
+    {
+      "name": "react-spectrum",
+      "repo": "https://github.com/adobe/react-spectrum",
+      "commit": "2691598d3efcdaf6f49f29ad1a44bbc1741765a3",
+      "frameworks": [
+        "React"
+      ],
+      "kind": "design system",
+      "environments": [
+        "jsdom"
+      ],
+      "packages": 1,
+      "testFiles": 384,
+      "tests": 8456,
+      "passedTraced": 8326,
+      "passedBaseline": 8326,
+      "baselineSeconds": 156,
+      "tracedSeconds": 173,
+      "opsPerFile": 200611,
+      "membersUsed": 522
+    },
+    {
+      "name": "nuxt-ui",
+      "repo": "https://github.com/nuxt/ui",
+      "commit": "9c4e33b7e076aa6bd59b5bd99d8621d9dc1bcf60",
+      "frameworks": [
+        "Vue"
+      ],
+      "kind": "design system",
+      "environments": [
+        "happy-dom"
+      ],
+      "packages": 1,
+      "testFiles": 143,
+      "tests": 4056,
+      "passedTraced": 3977,
+      "passedBaseline": 3977,
+      "baselineSeconds": 59,
+      "tracedSeconds": 59,
+      "opsPerFile": 27309,
+      "membersUsed": 254
+    },
+    {
+      "name": "ark-ui",
+      "repo": "https://github.com/chakra-ui/ark",
+      "commit": "eb6abb07f619022e2f42ae258f61b0c123166cd7",
+      "frameworks": [
+        "React",
+        "Vue",
+        "Solid",
+        "Svelte"
+      ],
+      "kind": "headless components",
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ],
+      "packages": 4,
+      "testFiles": 174,
+      "tests": 1245,
+      "passedTraced": 1227,
+      "passedBaseline": 1227,
+      "baselineSeconds": 61,
+      "tracedSeconds": 64,
+      "opsPerFile": 11091,
+      "membersUsed": 348
+    },
+    {
+      "name": "emoji-picker-element",
+      "repo": "https://github.com/nolanlawson/emoji-picker-element",
+      "commit": "5d1c8bfc21e737c03a3cb14e06b4e472e2275ff1",
+      "frameworks": [
+        "Web components"
+      ],
+      "kind": "web component",
+      "environments": [
+        "jsdom"
+      ],
+      "packages": 1,
+      "testFiles": 31,
+      "tests": 160,
+      "passedTraced": 157,
+      "passedBaseline": 157,
+      "baselineSeconds": 22,
+      "tracedSeconds": 22,
+      "opsPerFile": 8188,
+      "membersUsed": 107
+    }
+  ],
+  "core": {
+    "threshold": 10,
+    "count": 165,
+    "byInterface": {
+      "Node": [
+        "nodeType",
+        "ownerDocument",
+        "appendChild",
+        "parentElement",
+        "childNodes",
+        "parentNode",
+        "nodeName",
+        "cloneNode",
+        "nextSibling",
+        "firstChild",
+        "insertBefore",
+        "contains",
+        "textContent",
+        "getRootNode",
+        "removeChild",
+        "lastChild",
+        "isConnected",
+        "nodeValue",
+        "previousSibling"
+      ],
+      "Element": [
+        "setAttribute",
+        "classList",
+        "getAttribute",
+        "matches",
+        "tagName",
+        "namespaceURI",
+        "className",
+        "closest",
+        "hasAttribute",
+        "append",
+        "attributes",
+        "localName",
+        "removeAttribute",
+        "remove",
+        "querySelector",
+        "id",
+        "children",
+        "shadowRoot",
+        "clientWidth",
+        "getBoundingClientRect",
+        "querySelectorAll",
+        "clientHeight",
+        "innerHTML",
+        "getAttributeNode",
+        "scrollTop",
+        "scrollLeft",
+        "scrollHeight",
+        "scrollWidth",
+        "firstElementChild",
+        "outerHTML",
+        "lastElementChild",
+        "attachShadow"
+      ],
+      "EventTarget": [
+        "addEventListener",
+        "removeEventListener",
+        "dispatchEvent"
+      ],
+      "HTMLElement": [
+        "style",
+        "onclick",
+        "hidden",
+        "offsetWidth",
+        "offsetHeight",
+        "dataset",
+        "tabIndex",
+        "focus",
+        "offsetLeft",
+        "offsetTop",
+        "click",
+        "blur"
+      ],
+      "window": [
+        "navigator",
+        "getComputedStyle",
+        "event",
+        "performance",
+        "clearTimeout",
+        "addEventListener",
+        "removeEventListener",
+        "requestAnimationFrame",
+        "frameElement",
+        "cancelAnimationFrame",
+        "devicePixelRatio",
+        "customElements"
+      ],
+      "Document": [
+        "createElement",
+        "body",
+        "activeElement",
+        "createTextNode",
+        "documentElement",
+        "createComment",
+        "createElementNS",
+        "getElementById",
+        "querySelector",
+        "querySelectorAll",
+        "head",
+        "visibilityState",
+        "getSelection",
+        "createRange"
+      ],
+      "DOMTokenList": [
+        "contains",
+        "add",
+        "remove",
+        "[Symbol.iterator]"
+      ],
+      "NodeList": [
+        "[Symbol.iterator]",
+        "forEach"
+      ],
+      "CSSStyleDeclaration": [
+        "width",
+        "height",
+        "setProperty",
+        "getPropertyValue",
+        "position",
+        "display",
+        "transform",
+        "removeProperty",
+        "opacity",
+        "cssText"
+      ],
+      "Attr": [
+        "value"
+      ],
+      "NamedNodeMap": [
+        "[Symbol.iterator]"
+      ],
+      "Event": [
+        "type",
+        "target",
+        "defaultPrevented",
+        "eventPhase",
+        "timeStamp",
+        "cancelable",
+        "bubbles",
+        "composedPath",
+        "preventDefault",
+        "stopPropagation",
+        "currentTarget"
+      ],
+      "CharacterData": [
+        "data"
+      ],
+      "HTMLInputElement": [
+        "type",
+        "value",
+        "checked",
+        "indeterminate",
+        "defaultValue",
+        "selectionStart",
+        "selectionEnd",
+        "defaultChecked",
+        "disabled",
+        "labels",
+        "readOnly",
+        "select"
+      ],
+      "SVGElement": [
+        "style"
+      ],
+      "Navigator": [
+        "userAgent"
+      ],
+      "HTMLButtonElement": [
+        "type",
+        "labels",
+        "disabled"
+      ],
+      "KeyboardEvent": [
+        "key",
+        "metaKey",
+        "ctrlKey",
+        "altKey",
+        "shiftKey"
+      ],
+      "UIEvent": [
+        "detail",
+        "view"
+      ],
+      "HTMLCollection": [
+        "[Symbol.iterator]"
+      ],
+      "FocusEvent": [
+        "relatedTarget"
+      ],
+      "MutationObserver": [
+        "observe",
+        "disconnect"
+      ],
+      "HTMLTextAreaElement": [
+        "value",
+        "disabled"
+      ],
+      "HTMLOptionElement": [
+        "value",
+        "selected"
+      ],
+      "MouseEvent": [
+        "button",
+        "relatedTarget",
+        "ctrlKey",
+        "shiftKey",
+        "altKey",
+        "metaKey",
+        "clientX",
+        "clientY"
+      ],
+      "Selection": [
+        "focusNode"
+      ],
+      "HTMLAnchorElement": [
+        "href"
+      ],
+      "HTMLSelectElement": [
+        "value"
+      ]
+    }
+  },
+  "breadthTop": [
+    {
+      "id": "Document#body",
+      "projects": 20,
+      "files": 3602,
+      "ops": 2375112,
+      "topFileShare": 0.025,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "Document#createElement",
+      "projects": 20,
+      "files": 3399,
+      "ops": 5222308,
+      "topFileShare": 0.038,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "window#navigator",
+      "projects": 20,
+      "files": 3076,
+      "ops": 6876201,
+      "topFileShare": 0.09,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "Node#appendChild",
+      "projects": 20,
+      "files": 3059,
+      "ops": 5145349,
+      "topFileShare": 0.045,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "EventTarget#addEventListener",
+      "projects": 20,
+      "files": 2863,
+      "ops": 11617165,
+      "topFileShare": 0.035,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "Node#parentNode",
+      "projects": 20,
+      "files": 2634,
+      "ops": 2312772,
+      "topFileShare": 0.069,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "Element#setAttribute",
+      "projects": 20,
+      "files": 2621,
+      "ops": 12161620,
+      "topFileShare": 0.037,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "Element#tagName",
+      "projects": 20,
+      "files": 2346,
+      "ops": 4674411,
+      "topFileShare": 0.054,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "Node#nodeType",
+      "projects": 20,
+      "files": 2302,
+      "ops": 18611696,
+      "topFileShare": 0.093,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "Node#nextSibling",
+      "projects": 20,
+      "files": 1302,
+      "ops": 1350139,
+      "topFileShare": 0.115,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "Element#innerHTML",
+      "projects": 20,
+      "files": 828,
+      "ops": 207509,
+      "topFileShare": 0.288,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "Element#getAttribute",
+      "projects": 19,
+      "files": 2323,
+      "ops": 7644805,
+      "topFileShare": 0.017,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "NodeList#[Symbol.iterator]",
+      "projects": 19,
+      "files": 2305,
+      "ops": 2406804,
+      "topFileShare": 0.026,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "Element#querySelectorAll",
+      "projects": 19,
+      "files": 2141,
+      "ops": 229183,
+      "topFileShare": 0.015,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "Document#createTextNode",
+      "projects": 19,
+      "files": 2121,
+      "ops": 791825,
+      "topFileShare": 0.105,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "Element#id",
+      "projects": 19,
+      "files": 1937,
+      "ops": 491565,
+      "topFileShare": 0.054,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "Element#removeAttribute",
+      "projects": 19,
+      "files": 1905,
+      "ops": 1029027,
+      "topFileShare": 0.025,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "Node#childNodes",
+      "projects": 19,
+      "files": 1901,
+      "ops": 4275398,
+      "topFileShare": 0.03,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "Node#insertBefore",
+      "projects": 19,
+      "files": 1729,
+      "ops": 1113137,
+      "topFileShare": 0.054,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "Element#querySelector",
+      "projects": 19,
+      "files": 1714,
+      "ops": 613911,
+      "topFileShare": 0.026,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "Element#hasAttribute",
+      "projects": 19,
+      "files": 1588,
+      "ops": 1504228,
+      "topFileShare": 0.086,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "Element#attributes",
+      "projects": 19,
+      "files": 1312,
+      "ops": 1342508,
+      "topFileShare": 0.187,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "Attr#value",
+      "projects": 19,
+      "files": 1287,
+      "ops": 1786242,
+      "topFileShare": 0.182,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "Event#target",
+      "projects": 19,
+      "files": 1279,
+      "ops": 896428,
+      "topFileShare": 0.027,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "Element#remove",
+      "projects": 19,
+      "files": 1256,
+      "ops": 987636,
+      "topFileShare": 0.041,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "Event#type",
+      "projects": 19,
+      "files": 1138,
+      "ops": 945345,
+      "topFileShare": 0.064,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "HTMLInputElement#type",
+      "projects": 19,
+      "files": 838,
+      "ops": 515852,
+      "topFileShare": 0.098,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "HTMLElement#style",
+      "projects": 18,
+      "files": 3128,
+      "ops": 10891212,
+      "topFileShare": 0.022,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "Document#activeElement",
+      "projects": 18,
+      "files": 2734,
+      "ops": 961413,
+      "topFileShare": 0.021,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "Node#getRootNode",
+      "projects": 18,
+      "files": 2386,
+      "ops": 526936,
+      "topFileShare": 0.016,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "Node#removeChild",
+      "projects": 18,
+      "files": 2340,
+      "ops": 238369,
+      "topFileShare": 0.049,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "Node#parentElement",
+      "projects": 18,
+      "files": 1948,
+      "ops": 4553509,
+      "topFileShare": 0.018,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "EventTarget#removeEventListener",
+      "projects": 18,
+      "files": 1790,
+      "ops": 2806308,
+      "topFileShare": 0.02,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "Node#contains",
+      "projects": 18,
+      "files": 1642,
+      "ops": 828890,
+      "topFileShare": 0.157,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "NamedNodeMap#[Symbol.iterator]",
+      "projects": 18,
+      "files": 1180,
+      "ops": 1307354,
+      "topFileShare": 0.192,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "HTMLElement#focus",
+      "projects": 18,
+      "files": 1103,
+      "ops": 36244,
+      "topFileShare": 0.018,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "Element#shadowRoot",
+      "projects": 18,
+      "files": 868,
+      "ops": 287575,
+      "topFileShare": 0.611,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "Event#preventDefault",
+      "projects": 18,
+      "files": 831,
+      "ops": 38116,
+      "topFileShare": 0.038,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "HTMLInputElement#value",
+      "projects": 18,
+      "files": 766,
+      "ops": 226564,
+      "topFileShare": 0.078,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "CharacterData#data",
+      "projects": 18,
+      "files": 212,
+      "ops": 862446,
+      "topFileShare": 0.224,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    }
+  ],
+  "hotDom": [
+    {
+      "id": "Node#nodeType",
+      "projects": 20,
+      "files": 2302,
+      "ops": 18611696,
+      "topFileShare": 0.093,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "Element#setAttribute",
+      "projects": 20,
+      "files": 2621,
+      "ops": 12161620,
+      "topFileShare": 0.037,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "EventTarget#addEventListener",
+      "projects": 20,
+      "files": 2863,
+      "ops": 11617165,
+      "topFileShare": 0.035,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "HTMLElement#style",
+      "projects": 18,
+      "files": 3128,
+      "ops": 10891212,
+      "topFileShare": 0.022,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "Element#classList",
+      "projects": 17,
+      "files": 1380,
+      "ops": 10028686,
+      "topFileShare": 0.02,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "Node#ownerDocument",
+      "projects": 17,
+      "files": 2579,
+      "ops": 8205875,
+      "topFileShare": 0.038,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "Element#getAttribute",
+      "projects": 19,
+      "files": 2323,
+      "ops": 7644805,
+      "topFileShare": 0.017,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "Element#matches",
+      "projects": 17,
+      "files": 1480,
+      "ops": 6093934,
+      "topFileShare": 0.167,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "DOMTokenList#toggle",
+      "projects": 7,
+      "files": 769,
+      "ops": 6052893,
+      "topFileShare": 0.033,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "Document#createElement",
+      "projects": 20,
+      "files": 3399,
+      "ops": 5222308,
+      "topFileShare": 0.038,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "Node#appendChild",
+      "projects": 20,
+      "files": 3059,
+      "ops": 5145349,
+      "topFileShare": 0.045,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "Element#tagName",
+      "projects": 20,
+      "files": 2346,
+      "ops": 4674411,
+      "topFileShare": 0.054,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "Node#parentElement",
+      "projects": 18,
+      "files": 1948,
+      "ops": 4553509,
+      "topFileShare": 0.018,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "Node#childNodes",
+      "projects": 19,
+      "files": 1901,
+      "ops": 4275398,
+      "topFileShare": 0.03,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "Document#defaultView",
+      "projects": 7,
+      "files": 936,
+      "ops": 4020335,
+      "topFileShare": 0.076,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "Element#namespaceURI",
+      "projects": 17,
+      "files": 1640,
+      "ops": 3294399,
+      "topFileShare": 0.031,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "Element#className",
+      "projects": 14,
+      "files": 1320,
+      "ops": 2883845,
+      "topFileShare": 0.023,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "EventTarget#removeEventListener",
+      "projects": 18,
+      "files": 1790,
+      "ops": 2806308,
+      "topFileShare": 0.02,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "DOMTokenList#contains",
+      "projects": 13,
+      "files": 882,
+      "ops": 2717053,
+      "topFileShare": 0.054,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "NodeList#[Symbol.iterator]",
+      "projects": 19,
+      "files": 2305,
+      "ops": 2406804,
+      "topFileShare": 0.026,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "Document#body",
+      "projects": 20,
+      "files": 3602,
+      "ops": 2375112,
+      "topFileShare": 0.025,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "Node#parentNode",
+      "projects": 20,
+      "files": 2634,
+      "ops": 2312772,
+      "topFileShare": 0.069,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "CSSStyleDeclaration#width",
+      "projects": 10,
+      "files": 789,
+      "ops": 2242777,
+      "topFileShare": 0.024,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "Element#nodeName",
+      "projects": 6,
+      "files": 1056,
+      "ops": 2075380,
+      "topFileShare": 0.019,
+      "environments": [
+        "happy-dom"
+      ]
+    },
+    {
+      "id": "Node#nodeName",
+      "projects": 16,
+      "files": 1426,
+      "ops": 2048386,
+      "topFileShare": 0.028,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "Node#cloneNode",
+      "projects": 14,
+      "files": 779,
+      "ops": 1853259,
+      "topFileShare": 0.026,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "Attr#value",
+      "projects": 19,
+      "files": 1287,
+      "ops": 1786242,
+      "topFileShare": 0.182,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "CSSStyleDeclaration#height",
+      "projects": 11,
+      "files": 807,
+      "ops": 1735602,
+      "topFileShare": 0.029,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "Element#closest",
+      "projects": 17,
+      "files": 1425,
+      "ops": 1525419,
+      "topFileShare": 0.025,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "Element#hasAttribute",
+      "projects": 19,
+      "files": 1588,
+      "ops": 1504228,
+      "topFileShare": 0.086,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    }
+  ],
+  "hotHost": [
+    {
+      "id": "Performance#now",
+      "projects": 4,
+      "files": 793,
+      "ops": 62523829,
+      "topFileShare": 0.067,
+      "environments": [
+        "jsdom"
+      ]
+    },
+    {
+      "id": "window#navigator",
+      "projects": 20,
+      "files": 3076,
+      "ops": 6876201,
+      "topFileShare": 0.09,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "window#document",
+      "projects": 6,
+      "files": 1919,
+      "ops": 5137078,
+      "topFileShare": 0.039,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "window#getComputedStyle",
+      "projects": 17,
+      "files": 2110,
+      "ops": 1893227,
+      "topFileShare": 0.046,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "Navigator#platform",
+      "projects": 9,
+      "files": 1427,
+      "ops": 1891148,
+      "topFileShare": 0.079,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "window#event",
+      "projects": 10,
+      "files": 1166,
+      "ops": 835503,
+      "topFileShare": 0.069,
+      "environments": [
+        "jsdom"
+      ]
+    },
+    {
+      "id": "window#performance",
+      "projects": 12,
+      "files": 2044,
+      "ops": 627819,
+      "topFileShare": 0.008,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "window#queueMicrotask",
+      "projects": 8,
+      "files": 1683,
+      "ops": 286197,
+      "topFileShare": 0.025,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "window#clearTimeout",
+      "projects": 11,
+      "files": 1326,
+      "ops": 222498,
+      "topFileShare": 0.028,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    },
+    {
+      "id": "Navigator#userAgent",
+      "projects": 17,
+      "files": 2977,
+      "ops": 177047,
+      "topFileShare": 0.124,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ]
+    }
+  ],
+  "hotEqualWeight": [
+    {
+      "id": "Node#nodeType",
+      "projects": 20,
+      "files": 2302,
+      "ops": 18611696,
+      "topFileShare": 0.093,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ],
+      "meanProjectShare": 0.0965
+    },
+    {
+      "id": "EventTarget#addEventListener",
+      "projects": 20,
+      "files": 2863,
+      "ops": 11617165,
+      "topFileShare": 0.035,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ],
+      "meanProjectShare": 0.0813
+    },
+    {
+      "id": "Node#ownerDocument",
+      "projects": 17,
+      "files": 2579,
+      "ops": 8205875,
+      "topFileShare": 0.038,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ],
+      "meanProjectShare": 0.0433
+    },
+    {
+      "id": "Element#matches",
+      "projects": 17,
+      "files": 1480,
+      "ops": 6093934,
+      "topFileShare": 0.167,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ],
+      "meanProjectShare": 0.0362
+    },
+    {
+      "id": "Element#setAttribute",
+      "projects": 20,
+      "files": 2621,
+      "ops": 12161620,
+      "topFileShare": 0.037,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ],
+      "meanProjectShare": 0.0357
+    },
+    {
+      "id": "Element#tagName",
+      "projects": 20,
+      "files": 2346,
+      "ops": 4674411,
+      "topFileShare": 0.054,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ],
+      "meanProjectShare": 0.0312
+    },
+    {
+      "id": "Element#getAttribute",
+      "projects": 19,
+      "files": 2323,
+      "ops": 7644805,
+      "topFileShare": 0.017,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ],
+      "meanProjectShare": 0.0282
+    },
+    {
+      "id": "Node#insertBefore",
+      "projects": 19,
+      "files": 1729,
+      "ops": 1113137,
+      "topFileShare": 0.054,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ],
+      "meanProjectShare": 0.026
+    },
+    {
+      "id": "Document#createTextNode",
+      "projects": 19,
+      "files": 2121,
+      "ops": 791825,
+      "topFileShare": 0.105,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ],
+      "meanProjectShare": 0.0212
+    },
+    {
+      "id": "Node#parentNode",
+      "projects": 20,
+      "files": 2634,
+      "ops": 2312772,
+      "topFileShare": 0.069,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ],
+      "meanProjectShare": 0.0187
+    },
+    {
+      "id": "Node#childNodes",
+      "projects": 19,
+      "files": 1901,
+      "ops": 4275398,
+      "topFileShare": 0.03,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ],
+      "meanProjectShare": 0.018
+    },
+    {
+      "id": "HTMLElement#style",
+      "projects": 18,
+      "files": 3128,
+      "ops": 10891212,
+      "topFileShare": 0.022,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ],
+      "meanProjectShare": 0.0168
+    },
+    {
+      "id": "Document#createElement",
+      "projects": 20,
+      "files": 3399,
+      "ops": 5222308,
+      "topFileShare": 0.038,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ],
+      "meanProjectShare": 0.0161
+    },
+    {
+      "id": "Node#nextSibling",
+      "projects": 20,
+      "files": 1302,
+      "ops": 1350139,
+      "topFileShare": 0.115,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ],
+      "meanProjectShare": 0.016
+    },
+    {
+      "id": "Node#parentElement",
+      "projects": 18,
+      "files": 1948,
+      "ops": 4553509,
+      "topFileShare": 0.018,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ],
+      "meanProjectShare": 0.0154
+    },
+    {
+      "id": "Node#nodeName",
+      "projects": 16,
+      "files": 1426,
+      "ops": 2048386,
+      "topFileShare": 0.028,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ],
+      "meanProjectShare": 0.0148
+    },
+    {
+      "id": "Node#appendChild",
+      "projects": 20,
+      "files": 3059,
+      "ops": 5145349,
+      "topFileShare": 0.045,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ],
+      "meanProjectShare": 0.0138
+    },
+    {
+      "id": "EventTarget#removeEventListener",
+      "projects": 18,
+      "files": 1790,
+      "ops": 2806308,
+      "topFileShare": 0.02,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ],
+      "meanProjectShare": 0.0122
+    },
+    {
+      "id": "Element#namespaceURI",
+      "projects": 17,
+      "files": 1640,
+      "ops": 3294399,
+      "topFileShare": 0.031,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ],
+      "meanProjectShare": 0.0119
+    },
+    {
+      "id": "CharacterData#data",
+      "projects": 18,
+      "files": 212,
+      "ops": 862446,
+      "topFileShare": 0.224,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ],
+      "meanProjectShare": 0.0116
+    },
+    {
+      "id": "CharacterData#remove",
+      "projects": 5,
+      "files": 362,
+      "ops": 87321,
+      "topFileShare": 0.333,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ],
+      "meanProjectShare": 0.0112
+    },
+    {
+      "id": "Element#classList",
+      "projects": 17,
+      "files": 1380,
+      "ops": 10028686,
+      "topFileShare": 0.02,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ],
+      "meanProjectShare": 0.0109
+    },
+    {
+      "id": "Attr#value",
+      "projects": 19,
+      "files": 1287,
+      "ops": 1786242,
+      "topFileShare": 0.182,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ],
+      "meanProjectShare": 0.0083
+    },
+    {
+      "id": "Element#hasAttribute",
+      "projects": 19,
+      "files": 1588,
+      "ops": 1504228,
+      "topFileShare": 0.086,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ],
+      "meanProjectShare": 0.0083
+    },
+    {
+      "id": "Node#firstChild",
+      "projects": 17,
+      "files": 1998,
+      "ops": 1283722,
+      "topFileShare": 0.085,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ],
+      "meanProjectShare": 0.0083
+    },
+    {
+      "id": "NodeList#[Symbol.iterator]",
+      "projects": 19,
+      "files": 2305,
+      "ops": 2406804,
+      "topFileShare": 0.026,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ],
+      "meanProjectShare": 0.0076
+    },
+    {
+      "id": "Document#defaultView",
+      "projects": 7,
+      "files": 936,
+      "ops": 4020335,
+      "topFileShare": 0.076,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ],
+      "meanProjectShare": 0.0074
+    },
+    {
+      "id": "Element#removeAttribute",
+      "projects": 19,
+      "files": 1905,
+      "ops": 1029027,
+      "topFileShare": 0.025,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ],
+      "meanProjectShare": 0.0074
+    },
+    {
+      "id": "Node#[Symbol.toStringTag]",
+      "projects": 5,
+      "files": 383,
+      "ops": 675166,
+      "topFileShare": 0.495,
+      "environments": [
+        "happy-dom"
+      ],
+      "meanProjectShare": 0.0073
+    },
+    {
+      "id": "Document#body",
+      "projects": 20,
+      "files": 3602,
+      "ops": 2375112,
+      "topFileShare": 0.025,
+      "environments": [
+        "happy-dom",
+        "jsdom"
+      ],
+      "meanProjectShare": 0.007
+    }
+  ],
+  "hostShareOfOps": 0.288,
+  "distinctive": {
+    "framework runtime": {
+      "projects": [
+        "solid",
+        "svelte"
+      ],
+      "members": [
+        {
+          "id": "CharacterData#remove",
+          "inKind": 2,
+          "inOthers": 3,
+          "ops": 87321
+        },
+        {
+          "id": "Node#replaceChild",
+          "inKind": 1,
+          "inOthers": 3,
+          "ops": 149787
+        },
+        {
+          "id": "Element#before",
+          "inKind": 1,
+          "inOthers": 3,
+          "ops": 55824
+        },
+        {
+          "id": "Document#importNode",
+          "inKind": 1,
+          "inOthers": 1,
+          "ops": 49956
+        },
+        {
+          "id": "CharacterData#before",
+          "inKind": 1,
+          "inOthers": 1,
+          "ops": 36012
+        },
+        {
+          "id": "HTMLCanvasElement#width",
+          "inKind": 1,
+          "inOthers": 2,
+          "ops": 20205
+        },
+        {
+          "id": "HTMLCanvasElement#height",
+          "inKind": 1,
+          "inOthers": 2,
+          "ops": 20196
+        },
+        {
+          "id": "Document#title",
+          "inKind": 1,
+          "inOthers": 3,
+          "ops": 6187
+        },
+        {
+          "id": "Document#getElementsByTagNameNS",
+          "inKind": 1,
+          "inOthers": 0,
+          "ops": 6063
+        },
+        {
+          "id": "CSSStyleDeclaration#scale",
+          "inKind": 1,
+          "inOthers": 2,
+          "ops": 2202
+        },
+        {
+          "id": "CSSStyleDeclaration#rotate",
+          "inKind": 1,
+          "inOthers": 2,
+          "ops": 2182
+        },
+        {
+          "id": "NodeList#values",
+          "inKind": 1,
+          "inOthers": 0,
+          "ops": 2145
+        },
+        {
+          "id": "Element#after",
+          "inKind": 1,
+          "inOthers": 1,
+          "ops": 912
+        },
+        {
+          "id": "HTMLInputElement#autofocus",
+          "inKind": 1,
+          "inOthers": 2,
+          "ops": 854
+        },
+        {
+          "id": "MutationRecord#addedNodes",
+          "inKind": 1,
+          "inOthers": 3,
+          "ops": 655
+        },
+        {
+          "id": "HTMLButtonElement#form",
+          "inKind": 1,
+          "inOthers": 2,
+          "ops": 589
+        },
+        {
+          "id": "MutationObserver#takeRecords",
+          "inKind": 1,
+          "inOthers": 2,
+          "ops": 523
+        },
+        {
+          "id": "HTMLFormElement#elements",
+          "inKind": 1,
+          "inOthers": 3,
+          "ops": 402
+        },
+        {
+          "id": "HTMLSelectElement#selectedIndex",
+          "inKind": 1,
+          "inOthers": 1,
+          "ops": 239
+        },
+        {
+          "id": "MutationRecord#removedNodes",
+          "inKind": 1,
+          "inOthers": 3,
+          "ops": 229
+        },
+        {
+          "id": "HTMLMediaElement#autoplay",
+          "inKind": 1,
+          "inOthers": 1,
+          "ops": 220
+        },
+        {
+          "id": "HTMLMediaElement#muted",
+          "inKind": 1,
+          "inOthers": 1,
+          "ops": 208
+        },
+        {
+          "id": "HTMLMediaElement#loop",
+          "inKind": 1,
+          "inOthers": 1,
+          "ops": 200
+        },
+        {
+          "id": "HTMLVideoElement#playsInline",
+          "inKind": 1,
+          "inOthers": 1,
+          "ops": 200
+        },
+        {
+          "id": "HTMLSelectElement#remove",
+          "inKind": 1,
+          "inOthers": 0,
+          "ops": 190
+        }
+      ]
+    },
+    "data grid": {
+      "projects": [
+        "handsontable",
+        "ag-grid"
+      ],
+      "members": [
+        {
+          "id": "CSSStyleDeclaration#borderLeftWidth",
+          "inKind": 2,
+          "inOthers": 2,
+          "ops": 549879
+        },
+        {
+          "id": "CSSStyleDeclaration#borderTopWidth",
+          "inKind": 2,
+          "inOthers": 3,
+          "ops": 549807
+        },
+        {
+          "id": "CSSStyleDeclaration#boxSizing",
+          "inKind": 2,
+          "inOthers": 2,
+          "ops": 549255
+        },
+        {
+          "id": "CSSStyleDeclaration#borderBottomWidth",
+          "inKind": 2,
+          "inOthers": 3,
+          "ops": 549197
+        },
+        {
+          "id": "CSSStyleDeclaration#borderRightWidth",
+          "inKind": 2,
+          "inOthers": 2,
+          "ops": 549173
+        },
+        {
+          "id": "Element#before",
+          "inKind": 2,
+          "inOthers": 2,
+          "ops": 55824
+        },
+        {
+          "id": "Element#prepend",
+          "inKind": 2,
+          "inOthers": 3,
+          "ops": 32672
+        },
+        {
+          "id": "Element#childElementCount",
+          "inKind": 2,
+          "inOthers": 1,
+          "ops": 18320
+        },
+        {
+          "id": "Document#createEvent",
+          "inKind": 2,
+          "inOthers": 3,
+          "ops": 1639
+        },
+        {
+          "id": "Event#initEvent",
+          "inKind": 2,
+          "inOthers": 2,
+          "ops": 1595
+        },
+        {
+          "id": "CSSStyleDeclaration#fontFamily",
+          "inKind": 2,
+          "inOthers": 3,
+          "ops": 313
+        },
+        {
+          "id": "HTMLTextAreaElement#select",
+          "inKind": 2,
+          "inOthers": 0,
+          "ops": 27
+        },
+        {
+          "id": "Performance#now",
+          "inKind": 1,
+          "inOthers": 3,
+          "ops": 62523829
+        },
+        {
+          "id": "CSSStyleDeclaration#touchAction",
+          "inKind": 1,
+          "inOthers": 0,
+          "ops": 179229
+        },
+        {
+          "id": "Text#data",
+          "inKind": 1,
+          "inOthers": 2,
+          "ops": 161393
+        },
+        {
+          "id": "CharacterData#textContent",
+          "inKind": 1,
+          "inOthers": 3,
+          "ops": 158565
+        },
+        {
+          "id": "Node#replaceChild",
+          "inKind": 1,
+          "inOthers": 3,
+          "ops": 149787
+        },
+        {
+          "id": "CSSStyleDeclaration#paddingLeft",
+          "inKind": 1,
+          "inOthers": 3,
+          "ops": 139759
+        },
+        {
+          "id": "CSSStyleDeclaration#paddingRight",
+          "inKind": 1,
+          "inOthers": 3,
+          "ops": 110062
+        },
+        {
+          "id": "Element#toString",
+          "inKind": 1,
+          "inOthers": 2,
+          "ops": 103363
+        },
+        {
+          "id": "Element#checkVisibility",
+          "inKind": 1,
+          "inOthers": 1,
+          "ops": 76008
+        },
+        {
+          "id": "AbortSignal#aborted",
+          "inKind": 1,
+          "inOthers": 3,
+          "ops": 72801
+        },
+        {
+          "id": "IntersectionObserver#observe",
+          "inKind": 1,
+          "inOthers": 2,
+          "ops": 48801
+        },
+        {
+          "id": "window#window",
+          "inKind": 1,
+          "inOthers": 0,
+          "ops": 46170
+        },
+        {
+          "id": "ValidityState#valid",
+          "inKind": 1,
+          "inOthers": 3,
+          "ops": 27505
+        }
+      ]
+    },
+    "design system": {
+      "projects": [
+        "material-ui",
+        "element-plus",
+        "vuetify",
+        "mantine",
+        "react-spectrum",
+        "nuxt-ui"
+      ],
+      "members": [
+        {
+          "id": "window#localStorage",
+          "inKind": 5,
+          "inOthers": 2,
+          "ops": 51615
+        },
+        {
+          "id": "Node#hasChildNodes",
+          "inKind": 5,
+          "inOthers": 2,
+          "ops": 11790
+        },
+        {
+          "id": "HTMLInputElement#accept",
+          "inKind": 5,
+          "inOthers": 2,
+          "ops": 222
+        },
+        {
+          "id": "Element#clientLeft",
+          "inKind": 4,
+          "inOthers": 1,
+          "ops": 15854
+        },
+        {
+          "id": "Event#composed",
+          "inKind": 4,
+          "inOthers": 2,
+          "ops": 1338
+        },
+        {
+          "id": "Element#getElementsByClassName",
+          "inKind": 4,
+          "inOthers": 1,
+          "ops": 657
+        },
+        {
+          "id": "TreeWalker#currentNode",
+          "inKind": 3,
+          "inOthers": 2,
+          "ops": 118518
+        },
+        {
+          "id": "Storage#getItem",
+          "inKind": 3,
+          "inOthers": 1,
+          "ops": 51700
+        },
+        {
+          "id": "window#parent",
+          "inKind": 3,
+          "inOthers": 2,
+          "ops": 39149
+        },
+        {
+          "id": "Attr#localName",
+          "inKind": 3,
+          "inOthers": 1,
+          "ops": 24805
+        },
+        {
+          "id": "Element#clientTop",
+          "inKind": 3,
+          "inOthers": 1,
+          "ops": 14149
+        },
+        {
+          "id": "KeyboardEvent#isComposing",
+          "inKind": 3,
+          "inOthers": 2,
+          "ops": 6407
+        },
+        {
+          "id": "CSSStyleDeclaration#contain",
+          "inKind": 3,
+          "inOthers": 1,
+          "ops": 3849
+        },
+        {
+          "id": "HTMLInputElement#autocomplete",
+          "inKind": 3,
+          "inOthers": 2,
+          "ops": 2603
+        },
+        {
+          "id": "HTMLTableCellElement#rowSpan",
+          "inKind": 3,
+          "inOthers": 1,
+          "ops": 1916
+        },
+        {
+          "id": "HTMLTableCellElement#colSpan",
+          "inKind": 3,
+          "inOthers": 1,
+          "ops": 1413
+        },
+        {
+          "id": "Document#hasFocus",
+          "inKind": 3,
+          "inOthers": 1,
+          "ops": 670
+        },
+        {
+          "id": "CSSStyleDeclaration#gap",
+          "inKind": 3,
+          "inOthers": 1,
+          "ops": 557
+        },
+        {
+          "id": "HTMLImageElement#alt",
+          "inKind": 3,
+          "inOthers": 2,
+          "ops": 539
+        },
+        {
+          "id": "TouchEvent#changedTouches",
+          "inKind": 3,
+          "inOthers": 0,
+          "ops": 525
+        },
+        {
+          "id": "window#history",
+          "inKind": 3,
+          "inOthers": 2,
+          "ops": 440
+        },
+        {
+          "id": "TouchEvent#touches",
+          "inKind": 3,
+          "inOthers": 0,
+          "ops": 341
+        },
+        {
+          "id": "TouchEvent#altKey",
+          "inKind": 3,
+          "inOthers": 0,
+          "ops": 274
+        },
+        {
+          "id": "TouchEvent#metaKey",
+          "inKind": 3,
+          "inOthers": 0,
+          "ops": 274
+        },
+        {
+          "id": "TouchEvent#ctrlKey",
+          "inKind": 3,
+          "inOthers": 0,
+          "ops": 274
+        }
+      ]
+    },
+    "headless components": {
+      "projects": [
+        "ariakit",
+        "kobalte",
+        "radix-primitives",
+        "ark-ui"
+      ],
+      "members": [
+        {
+          "id": "CSSStyleProperties#position",
+          "inKind": 4,
+          "inOthers": 2,
+          "ops": 20475
+        },
+        {
+          "id": "CSSStyleProperties#display",
+          "inKind": 4,
+          "inOthers": 2,
+          "ops": 18780
+        },
+        {
+          "id": "CSSStyleProperties#overflow",
+          "inKind": 4,
+          "inOthers": 1,
+          "ops": 17628
+        },
+        {
+          "id": "CSSStyleProperties#visibility",
+          "inKind": 4,
+          "inOthers": 1,
+          "ops": 6163
+        },
+        {
+          "id": "CSSStyleProperties#pointerEvents",
+          "inKind": 4,
+          "inOthers": 1,
+          "ops": 3900
+        },
+        {
+          "id": "CSSStyleProperties#width",
+          "inKind": 4,
+          "inOthers": 2,
+          "ops": 3898
+        },
+        {
+          "id": "CSSStyleProperties#opacity",
+          "inKind": 4,
+          "inOthers": 1,
+          "ops": 3608
+        },
+        {
+          "id": "CSSStyleProperties#height",
+          "inKind": 4,
+          "inOthers": 2,
+          "ops": 3096
+        },
+        {
+          "id": "CSSStyleProperties#overflowX",
+          "inKind": 3,
+          "inOthers": 2,
+          "ops": 17294
+        },
+        {
+          "id": "CSSStyleProperties#overflowY",
+          "inKind": 3,
+          "inOthers": 1,
+          "ops": 16886
+        },
+        {
+          "id": "Event#cancelBubble",
+          "inKind": 3,
+          "inOthers": 3,
+          "ops": 10821
+        },
+        {
+          "id": "DocumentFragment#append",
+          "inKind": 3,
+          "inOthers": 3,
+          "ops": 9037
+        },
+        {
+          "id": "CSSStyleProperties#transform",
+          "inKind": 3,
+          "inOthers": 2,
+          "ops": 8800
+        },
+        {
+          "id": "CSSStyleProperties#left",
+          "inKind": 3,
+          "inOthers": 2,
+          "ops": 5900
+        },
+        {
+          "id": "CSSStyleProperties#top",
+          "inKind": 3,
+          "inOthers": 2,
+          "ops": 4781
+        },
+        {
+          "id": "CSSStyleProperties#marginLeft",
+          "inKind": 3,
+          "inOthers": 1,
+          "ops": 4135
+        },
+        {
+          "id": "CSSStyleProperties#direction",
+          "inKind": 3,
+          "inOthers": 1,
+          "ops": 4103
+        },
+        {
+          "id": "Selection#anchorNode",
+          "inKind": 3,
+          "inOthers": 3,
+          "ops": 3858
+        },
+        {
+          "id": "MouseEvent#movementX",
+          "inKind": 3,
+          "inOthers": 1,
+          "ops": 3701
+        },
+        {
+          "id": "MouseEvent#movementY",
+          "inKind": 3,
+          "inOthers": 1,
+          "ops": 3701
+        },
+        {
+          "id": "CSSStyleProperties#marginRight",
+          "inKind": 3,
+          "inOthers": 1,
+          "ops": 3465
+        },
+        {
+          "id": "CSSStyleProperties#animationName",
+          "inKind": 3,
+          "inOthers": 0,
+          "ops": 1997
+        },
+        {
+          "id": "CSSStyleProperties#bottom",
+          "inKind": 3,
+          "inOthers": 2,
+          "ops": 1941
+        },
+        {
+          "id": "CSSStyleProperties#zIndex",
+          "inKind": 3,
+          "inOthers": 1,
+          "ops": 870
+        },
+        {
+          "id": "Selection#anchorOffset",
+          "inKind": 3,
+          "inOthers": 3,
+          "ops": 866
+        }
+      ]
+    },
+    "forms": {
+      "projects": [
+        "ngx-formly",
+        "react-hook-form"
+      ],
+      "members": [
+        {
+          "id": "Performance#now",
+          "inKind": 1,
+          "inOthers": 3,
+          "ops": 62523829
+        },
+        {
+          "id": "HTMLInputElement#setCustomValidity",
+          "inKind": 1,
+          "inOthers": 3,
+          "ops": 21469
+        },
+        {
+          "id": "HTMLElement#inert",
+          "inKind": 1,
+          "inOthers": 2,
+          "ops": 18630
+        },
+        {
+          "id": "Element#childElementCount",
+          "inKind": 1,
+          "inOthers": 2,
+          "ops": 18320
+        },
+        {
+          "id": "ValidityState#badInput",
+          "inKind": 1,
+          "inOthers": 3,
+          "ops": 9751
+        },
+        {
+          "id": "HTMLElement#isContentEditable",
+          "inKind": 1,
+          "inOthers": 3,
+          "ops": 8957
+        },
+        {
+          "id": "Element#previousElementSibling",
+          "inKind": 1,
+          "inOthers": 3,
+          "ops": 2244
+        },
+        {
+          "id": "HTMLInputElement#valueAsNumber",
+          "inKind": 1,
+          "inOthers": 2,
+          "ops": 1939
+        },
+        {
+          "id": "HTMLElement#clientLeft",
+          "inKind": 1,
+          "inOthers": 3,
+          "ops": 949
+        },
+        {
+          "id": "HTMLElement#clientTop",
+          "inKind": 1,
+          "inOthers": 3,
+          "ops": 545
+        },
+        {
+          "id": "SubmitEvent#submitter",
+          "inKind": 1,
+          "inOthers": 3,
+          "ops": 313
+        },
+        {
+          "id": "Crypto#randomUUID",
+          "inKind": 1,
+          "inOthers": 0,
+          "ops": 300
+        },
+        {
+          "id": "HTMLElement#lang",
+          "inKind": 1,
+          "inOthers": 1,
+          "ops": 255
+        },
+        {
+          "id": "window#dispatchEvent",
+          "inKind": 1,
+          "inOthers": 1,
+          "ops": 242
+        },
+        {
+          "id": "HTMLTextAreaElement#validity",
+          "inKind": 1,
+          "inOthers": 1,
+          "ops": 239
+        },
+        {
+          "id": "HTMLElement#innerText",
+          "inKind": 1,
+          "inOthers": 2,
+          "ops": 213
+        },
+        {
+          "id": "HTMLTextAreaElement#required",
+          "inKind": 1,
+          "inOthers": 3,
+          "ops": 201
+        },
+        {
+          "id": "HTMLTextAreaElement#validationMessage",
+          "inKind": 1,
+          "inOthers": 3,
+          "ops": 150
+        },
+        {
+          "id": "HTMLTextAreaElement#form",
+          "inKind": 1,
+          "inOthers": 2,
+          "ops": 118
+        },
+        {
+          "id": "HTMLInputElement#reportValidity",
+          "inKind": 1,
+          "inOthers": 1,
+          "ops": 70
+        },
+        {
+          "id": "HTMLFormElement#reset",
+          "inKind": 1,
+          "inOthers": 2,
+          "ops": 46
+        },
+        {
+          "id": "Element#prefix",
+          "inKind": 1,
+          "inOthers": 1,
+          "ops": 41
+        },
+        {
+          "id": "HTMLSelectElement#selectedOptions",
+          "inKind": 1,
+          "inOthers": 2,
+          "ops": 37
+        },
+        {
+          "id": "HTMLTextAreaElement#labels",
+          "inKind": 1,
+          "inOthers": 3,
+          "ops": 36
+        },
+        {
+          "id": "HTMLInputElement#valueAsDate",
+          "inKind": 1,
+          "inOthers": 1,
+          "ops": 30
+        }
+      ]
+    }
+  },
+  "unusedInterfaces": {
+    "happy-dom": {
+      "interfaces": 205,
+      "untouched": 143,
+      "largestUntouched": [
+        {
+          "interface": "HTMLMediaElement",
+          "available": 63,
+          "used": 0
+        },
+        {
+          "interface": "SVGSVGElement",
+          "available": 48,
+          "used": 0
+        },
+        {
+          "interface": "BrowserWindow",
+          "available": 43,
+          "used": 0
+        },
+        {
+          "interface": "DOMMatrixReadOnly",
+          "available": 42,
+          "used": 0
+        },
+        {
+          "interface": "DOMMatrix",
+          "available": 36,
+          "used": 0
+        },
+        {
+          "interface": "HTMLAreaElement",
+          "available": 23,
+          "used": 0
+        },
+        {
+          "interface": "PerformanceResourceTiming",
+          "available": 22,
+          "used": 0
+        },
+        {
+          "interface": "HTMLBodyElement",
+          "available": 18,
+          "used": 0
+        },
+        {
+          "interface": "SVGFEConvolveMatrixElement",
+          "available": 17,
+          "used": 0
+        },
+        {
+          "interface": "SVGMatrix",
+          "available": 17,
+          "used": 0
+        },
+        {
+          "interface": "SubtleCrypto",
+          "available": 17,
+          "used": 0
+        },
+        {
+          "interface": "HTMLScriptElement",
+          "available": 15,
+          "used": 0
+        },
+        {
+          "interface": "HTMLObjectElement",
+          "available": 14,
+          "used": 0
+        },
+        {
+          "interface": "HTMLLinkElement",
+          "available": 12,
+          "used": 0
+        },
+        {
+          "interface": "SVGFEDropShadowElement",
+          "available": 11,
+          "used": 0
+        },
+        {
+          "interface": "SVGFESpecularLightingElement",
+          "available": 11,
+          "used": 0
+        },
+        {
+          "interface": "SVGFETurbulenceElement",
+          "available": 11,
+          "used": 0
+        },
+        {
+          "interface": "SVGMarkerElement",
+          "available": 11,
+          "used": 0
+        },
+        {
+          "interface": "SVGFEDiffuseLightingElement",
+          "available": 10,
+          "used": 0
+        },
+        {
+          "interface": "SVGFEDisplacementMapElement",
+          "available": 10,
+          "used": 0
+        },
+        {
+          "interface": "SVGFEGaussianBlurElement",
+          "available": 10,
+          "used": 0
+        },
+        {
+          "interface": "SVGFEColorMatrixElement",
+          "available": 9,
+          "used": 0
+        },
+        {
+          "interface": "SVGFEMorphologyElement",
+          "available": 9,
+          "used": 0
+        },
+        {
+          "interface": "SVGGraphicsElement",
+          "available": 9,
+          "used": 0
+        },
+        {
+          "interface": "SVGImageElement",
+          "available": 9,
+          "used": 0
+        },
+        {
+          "interface": "SVGLengthList",
+          "available": 9,
+          "used": 0
+        },
+        {
+          "interface": "SVGNumberList",
+          "available": 9,
+          "used": 0
+        },
+        {
+          "interface": "SVGPointList",
+          "available": 9,
+          "used": 0
+        },
+        {
+          "interface": "SVGStringList",
+          "available": 9,
+          "used": 0
+        },
+        {
+          "interface": "SVGTransform",
+          "available": 9,
+          "used": 0
+        }
+      ]
+    },
+    "jsdom": {
+      "interfaces": 196,
+      "untouched": 90,
+      "largestUntouched": [
+        {
+          "interface": "ElementInternals",
+          "available": 44,
+          "used": 0
+        },
+        {
+          "interface": "SVGSVGElement",
+          "available": 25,
+          "used": 0
+        },
+        {
+          "interface": "HTMLObjectElement",
+          "available": 23,
+          "used": 0
+        },
+        {
+          "interface": "HTMLBodyElement",
+          "available": 22,
+          "used": 0
+        },
+        {
+          "interface": "HTMLAreaElement",
+          "available": 19,
+          "used": 0
+        },
+        {
+          "interface": "XMLHttpRequest",
+          "available": 19,
+          "used": 0
+        },
+        {
+          "interface": "HTMLFrameSetElement",
+          "available": 18,
+          "used": 0
+        },
+        {
+          "interface": "HTMLMarqueeElement",
+          "available": 10,
+          "used": 0
+        },
+        {
+          "interface": "CSSCounterStyleRule",
+          "available": 10,
+          "used": 0
+        },
+        {
+          "interface": "HTMLFrameElement",
+          "available": 9,
+          "used": 0
+        },
+        {
+          "interface": "SVGStringList",
+          "available": 9,
+          "used": 0
+        },
+        {
+          "interface": "XPathResult",
+          "available": 9,
+          "used": 0
+        },
+        {
+          "interface": "NodeIterator",
+          "available": 8,
+          "used": 0
+        },
+        {
+          "interface": "HTMLMeterElement",
+          "available": 7,
+          "used": 0
+        },
+        {
+          "interface": "XMLHttpRequestEventTarget",
+          "available": 7,
+          "used": 0
+        },
+        {
+          "interface": "DocumentType",
+          "available": 6,
+          "used": 0
+        },
+        {
+          "interface": "HTMLTableColElement",
+          "available": 6,
+          "used": 0
+        },
+        {
+          "interface": "History",
+          "available": 6,
+          "used": 0
+        },
+        {
+          "interface": "HTMLEmbedElement",
+          "available": 5,
+          "used": 0
+        },
+        {
+          "interface": "HTMLHRElement",
+          "available": 5,
+          "used": 0
+        },
+        {
+          "interface": "HTMLSourceElement",
+          "available": 5,
+          "used": 0
+        },
+        {
+          "interface": "Plugin",
+          "available": 5,
+          "used": 0
+        },
+        {
+          "interface": "CSSImportRule",
+          "available": 5,
+          "used": 0
+        },
+        {
+          "interface": "CSSKeyframesRule",
+          "available": 5,
+          "used": 0
+        },
+        {
+          "interface": "MimeType",
+          "available": 4,
+          "used": 0
+        },
+        {
+          "interface": "PluginArray",
+          "available": 4,
+          "used": 0
+        },
+        {
+          "interface": "SVGRect",
+          "available": 4,
+          "used": 0
+        },
+        {
+          "interface": "DeviceMotionEvent",
+          "available": 4,
+          "used": 0
+        },
+        {
+          "interface": "DeviceOrientationEvent",
+          "available": 4,
+          "used": 0
+        },
+        {
+          "interface": "TextDecoder",
+          "available": 4,
+          "used": 0
+        }
+      ]
+    }
+  },
+  "concentration": {
+    "totalOps": 282289565,
+    "testFiles": 4151,
+    "top10FilesShare": 0.166,
+    "top100FilesShare": 0.502,
+    "medianOpsPerFile": 3930,
+    "topFiles": [
+      {
+        "project": "react-spectrum",
+        "file": "packages/@adobe/react-spectrum/test/table/TableDnd.test.js",
+        "ops": 6269074
+      },
+      {
+        "project": "react-spectrum",
+        "file": "packages/@adobe/react-spectrum/test/table/TableNestedRows.test.js",
+        "ops": 6263553
+      },
+      {
+        "project": "react-spectrum",
+        "file": "packages/@adobe/react-spectrum/test/table/Table.test.js",
+        "ops": 6261171
+      },
+      {
+        "project": "mantine",
+        "file": "packages/@mantine/schedule/src/components/YearView/YearView.test.tsx",
+        "ops": 5863758
+      },
+      {
+        "project": "react-spectrum",
+        "file": "packages/@adobe/react-spectrum/test/list/ListViewDnd.test.js",
+        "ops": 4658233
+      },
+      {
+        "project": "CopilotKit",
+        "file": "src/v2/components/chat/__tests__/CopilotChat.e2e.test.ts",
+        "ops": 3983539
+      },
+      {
+        "project": "CopilotKit",
+        "file": "src/v2/hooks/__tests__/use-frontend-tool.e2e.test.ts",
+        "ops": 3738455
+      },
+      {
+        "project": "react-spectrum",
+        "file": "packages/@adobe/react-spectrum/test/tree/TreeView.test.tsx",
+        "ops": 3674087
+      },
+      {
+        "project": "react-spectrum",
+        "file": "packages/react-aria-components/test/Tree.test.tsx",
+        "ops": 3175515
+      },
+      {
+        "project": "react-spectrum",
+        "file": "packages/@adobe/react-spectrum/test/combobox/ComboBox.test.js",
+        "ops": 3052785
+      }
+    ],
+    "opsByProject": {
+      "ag-grid": 96924720,
+      "react-spectrum": 77034500,
+      "mantine": 41540211,
+      "ariakit": 18802199,
+      "CopilotKit": 15062026,
+      "handsontable": 12018752,
+      "element-plus": 4782733,
+      "material-ui": 4291119,
+      "nuxt-ui": 3905216,
+      "svelte": 2974182,
+      "ark-ui": 1929856,
+      "react-hook-form": 1198789,
+      "radix-primitives": 734504,
+      "floating-ui": 666199,
+      "emoji-picker-element": 253821,
+      "vuetify": 81088,
+      "kobalte": 56078,
+      "analog": 15000,
+      "ngx-formly": 9800,
+      "solid": 8772
+    }
+  }
+}
