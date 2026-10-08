@@ -86,6 +86,34 @@ try {
     ...runs.map((r) => path.join(out, r.name)), '--out', path.join(out, 'report')], { cwd: root, stdio: 'pipe' });
   const summary = fs.readFileSync(path.join(out, 'report', 'summary.md'), 'utf8');
   assert.match(summary, /Coverage curve/);
+
+  // Coverage per environment: jsdom and happy-dom catalogs differ, so a
+  // combined percentage would mislead.
+  const usage = JSON.parse(fs.readFileSync(path.join(out, 'report', 'usage.json'), 'utf8'));
+  const envs = Object.fromEntries(usage.environmentCoverage.map((e) => [e.environment, e]));
+  for (const env of ['jsdom', 'happy-dom']) {
+    assert.ok(envs[env]?.catalog > 0 && envs[env].used > 0 && envs[env].used <= envs[env].catalog, `report: ${env} coverage`);
+  }
+  assert.equal(envs['happy-dom'].testFiles, usage.testFiles - envs.jsdom.testFiles, 'report: test files split by environment');
+  assert.match(summary, /## Coverage by environment/);
+
+  // Concentration: share of a member's operations from its busiest test file.
+  const byId = Object.fromEntries(usage.members.map((m) => [m.id, m]));
+  for (const m of usage.members) assert.ok(m.topFileShare > 0 && m.topFileShare <= 1, `report: topFileShare of ${m.id}`);
+  // Recompute createElement's share from the raw runs (files keyed by project + path).
+  const perFile = new Map();
+  for (const r of runs) {
+    for (const f of fs.readdirSync(path.join(out, r.name)).filter((n) => n.startsWith('run-'))) {
+      const run = JSON.parse(fs.readFileSync(path.join(out, r.name, f), 'utf8'));
+      const n = run.usage['Document#createElement']?.call || 0;
+      const key = `${run.project}::${run.testFile}`;
+      perFile.set(key, (perFile.get(key) || 0) + n);
+    }
+  }
+  const total = [...perFile.values()].reduce((a, b) => a + b, 0);
+  assert.equal(byId['Document#createElement'].topFileShare, Math.max(...perFile.values()) / total, 'report: concentration of createElement');
+  assert.deepEqual(byId['Document#createElement'].environments, ['happy-dom', 'jsdom'], 'report: environments per member');
+  assert.match(summary, /Top file share/);
   console.log('• report CLI              ok');
 } catch (err) {
   failures++;

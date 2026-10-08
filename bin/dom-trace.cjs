@@ -63,20 +63,32 @@ function aggregate(dirs) {
     }
   }
 
-  const members = new Map(); // id -> { call, get, set, ops, files:Set, projects:Set }
+  // id -> { call, get, set, ops, files: Map(fileKey -> ops), projects: Set, environments: Set }
+  const members = new Map();
   const projects = new Set();
   const environments = new Set();
+  const envStats = new Map(); // env -> { testFiles, projects: Set, used: Set }
   for (const run of runs) {
     const fileKey = `${run.project}::${run.testFile}`;
     projects.add(run.project);
     environments.add(run.environment);
+    let env = envStats.get(run.environment);
+    if (!env) { env = { testFiles: 0, projects: new Set(), used: new Set() }; envStats.set(run.environment, env); }
+    env.testFiles++;
+    env.projects.add(run.project);
     for (const [id, c] of Object.entries(run.usage || {})) {
       let m = members.get(id);
-      if (!m) { m = { id, call: 0, get: 0, set: 0, ops: 0, files: new Set(), projects: new Set() }; members.set(id, m); }
+      if (!m) {
+        m = { id, call: 0, get: 0, set: 0, ops: 0, files: new Map(), projects: new Set(), environments: new Set() };
+        members.set(id, m);
+      }
+      const n = (c.call || 0) + (c.get || 0) + (c.set || 0);
       m.call += c.call || 0; m.get += c.get || 0; m.set += c.set || 0;
-      m.ops += (c.call || 0) + (c.get || 0) + (c.set || 0);
-      m.files.add(fileKey);
+      m.ops += n;
+      m.files.set(fileKey, (m.files.get(fileKey) || 0) + n);
       m.projects.add(run.project);
+      m.environments.add(run.environment);
+      env.used.add(id);
     }
   }
 
@@ -86,12 +98,25 @@ function aggregate(dirs) {
     call: m.call, get: m.get, set: m.set, ops: m.ops,
     files: m.files.size,
     projects: m.projects.size,
+    environments: [...m.environments].sort(),
+    // Raw counts can be dominated by one heavy test file; this shows how much.
+    topFileShare: m.ops ? Math.max(...m.files.values()) / m.ops : 0,
   }));
 
   const catalog = new Set();
   for (const set of catalogs.values()) for (const m of set) catalog.add(m);
 
-  return { runs, list, projects, environments, catalog };
+  // jsdom and happy-dom expose different catalogs, so coverage is per environment.
+  const environmentCoverage = [...envStats].map(([environment, e]) => {
+    const envCatalog = catalogs.get(environment) || new Set();
+    return {
+      environment, testFiles: e.testFiles, projects: e.projects.size,
+      catalog: envCatalog.size,
+      used: [...e.used].filter((id) => envCatalog.has(id)).length,
+    };
+  }).sort((a, b) => b.testFiles - a.testFiles);
+
+  return { runs, list, projects, environments, catalog, environmentCoverage };
 }
 
 function coverageCurve(list, thresholds = [0.5, 0.8, 0.9, 0.95, 0.99, 1]) {
@@ -124,7 +149,7 @@ function table(headers, rows) {
   return lines.join('\n');
 }
 
-function renderMarkdown({ runs, list, projects, environments, catalog }, top) {
+function renderMarkdown({ runs, list, projects, environments, catalog, environmentCoverage }, top) {
   const { total, curve } = coverageCurve(list);
   const projectCount = projects.size;
   const byOps = [...list].sort((a, b) => b.ops - a.ops).slice(0, top);
@@ -147,6 +172,11 @@ function renderMarkdown({ runs, list, projects, environments, catalog }, top) {
     ['Total recorded operations', total.toLocaleString()],
   ]), '');
 
+  s.push('## Coverage by environment', '');
+  s.push('Each environment has its own catalog (it also varies by version), so coverage is reported per environment.', '');
+  s.push(table(['Environment', 'Test files', 'Projects', 'Members available', 'Members used', 'Used %'],
+    environmentCoverage.map((e) => [e.environment, e.testFiles.toLocaleString(), e.projects, e.catalog.toLocaleString(), e.used.toLocaleString(), pct(e.used, e.catalog)])), '');
+
   s.push('## Coverage curve', '');
   s.push('How many members account for a given share of all recorded operations.', '');
   s.push(table(['Share of operations', 'Members needed'], curve.map((c) => [`${Math.round(c.threshold * 100)}%`, c.members.toLocaleString()])), '');
@@ -156,8 +186,8 @@ function renderMarkdown({ runs, list, projects, environments, catalog }, top) {
   s.push(table(['Member', 'Projects', 'Files', 'Ops'], byBreadth.map((m) => [`\`${m.id}\``, m.projects, m.files, m.ops.toLocaleString()])), '');
 
   s.push(`## Hottest members by operation count (top ${byOps.length})`, '');
-  s.push('These are the paths a fast implementation must optimize first.', '');
-  s.push(table(['Member', 'Calls', 'Gets', 'Sets', 'Ops'], byOps.map((m) => [`\`${m.id}\``, m.call, m.get, m.set, m.ops.toLocaleString()])), '');
+  s.push('These are the paths a fast implementation must optimize first. "Top file share" is the part of a member\'s operations that comes from its single busiest test file: high values mean one heavy test, not general use.', '');
+  s.push(table(['Member', 'Calls', 'Gets', 'Sets', 'Ops', 'Files', 'Top file share'], byOps.map((m) => [`\`${m.id}\``, m.call, m.get, m.set, m.ops.toLocaleString(), m.files, pct(Math.round(m.topFileShare * 1000), 1000)])), '');
 
   s.push(`## Interfaces (top ${ifaces.length} by operations)`, '');
   s.push(table(['Interface', 'Ops', 'Members used', 'Members available', 'Used %'], ifaces.map((r) => [r.interface, r.ops.toLocaleString(), r.used, r.available || 'n/a', pct(r.used, r.available)])), '');
@@ -166,9 +196,9 @@ function renderMarkdown({ runs, list, projects, environments, catalog }, top) {
 }
 
 function renderCsv(list) {
-  const rows = ['member,interface,calls,gets,sets,ops,files,projects'];
+  const rows = ['member,interface,calls,gets,sets,ops,files,projects,environments,top_file_share'];
   for (const m of [...list].sort((a, b) => b.ops - a.ops)) {
-    rows.push([m.id, m.interface, m.call, m.get, m.set, m.ops, m.files, m.projects].map((v) => `"${String(v).replace(/"/g, '""')}"`).join(','));
+    rows.push([m.id, m.interface, m.call, m.get, m.set, m.ops, m.files, m.projects, m.environments.join(' '), m.topFileShare.toFixed(4)].map((v) => `"${String(v).replace(/"/g, '""')}"`).join(','));
   }
   return rows.join('\n') + '\n';
 }
@@ -190,6 +220,7 @@ function cmdReport(args) {
     projects: [...data.projects],
     environments: [...data.environments],
     catalogSize: data.catalog.size,
+    environmentCoverage: data.environmentCoverage,
     coverage: coverageCurve(data.list),
     members: data.list.sort((a, b) => b.ops - a.ops),
     unusedCatalogMembers: (() => { const used = new Set(data.list.map((u) => u.id)); return [...data.catalog].filter((m) => !used.has(m)).sort(); })(),
