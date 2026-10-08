@@ -2,9 +2,9 @@
 
 > **Temporary location.** This plan covers the whole project, not just
 > `dom-api-tracer`. It lives here only until the project has its final name
-> and its own repository; move it (with its history) there then. Note that
-> this folder is not yet its own git repository: it currently sits untracked
-> inside `~/Projects`.
+> and its own repository; move it (with its history) there then. The tracer
+> lives in the private repo github.com/sonukapoor/dom-api-tracer (since
+> 2026-10-08).
 
 ## Goal
 
@@ -230,5 +230,4 @@ web-components package).
    `REPORT-OUTLINE.md`), with per-environment coverage and concentration.
 2. Optional corpus additions: Taiga UI (needs Node >= 26 and an Nx build),
    Ant Design, Vue core, PrimeVue/Reka UI, motion.
-3. Decide the project's name and repository; move this plan there and give
-   the tracer a proper git home (nothing is committed yet).
+3. Decide the DOM project's name and repository; move this plan there.
