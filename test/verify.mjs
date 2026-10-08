@@ -114,6 +114,15 @@ try {
   assert.equal(byId['Document#createElement'].topFileShare, Math.max(...perFile.values()) / total, 'report: concentration of createElement');
   assert.deepEqual(byId['Document#createElement'].environments, ['happy-dom', 'jsdom'], 'report: environments per member');
   assert.match(summary, /Top file share/);
+
+  // Members keyed by private symbols (happy-dom's [getTokenList], [appendChild],
+  // ...) are implementation internals, not DOM API: excluded from the report.
+  const catalogs = runs.flatMap((r) => fs.readdirSync(path.join(out, r.name)).filter((n) => n.startsWith('catalog-'))
+    .map((n) => JSON.parse(fs.readFileSync(path.join(out, r.name, n), 'utf8'))));
+  assert.ok(catalogs.some((c) => c.members.some((id) => /#\[(?!Symbol\.)/.test(id))), 'fixture: happy-dom has private-symbol members');
+  const isPrivate = (id) => /#\[(?!Symbol\.)/.test(id);
+  assert.deepEqual(usage.members.filter((m) => isPrivate(m.id)).map((m) => m.id), [], 'report: no private-symbol members used');
+  assert.deepEqual(usage.unusedCatalogMembers.filter(isPrivate), [], 'report: no private-symbol members in the catalog');
   console.log('• report CLI              ok');
 } catch (err) {
   failures++;

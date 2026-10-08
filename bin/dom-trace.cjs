@@ -43,6 +43,15 @@ function readJsonFiles(dir, prefix) {
     .filter(Boolean);
 }
 
+// The DOM only uses well-known symbols (Symbol.iterator, ...). Other symbol
+// keys are implementation internals (happy-dom's [getTokenList], ...); the
+// tracer still wraps them so calls made inside them are not counted, but they
+// are not DOM API and are left out of every figure.
+function isPublicMember(id) {
+  const key = id.slice(id.indexOf('#') + 1);
+  return !key.startsWith('[') || key.startsWith('[Symbol.');
+}
+
 function interfaceOf(id) {
   return id.slice(0, id.indexOf('#'));
 }
@@ -58,7 +67,7 @@ function aggregate(dirs) {
     runs.push(...readJsonFiles(dir, 'run-'));
     for (const cat of readJsonFiles(dir, 'catalog-')) {
       const set = catalogs.get(cat.environment) || new Set();
-      for (const m of cat.members) set.add(m);
+      for (const m of cat.members) if (isPublicMember(m)) set.add(m);
       catalogs.set(cat.environment, set);
     }
   }
@@ -77,6 +86,7 @@ function aggregate(dirs) {
     env.testFiles++;
     env.projects.add(run.project);
     for (const [id, c] of Object.entries(run.usage || {})) {
+      if (!isPublicMember(id)) continue;
       let m = members.get(id);
       if (!m) {
         m = { id, call: 0, get: 0, set: 0, ops: 0, files: new Map(), projects: new Set(), environments: new Set() };
