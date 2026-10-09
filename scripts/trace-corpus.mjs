@@ -30,10 +30,11 @@ Options:
   --timeout <min>    Per test run timeout in minutes (default: 30)
   --max-workers <n>  Test runner workers per run (default: 2). Higher is faster
                      but can saturate the machine on large suites.
-  --environment <e>  Environment mode: run each suite once on jsdom or happy-dom
+  --environment <e>  Environment mode: run each suite once on jsdom, happy-dom or warpdom
                      (projects on jsdom/happy-dom are switched; node ones are
                      not), without the tracer. A DOM package the project lacks
                      is linked from this repo for the run.
+  --warpdom <dir>    warpdom checkout for --environment warpdom (default: ../warpdom)
   --profile          Write a CPU profile per test process (with --environment);
                      analyse with scripts/profile-share.mjs
   -h, --help         Show this help
@@ -64,6 +65,7 @@ function parseArgs(argv) {
     else if (a === '--max-workers') args.maxWorkers = Number(argv[++i]);
     else if (a === '--environment') args.environment = argv[++i];
     else if (a === '--profile') args.profile = true;
+    else if (a === '--warpdom') args.warpdom = argv[++i];
     else if (a === '-h' || a === '--help') args.help = true;
     else args.corpus = a;
   }
@@ -377,7 +379,11 @@ function runEnvironment({ pkg, projectDir, logDir, tmpDir, profileDir, opts }) {
   // Jest accepts a path, so happy-dom's Jest environment comes from this repo.
   const created = [];
   let environment = opts.environment;
-  if (runner === 'vitest') {
+  if (opts.environment === 'warpdom') {
+    // Vitest loads an environment from a path; warpdom has no Jest environment yet.
+    if (runner !== 'vitest') return { ...result, status: 'skipped', reason: 'warpdom has no Jest environment yet' };
+    environment = path.join(opts.warpdom, 'src', 'vitest.js');
+  } else if (runner === 'vitest') {
     const link = provideDomPackage(path.dirname(path.dirname(bin)), opts.environment);
     if (link) { created.push(link); result.providedFrom = 'dom-api-tracer'; }
   } else if (opts.environment === 'happy-dom') {
@@ -514,9 +520,16 @@ function acquireLock(out) {
 function main() {
   const opts = parseArgs(process.argv.slice(2));
   if (opts.help) { log(HELP); return; }
-  if (opts.environment && !['jsdom', 'happy-dom'].includes(opts.environment)) {
-    process.stderr.write(`--environment must be jsdom or happy-dom\n`);
+  if (opts.environment && !['jsdom', 'happy-dom', 'warpdom'].includes(opts.environment)) {
+    process.stderr.write(`--environment must be jsdom, happy-dom or warpdom\n`);
     process.exit(1);
+  }
+  if (opts.environment === 'warpdom') {
+    opts.warpdom = path.resolve(expandHome(opts.warpdom || path.join(root, '..', 'warpdom')));
+    if (!fs.existsSync(path.join(opts.warpdom, 'src', 'vitest.js'))) {
+      process.stderr.write(`warpdom not found at ${opts.warpdom} (use --warpdom <dir>)\n`);
+      process.exit(1);
+    }
   }
 
   const corpusFile = path.resolve(opts.corpus);

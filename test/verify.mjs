@@ -225,6 +225,11 @@ try {
   assert.ok(Math.abs(total - 1) < 1e-6, 'profile share: categories sum to 100%');
   assert.ok(share.categories.dom > 0, 'profile share: time in the DOM implementation');
 
+  // --environment warpdom needs a warpdom checkout.
+  assert.throws(() => execFileSync(process.execPath, [path.join(root, 'scripts/trace-corpus.mjs'), path.join(corpusDir, 'corpus.json'),
+    '--out', path.join(out, 'corpus-warpdom'), '--environment', 'warpdom', '--warpdom', path.join(out, 'no-warpdom-here')], { stdio: 'pipe' }),
+    (err) => /warpdom not found/.test(String(err.stderr)), 'env mode: missing warpdom checkout reported');
+
   // A DOM package the project lacks is linked from this repo, then removed.
   const { provideDomPackage, removeWrappers } = await import(path.join(root, 'scripts/trace-corpus.mjs'));
   const fakeModules = path.join(out, 'fake-project', 'node_modules');
