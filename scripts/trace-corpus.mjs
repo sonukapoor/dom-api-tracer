@@ -35,6 +35,7 @@ Options:
                      not), without the tracer. A DOM package the project lacks
                      is linked from this repo for the run.
   --warpdom <dir>    warpdom checkout for --environment warpdom (default: ../warpdom)
+  --extra-args <s>   extra runner arguments, space-separated (e.g. a test file filter)
   --profile          Write a CPU profile per test process (with --environment);
                      analyse with scripts/profile-share.mjs
   -h, --help         Show this help
@@ -66,6 +67,7 @@ function parseArgs(argv) {
     else if (a === '--environment') args.environment = argv[++i];
     else if (a === '--profile') args.profile = true;
     else if (a === '--warpdom') args.warpdom = argv[++i];
+    else if (a === '--extra-args') args.extraArgs = argv[++i].split(' ').filter(Boolean);
     else if (a === '-h' || a === '--help') args.help = true;
     else args.corpus = a;
   }
@@ -409,7 +411,7 @@ function runEnvironment({ pkg, projectDir, logDir, tmpDir, profileDir, opts }) {
   const resultsFile = path.join(tmpDir, `${slug}.${opts.environment}.json`);
   let res;
   try {
-    res = run(bin, runnerArgs(runner, bin, wrapper, resultsFile, opts.maxWorkers, pkg.args), {
+    res = run(bin, runnerArgs(runner, bin, wrapper, resultsFile, opts.maxWorkers, [...(pkg.args ?? []), ...(opts.extraArgs ?? [])]), {
       cwd: pkgDir, timeoutMin: opts.timeout, logFile: path.join(logDir, `${slug}.${opts.environment}.log`), env,
     });
   } finally {
@@ -450,7 +452,7 @@ function tracePackage({ pkg, projectDir, traceDir, logDir, tmpDir, opts, project
   let traced;
   try {
     const resultsFile = path.join(tmpDir, `${slug}.traced.json`);
-    traced = run(bin, runnerArgs(runner, bin, wrapper, resultsFile, opts.maxWorkers, pkg.args), {
+    traced = run(bin, runnerArgs(runner, bin, wrapper, resultsFile, opts.maxWorkers, [...(pkg.args ?? []), ...(opts.extraArgs ?? [])]), {
       cwd: pkgDir, timeoutMin: opts.timeout, logFile: path.join(logDir, `${slug}.traced.log`),
       env: { ...pkg.env, DOM_TRACE_DIR: traceDir, DOM_TRACE_PROJECT: projectName, DOM_TRACE_CORPUS_META: metaFile },
     });
@@ -467,7 +469,7 @@ function tracePackage({ pkg, projectDir, traceDir, logDir, tmpDir, opts, project
 
   if (opts.baseline) {
     const resultsFile = path.join(tmpDir, `${slug}.baseline.json`);
-    const baseline = run(bin, runnerArgs(runner, bin, config, resultsFile, opts.maxWorkers, pkg.args), {
+    const baseline = run(bin, runnerArgs(runner, bin, config, resultsFile, opts.maxWorkers, [...(pkg.args ?? []), ...(opts.extraArgs ?? [])]), {
       cwd: pkgDir, timeoutMin: opts.timeout, logFile: path.join(logDir, `${slug}.baseline.log`), env: pkg.env,
     });
     result.baseline = { ...readResults(resultsFile), ms: baseline.ms, exitCode: baseline.code };

@@ -14,7 +14,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const CATEGORIES = [
-  ['dom', /node_modules\/(jsdom|happy-dom|@happy-dom|cssstyle|nwsapi|parse5|@asamuzakjp|rrweb-cssom|cssom|whatwg-url|whatwg-mimetype|whatwg-encoding|data-urls|html-encoding-sniffer|saxes|symbol-tree|w3c-xmlserializer|xml-name-validator|decimal\.js|css-tree|@csstools|domexception|webidl-conversions|tr46|is-potential-custom-element-name|jest-environment-jsdom)\//],
+  ['dom', /\/warpdom\/src\/|node_modules\/(jsdom|happy-dom|@happy-dom|cssstyle|nwsapi|parse5|@asamuzakjp|rrweb-cssom|cssom|whatwg-url|whatwg-mimetype|whatwg-encoding|data-urls|html-encoding-sniffer|saxes|symbol-tree|w3c-xmlserializer|xml-name-validator|decimal\.js|css-tree|@csstools|domexception|webidl-conversions|tr46|is-potential-custom-element-name|jest-environment-jsdom)\//],
   ['testing-library', /node_modules\/(@testing-library|pretty-format|dom-accessibility-api|aria-query|lz-string)\//],
   ['framework', /node_modules\/(react|react-dom|scheduler|vue|@vue|svelte|solid-js|@solidjs|@angular|zone\.js|lit|lit-html|@lit|preact|rxjs)\//],
   ['runner', /node_modules\/(vitest|@vitest|jest|@jest|jest-[^/]+|tinypool|tinyspy|tinybench|chai|expect|vite-node|@sinonjs|jest-circus|jest-jasmine2|istanbul-[^/]+|babel-plugin-istanbul)\//],
