@@ -169,6 +169,16 @@ web-components package).
   lock so only one run is active, and removes wrapper configs left by killed
   runs. Large suites (Handsontable core, AG Grid) are run by Sonu when
   convenient, not started from a chat session.
+- **2026-10-09: Per-file setup is half of test time; the DOM owns the
+  bigger part of it.** `docs/setup-cost.md`: across 33 Vitest packages,
+  environment setup is a median 29% of time and module imports 15%; tests
+  24%. Skipping setup with `--no-isolate` gives 2-7x where safe, but only 5
+  of 16 large packages kept all tests passing. Environment setup (fresh DOM
+  window per file) can be made cheap without sharing state, so it is DOM
+  product territory; import cost is runner territory (Vitest is active
+  there). Product direction under consideration: a test DOM built for
+  near-free startup and jsdom compatibility (sharpened Product A), rather
+  than a test runtime (Product B).
 - **2026-10-08: The case is jsdom compatibility at happy-dom speed, not
   "faster than happy-dom".** Experiment on 9 suites (`docs/env-experiment.md`):
   jsdom is a median 37% of CPU time in jsdom suites, happy-dom 9%; switching
