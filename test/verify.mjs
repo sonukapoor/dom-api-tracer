@@ -239,6 +239,29 @@ try {
   console.log('• environment mode        FAILED\n' + (String(err.stdout || '') + String(err.stderr || '')).slice(-1500) + err.message);
 }
 
+// setup-cost: Vitest's duration breakdown in both formats, and a run on the
+// fixture corpus with and without isolation.
+try {
+  const { parseDuration } = await import(path.join(root, 'scripts/setup-cost.mjs?parse'));
+  const old = parseDuration('   Duration  4.08s (transform 1.26s, setup 3.09s, collect 8.04s, tests 7.96s, environment 8.50s, prepare 1.91s)');
+  assert.equal(old.wallMs, 4080, 'setup-cost: wall time');
+  assert.ok(Math.abs(old.shares.environment - 8.5 / 30.76) < 1e-9 && old.shares.import > 0, 'setup-cost: absolute format, collect counted as import');
+  const pct = parseDuration('   Duration  640ms (environment 95%, transform 2%, tests 1%, setup 1%, worker 1%)');
+  assert.ok(Math.abs(pct.shares.environment - 0.95) < 1e-9 && pct.wallMs === 640, 'setup-cost: percent format');
+
+  const scOut = path.join(out, 'setup-cost');
+  execFileSync(process.execPath, [path.join(root, 'scripts/setup-cost.mjs'), path.join(root, 'test/fixtures/corpus/corpus.json'),
+    '--out', scOut, '--max-workers', '1'], { cwd: root, stdio: 'pipe', env: { ...process.env, FIXTURE_ENV_LOG: '' } });
+  const sc = JSON.parse(fs.readFileSync(path.join(scOut, 'results.json'), 'utf8'))['fixture-corpus/vitest-pkg'];
+  for (const mode of ['isolated', 'shared']) {
+    assert.ok(sc[mode].tests === 4 && sc[mode].breakdown?.shares?.environment > 0, `setup-cost: ${mode} run with breakdown`);
+  }
+  console.log('• setup cost              ok');
+} catch (err) {
+  failures++;
+  console.log('• setup cost              FAILED\n' + (String(err.stdout || '') + String(err.stderr || '')).slice(-800) + err.message);
+}
+
 // Listener wrappers must be transparent to code that inspects registered
 // listeners, like zone.js + Angular's DebugElement (ngx-formly), which finds
 // Angular's listeners by their source text.
