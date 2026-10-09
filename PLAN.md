@@ -169,6 +169,13 @@ web-components package).
   lock so only one run is active, and removes wrapper configs left by killed
   runs. Large suites (Handsontable core, AG Grid) are run by Sonu when
   convenient, not started from a chat session.
+- **2026-10-09: Fast-start spike succeeded.** `docs/fast-start-spike.md`:
+  the per-file cost is loading the DOM library (jsdom 176 ms, happy-dom ~85
+  ms per fresh worker), not creating windows. A jsdom-shaped prototype (219
+  interfaces, 3,710 members, per-window prototypes for isolation) loads in
+  11 ms; on 100 trivial test files in Vitest it removed 93% of jsdom's cost
+  and 85% of happy-dom's (3.9 s vs 15.2 s and 8.5 s). Compatibility is not
+  yet tested and remains the main risk.
 - **2026-10-09: Per-file setup is half of test time; the DOM owns the
   bigger part of it.** `docs/setup-cost.md`: across 33 Vitest packages,
   environment setup is a median 29% of time and module imports 15%; tests
