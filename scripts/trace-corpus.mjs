@@ -283,6 +283,21 @@ function setPending(update) {
   else fs.rmSync(pendingFile, { force: true });
 }
 
+// warpdom's source and runtime dependencies (parse5, entities), copied into
+// the package's node_modules for one run; removed with the wrappers.
+function copyWarpdom(warpdomDir, pkgDir) {
+  const target = path.join(pkgDir, 'node_modules', 'warpdom.dom-trace.copy');
+  fs.rmSync(target, { recursive: true, force: true });
+  fs.mkdirSync(target, { recursive: true });
+  setPending((list) => [...list.filter((f) => f !== target), target]);
+  fs.cpSync(path.join(warpdomDir, 'src'), path.join(target, 'src'), { recursive: true });
+  fs.copyFileSync(path.join(warpdomDir, 'package.json'), path.join(target, 'package.json'));
+  for (const dep of ['parse5', 'entities']) {
+    fs.cpSync(fs.realpathSync(path.join(warpdomDir, 'node_modules', dep)), path.join(target, 'node_modules', dep), { recursive: true });
+  }
+  return target;
+}
+
 export function removeWrappers(files) {
   for (const f of files) {
     // Only ever delete what this script creates: wrapper configs, and links
@@ -290,7 +305,7 @@ export function removeWrappers(files) {
     let link = false;
     try { link = fs.lstatSync(f).isSymbolicLink() && fs.realpathSync(f).startsWith(fs.realpathSync(root)); } catch {}
     if (link) fs.unlinkSync(f);
-    else if (path.basename(f).includes('.dom-trace.')) fs.rmSync(f, { force: true });
+    else if (path.basename(f).includes('.dom-trace.')) fs.rmSync(f, { recursive: true, force: true });
   }
   setPending((list) => list.filter((f) => !files.includes(f)));
 }
@@ -389,7 +404,12 @@ function runEnvironment({ pkg, projectDir, logDir, tmpDir, profileDir, opts }) {
   if (opts.environment === 'warpdom') {
     // Vitest loads an environment from a path; warpdom has no Jest environment yet.
     if (runner !== 'vitest') return { ...result, status: 'skipped', reason: 'warpdom has no Jest environment yet' };
-    environment = path.join(opts.warpdom, 'src', 'vitest.js');
+    // A copy inside the package, as an installed warpdom would be: Vitest
+    // hangs loading an environment from outside the project root when
+    // files share workers (isolate: false).
+    const copy = copyWarpdom(opts.warpdom, pkgDir);
+    created.push(copy);
+    environment = path.join(copy, 'src', 'vitest.js');
   } else if (runner === 'vitest') {
     const link = provideDomPackage(path.dirname(path.dirname(bin)), opts.environment);
     if (link) { created.push(link); result.providedFrom = 'dom-api-tracer'; }
