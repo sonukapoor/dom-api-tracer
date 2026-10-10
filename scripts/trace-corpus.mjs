@@ -401,9 +401,10 @@ function runEnvironment({ pkg, projectDir, logDir, tmpDir, profileDir, opts }) {
   // Jest accepts a path, so happy-dom's Jest environment comes from this repo.
   const created = [];
   let environment = opts.environment;
-  if (opts.environment === 'warpdom') {
-    // Vitest loads an environment from a path; warpdom has no Jest environment yet.
-    if (runner !== 'vitest') return { ...result, status: 'skipped', reason: 'warpdom has no Jest environment yet' };
+  if (opts.environment === 'warpdom' && runner === 'jest') {
+    // Jest loads an environment from any path.
+    environment = path.join(opts.warpdom, 'src', 'jest.js');
+  } else if (opts.environment === 'warpdom') {
     // A copy inside the package, as an installed warpdom would be: Vitest
     // hangs loading an environment from outside the project root when
     // files share workers (isolate: false).
