@@ -401,16 +401,14 @@ function runEnvironment({ pkg, projectDir, logDir, tmpDir, profileDir, opts }) {
   // Jest accepts a path, so happy-dom's Jest environment comes from this repo.
   const created = [];
   let environment = opts.environment;
-  if (opts.environment === 'warpdom' && runner === 'jest') {
-    // Jest loads an environment from any path.
-    environment = path.join(opts.warpdom, 'src', 'jest.js');
-  } else if (opts.environment === 'warpdom') {
-    // A copy inside the package, as an installed warpdom would be: Vitest
-    // hangs loading an environment from outside the project root when
-    // files share workers (isolate: false).
+  if (opts.environment === 'warpdom') {
+    // A copy inside the package's node_modules, as an installed warpdom
+    // would be: Vitest hangs loading an environment from outside the
+    // project root when files share workers (isolate: false), and Jest
+    // runs files outside node_modules through the project's transformer.
     const copy = copyWarpdom(opts.warpdom, pkgDir);
     created.push(copy);
-    environment = path.join(copy, 'src', 'vitest.js');
+    environment = path.join(copy, 'src', runner === 'jest' ? 'jest.js' : 'vitest.js');
   } else if (runner === 'vitest') {
     const link = provideDomPackage(path.dirname(path.dirname(bin)), opts.environment);
     if (link) { created.push(link); result.providedFrom = 'dom-api-tracer'; }
