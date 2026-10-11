@@ -1,0 +1,36 @@
+# Research scripts (warpdom experiments)
+
+Corpus-level experiments comparing warpdom with jsdom (and happy-dom) on
+the projects in `corpus/corpus.json`, built on `scripts/trace-corpus.mjs`.
+Results and their interpretation are in warpdom's `docs/research/`.
+
+Run from anywhere; the shell scripts `cd` to this repository. Settings
+(environment variables, see `lib.sh`): `REPOS_DIR` (checkouts, default
+`~/Projects`), `WARPDOM_DIR` (default `../warpdom`), `NODE_VERSION` for
+`nvm exec` (default 22.23.3), `ENV_DIR` (harness output, default
+`.corpus-env`), `WORK_DIR` (scratch state). Every survey and timing run
+writes its environment (commits of all corpus checkouts, warpdom and this
+repo; Node; OS; CPU; memory; load) with `record-env.mjs`.
+
+Corpus runs are heavy: one at a time, 2 workers, on an otherwise idle
+machine.
+
+| Script | What it does |
+| --- | --- |
+| `survey-warpdom.sh <project...>` | Runs each project on warpdom (isolated) and counts tests whose status differs from the jsdom baseline |
+| `diffgroups.cjs <project>` | Groups one project's differences from the last survey by error message |
+| `timing-vitest.sh <csv> <rounds> <project...>` | Vitest timing rounds: jsdom/warpdom alternating, default pool and vmThreads |
+| `timing-jest.sh <csv> <rounds> <project...>` | Jest timing rounds: jsdom/warpdom alternating |
+| `timing-report.cjs <csv>` | Medians and speedups of a timing CSV as a Markdown table |
+| `learned.sh <csv> <rounds> <project...>` | Learning fast mode (isolated vs split, chosen by measurement) against jsdom |
+| `fastmode.sh <csv> <rounds> <project...>` | Fast mode with a plain safety net (superseded by learned.sh) |
+| `headtohead.sh <csv> [rounds]` | jsdom, happy-dom, warpdom x isolated, no-isolate, fast (uses `fresh/`) |
+| `prof-top-dom.cjs <dir>` | Top warpdom functions in a run's CPU profiles (`trace-corpus.mjs --profile`) |
+| `prof-top.cjs <dir>` | Top functions in one CPU profile |
+| `record-env.mjs --out <file>` | Environment record (also called by the scripts above) |
+| `css-parity/*.mjs` | warpdom's CSS behavior against jsdom versions (black box): value validation, shorthands, zero lengths |
+
+Typical order: jsdom baselines come with the first survey; then
+`survey-warpdom.sh` (correctness), `diffgroups.cjs` for any differences,
+`timing-*.sh` + `timing-report.cjs` (speed), `trace-corpus.mjs --profile`
++ `scripts/profile-share.mjs` + `prof-top-dom.cjs` (where time goes).
