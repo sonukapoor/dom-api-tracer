@@ -13,6 +13,8 @@
 # Corpus runs are heavy: run one script at a time (2 workers each).
 
 RESEARCH_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+# parse_config, package_times.
+source "$RESEARCH_DIR/configs.sh"
 ROOT=$(cd "$RESEARCH_DIR/../.." && pwd)
 REPOS_DIR=${REPOS_DIR:-$HOME/Projects}
 WARPDOM_DIR=${WARPDOM_DIR:-$ROOT/../warpdom}

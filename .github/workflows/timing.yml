@@ -164,7 +164,7 @@ jobs:
           out=results/timing-ci.csv
           shopt -s nullglob
           files=()
-          for f in results/timing-ci-*.csv; do case $f in *.warmup.csv) ;; *) files+=("$f");; esac; done
+          for f in results/timing-ci-*.csv; do case $f in *.warmup.csv|*.packages.csv) ;; *) files+=("$f");; esac; done
           if [ ${#files[@]} -eq 0 ]; then
             echo 'No timing results: every project failed (see the time jobs and their logs artifacts).' | tee -a "$GITHUB_STEP_SUMMARY"
             exit 1
@@ -173,8 +173,10 @@ jobs:
           for f in "${files[@]}"; do tail -n +2 "$f" >> "$out"; done
           warm=(results/timing-ci-*.warmup.csv)
           if [ ${#warm[@]} -gt 0 ]; then head -1 "${warm[0]}" > results/warmup.csv; for f in "${warm[@]}"; do tail -n +2 "$f" >> results/warmup.csv; done; fi
+          pk=(results/timing-ci-*.packages.csv)
+          if [ ${#pk[@]} -gt 0 ]; then head -1 "${pk[0]}" > results/packages.csv; for f in "${pk[@]}"; do tail -n +2 "$f" >> results/packages.csv; done; fi
           if [ "${{ inputs.mode }}" = timing ]; then
-            node scripts/research/timing-report.cjs "$out" | tee results/report.md
+            node scripts/research/timing-report.cjs "$out" ${pk:+--packages results/packages.csv} | tee results/report.md
             { echo '## Timing (median of rounds, jsdom vs warpdom)'; echo; cat results/report.md; } >> "$GITHUB_STEP_SUMMARY"
           else
             cat results/timing-ci-*.learning.jsonl > results/learning.jsonl 2>/dev/null || true
@@ -197,6 +199,7 @@ jobs:
           path: |
             results/timing-ci.csv
             results/warmup.csv
+            results/packages.csv
             results/learning.jsonl
             results/report.md
             results/perfile.md

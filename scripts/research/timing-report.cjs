@@ -5,8 +5,17 @@
 // median number of tests whose status differs from jsdom; then the
 // uncertainty of the speedups (ranges or bootstrap intervals, see the end).
 //
-//   node scripts/research/timing-report.cjs <timing.csv>
-const rows = require('fs').readFileSync(process.argv[2], 'utf8').trim().split('\n').slice(1).map((l) => l.split(','));
+//   node scripts/research/timing-report.cjs <timing.csv> [--packages <packages.csv>]
+//
+// With A/A controls in the CSV (warpdom-default-aa, warpdom-ablate-unset;
+// timing-rounds.sh), a table of the paired ratio warpdom-default / control
+// per round: the noise floor of a paired ratio. With --packages (the
+// <csv>.packages.csv timing-rounds.sh writes), per package the median time
+// of each configuration and the jsdom/warpdom ratio, warm-up and timed.
+const argv = process.argv.slice(2);
+const pkgIdx = argv.indexOf('--packages');
+const packagesFile = pkgIdx >= 0 ? argv.splice(pkgIdx, 2)[1] : null;
+const rows = require('fs').readFileSync(argv[0], 'utf8').trim().split('\n').slice(1).filter((l) => l && !l.startsWith('round,')).map((l) => l.split(','));
 const data = new Map();
 for (const [round, project, config, secs, differs] of rows) {
   if (!data.has(project)) data.set(project, new Map());
@@ -169,5 +178,68 @@ if (extra.length) {
       } else if (ratios.length) interval = `${Math.min(...ratios).toFixed(2)}-${Math.max(...ratios).toFixed(2)}x (range)`;
       console.log(`| ${project} | ${c} | ${rounds.length} | ${fmt(t, ' s')} | ${ratios.length ? midMedian(ratios).toFixed(2) + 'x' : '—'} | ${interval} | ${num(d)} |`);
     }
+  }
+}
+
+// A/A controls: per suite, the paired ratio warpdom-default / control in
+// each round (> 1: the control was faster). Two identical configurations
+// (warpdom-default-aa) give the noise floor of a paired ratio; the same
+// for warpdom-ablate-unset bounds what the WARPDOM_ABLATE switch costs when
+// no ablation is chosen.
+const controls = ['warpdom-default-aa', 'warpdom-ablate-unset'].filter((c) => rows.some((r) => r[2] === c));
+if (controls.length) {
+  const r = rng(0xaa);
+  console.log('\n**A/A controls** (paired ratio warpdom-default / control per round: median, range below 5 rounds, else 95% bootstrap interval; max deviation = largest |ratio - 1| over rounds)\n');
+  console.log('| Suite | control | rounds | ratio | interval | max deviation | differ (control) |');
+  console.log('| --- | --- | --- | --- | --- | --- | --- |');
+  const pooled = Object.fromEntries(controls.map((c) => [c, []]));
+  for (const [project, p] of data) {
+    for (const c of controls) {
+      const rounds = [...p.values()].filter((x) => x[c] && x['warpdom-default']);
+      const ratios = rounds.map((x) => x['warpdom-default'].secs / x[c].secs).filter((x) => !Number.isNaN(x));
+      if (!ratios.length) continue;
+      pooled[c].push(...ratios);
+      let interval;
+      if (ratios.length >= 5) {
+        const meds = Array.from({ length: RESAMPLES }, () => midMedian(ratios.map(() => pick(ratios, r)))).sort((x, y) => x - y);
+        interval = `${percentile(meds, 0.025).toFixed(3)}-${percentile(meds, 0.975).toFixed(3)} (95% CI)`;
+      } else interval = `${Math.min(...ratios).toFixed(3)}-${Math.max(...ratios).toFixed(3)} (range)`;
+      const dev = Math.max(...ratios.map((x) => Math.abs(x - 1)));
+      console.log(`| ${project} | ${c} | ${ratios.length} | ${midMedian(ratios).toFixed(3)} | ${interval} | ${(dev * 100).toFixed(1)}% | ${num(median(rounds.map((x) => x[c].differs)))} |`);
+    }
+  }
+  for (const c of controls) {
+    const v = pooled[c];
+    if (!v.length) continue;
+    const devs = v.map((x) => Math.abs(Math.log(x))).sort((a, b) => a - b);
+    console.log(`\n${c}: ${v.length} paired rounds over all suites, median ratio ${midMedian(v).toFixed(3)}, median |log ratio| ${midMedian(devs).toFixed(3)} (${((Math.exp(midMedian(devs)) - 1) * 100).toFixed(1)}%), 95th percentile ${((Math.exp(percentile(devs, 0.95)) - 1) * 100).toFixed(1)}%.`);
+  }
+}
+
+// Per package (--packages): median runner time of each configuration over
+// the timed rounds and the warm-up (round 0) time, and the jsdom/warpdom
+// ratio, median of per-round ratios, timed and warm-up.
+if (packagesFile) {
+  const prow = require('fs').readFileSync(packagesFile, 'utf8').trim().split('\n').slice(1).filter((l) => l && !l.startsWith('round,')).map((l) => l.split(','));
+  const pk = new Map(); // project::package -> round -> config -> secs
+  for (const [round, project, config, pkg, , secs] of prow) {
+    const k = `${project}::${pkg}`;
+    if (!pk.has(k)) pk.set(k, new Map());
+    const m = pk.get(k);
+    if (!m.has(round)) m.set(round, {});
+    m.get(round)[config] = secs === 'NA' ? NaN : +secs;
+  }
+  const cfgs = [...new Set(prow.map((r) => r[2]))];
+  const x = (v) => (Number.isNaN(v) ? '—' : `${v.toFixed(2)}x`);
+  console.log('\n**Per package** (median runner seconds over the timed rounds; warm-up = round 0)\n');
+  console.log(`| Suite | package | timed rounds | ${cfgs.map((c) => `${c} | ${c} warm-up`).join(' | ')} | jsdom / warpdom (timed) | jsdom / warpdom (warm-up) |`);
+  console.log(`| --- | --- | --- | ${cfgs.map(() => '--- | ---').join(' | ')} | --- | --- |`);
+  for (const [k, m] of pk) {
+    const [project, pkg] = k.split('::');
+    const timed = [...m].filter(([round]) => round !== '0').map(([, v]) => v);
+    const warm = m.get('0') ?? {};
+    const pr = (rs) => median(rs.map((v) => v['jsdom-default'] / v['warpdom-default']));
+    const cells = cfgs.map((c) => `${fmt(median(timed.map((v) => v[c] ?? NaN)), ' s')} | ${fmt(warm[c] ?? NaN, ' s')}`).join(' | ');
+    console.log(`| ${project} | ${pkg} | ${timed.length} | ${cells} | ${x(pr(timed))} | ${x(pr([warm]))} |`);
   }
 }

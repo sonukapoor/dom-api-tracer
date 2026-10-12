@@ -393,13 +393,17 @@ try {
   console.log('• vitest wrapper          FAILED\n' + err.message);
 }
 
-// Research scripts: per-test status keys and counting (statuses.cjs).
-try {
-  execFileSync(process.execPath, [path.join(root, 'scripts/research/test-statuses.cjs')], { stdio: 'pipe' });
-  console.log('• research statuses       ok');
-} catch (err) {
-  failures++;
-  console.log('• research statuses       FAILED\n' + String(err.stdout || '') + String(err.stderr || '') + err.message);
+// Research scripts: per-test status keys and counting (statuses.cjs),
+// timing configurations and per-package times (configs.sh), the timing
+// report's A/A and per-package tables.
+for (const [name, file] of [['statuses', 'test-statuses.cjs'], ['configs', 'test-configs.cjs']]) {
+  try {
+    execFileSync(process.execPath, [path.join(root, 'scripts/research', file)], { stdio: 'pipe' });
+    console.log(`• research ${name.padEnd(14)} ok`);
+  } catch (err) {
+    failures++;
+    console.log(`• research ${name.padEnd(14)} FAILED\n` + String(err.stdout || '') + String(err.stderr || '') + err.message);
+  }
 }
 
 if (failures) { console.error(`\n${failures} check(s) failed`); process.exit(1); }

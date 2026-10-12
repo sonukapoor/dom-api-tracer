@@ -10,6 +10,9 @@
 # warpdom build that has the fast-frames experiment). Ablations of warpdom:
 # warpdomeager (all interfaces created with the window), warpdomnocache (no
 # query result cache), warpdomlatest (latest jsdom profile for every project).
+# A/A controls: warpdom-default-aa (warpdom-default under a second name) and
+# warpdom-ablate-unset (WARPDOM_ABLATE set to ''; every other configuration
+# runs with it unset). parse_config in configs.sh has the full list.
 #
 # TIMEOUT_MIN (default 45): per package run; a package that times out or
 # fails to produce results makes that round's time NA.
@@ -23,7 +26,11 @@
 #
 # Appends round,project,config,seconds,differs,files_differ to <csv>
 # (created with a header if missing); seconds is the runner time the
-# harness reports summed over the project's packages; differs counts tests
+# harness reports summed over the project's packages (the harness runs a
+# monorepo's packages one by one: each package's own time goes to
+# <csv without .csv>.packages.csv as round,project,config,package,status,
+# seconds, round 0 the warm-up; timing-report.cjs --packages summarizes it);
+# differs counts tests
 # and files_differ test files whose status differs from the project's jsdom
 # baseline (statuses.cjs, the key definition shared by all research
 # scripts). Every run's per-test statuses go to
@@ -43,6 +50,8 @@ CONFIGS=${CONFIGS:-"jsdom-default warpdom-default jsdom-vm warpdom-vm"}
 mkdir -p "$(dirname "$csv")"
 [ -f "$csv" ] || echo "round,project,config,seconds,differs,files_differ" > "$csv"
 warmcsv=${csv%.csv}.warmup.csv
+pkgcsv=${csv%.csv}.packages.csv
+[ -f "$pkgcsv" ] || echo "round,project,config,package,status,seconds" > "$pkgcsv"
 [ -f "$warmcsv" ] || echo "round,project,config,seconds,differs,files_differ" > "$warmcsv"
 PT=${PERTEST_DIR:-${csv%.csv}.pertest}
 mkdir -p "$PT" && PT=$(cd "$PT" && pwd)
@@ -58,15 +67,11 @@ for round in $(seq 0 $rounds); do
     for cfg in $order; do
       build=""
       case "$built" in *" $project "*) build="--no-build";; *) built="$built$project ";; esac
-      env=${cfg%-*}; extra=""; frames=""; ablate=""
-      case "$env" in
-        warpdomframes) env=warpdom; frames=1;;
-        # Ablations (warpdom's WARPDOM_ABLATE, docs/research/ablation-plan.md in warpdom).
-        warpdomeager) env=warpdom; ablate=eager-interfaces;;
-        warpdomnocache) env=warpdom; ablate=no-query-cache;;
-        warpdomlatest) env=warpdom; ablate=latest-profile;;
-      esac
-      [ "${cfg##*-}" = "vm" ] && extra="--pool=vmThreads"
+      # parse_config (configs.sh): environment, WARPDOM_ABLATE, fast frames, pool.
+      parsed=$(parse_config "$cfg") || { echo "unknown configuration $cfg" >&2; exit 2; }
+      read -r env ablate frames pool <<< "$parsed"
+      [ "$frames" = - ] && frames=""
+      extra=""; [ "$pool" = - ] || extra="--pool=$pool"
       out=$ENV_DIR/timing-$cfg
       rm -rf $out
       perfile=""
@@ -75,7 +80,8 @@ for round in $(seq 0 $rounds); do
         perfile="$(cd "$PERFILE_DIR" && pwd)/$project.$cfg.$round.jsonl"
         extra="$extra --reporter=$RESEARCH_DIR/perfile-reporter.mjs"
       fi
-      log=$(PERFILE_OUT=$perfile WARPDOM_FAST_FRAMES=$frames WARPDOM_ABLATE=$ablate harness --only $project --environment $env --out $out --max-workers 2 --timeout ${TIMEOUT_MIN:-45} $build ${extra:+--extra-args "$extra"} 2>&1)
+      # WARPDOM_ABLATE: unset unless the configuration sets it (with_ablate).
+      log=$(PERFILE_OUT=$perfile WARPDOM_FAST_FRAMES=$frames with_ablate "$ablate" harness --only $project --environment $env --out $out --max-workers 2 --timeout ${TIMEOUT_MIN:-45} $build ${extra:+--extra-args "$extra"} 2>&1)
       if [ "$env" = jsdom ] && ! ls "$base"/*.jsdom.json >/dev/null 2>&1; then
         base=$ENV_DIR/jsdom-time/tmp/$project
         mkdir -p "$base" && cp "$out/tmp/$project"/*.jsdom.json "$base"/ 2>/dev/null
@@ -83,6 +89,10 @@ for round in $(seq 0 $rounds); do
       # A package that failed to run (timeout, no results) makes the round
       # incomplete: its time would cover only the other packages (NA).
       secs=$(echo "$log" | complete_seconds)
+      # Each package's own runner time (the harness runs packages one by one).
+      echo "$log" | package_times | while read -r pkg pstatus psecs; do
+        echo "$round,$project,$cfg,$pkg,$pstatus,$psecs" >> "$pkgcsv"
+      done
       # No time: the harness failed; show why.
       [ -n "$secs" ] || { echo "harness output for $project $cfg (round $round):"; echo "$log" | tail -40; } >&2
       status_map $out/tmp/$project $env "$PT/$round/$project/$cfg.json" $project

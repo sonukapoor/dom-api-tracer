@@ -36,7 +36,8 @@ the timing workflow has a `corpus` input to time them on GitHub Actions.
 | `diffgroups.cjs <project>` | Groups one project's differences from the last survey by error message |
 | `timing-vitest.sh <csv> <rounds> <project...>` | Vitest timing rounds: jsdom/warpdom alternating, default pool and vmThreads |
 | `timing-jest.sh <csv> <rounds> <project...>` | Jest timing rounds: jsdom/warpdom alternating |
-| `timing-report.cjs <csv>` | Medians and speedups of a timing CSV as a Markdown table |
+| `timing-report.cjs <csv> [--packages <csv>]` | Medians and speedups of a timing CSV as a Markdown table; the A/A controls' paired ratios; per package times (jsdom/warpdom, warm-up and timed) |
+| `configs.sh` | Configuration names of `timing-rounds.sh` (`parse_config`), WARPDOM_ABLATE per configuration (`with_ablate`), per-package times from harness output (`package_times`); `test-configs.cjs` checks it |
 | `ablation-isolation.sh <csv> <rounds> <project...>` | Strong baselines and the ablation of learned isolation (Vitest): jsdom default/shared/vmThreads, warpdom default/vmThreads/shared-fresh/shared-reset/learned, happy-dom shared; warm-up, rotated order, re-learning every round, G2 counts, per-test archive |
 | `learned.sh <csv> <rounds> <project...>` | `ablation-isolation.sh` with jsdom-default, warpdom-default and warpdom-learned (the shipped `warpdom vitest run` where Vitest >= 3.2, else its emulation) |
 | `ablation-report.cjs <csv> [--learning <jsonl>] [--pertest <dir>]` | Ablation summary: speedups with intervals, differing tests/files, false passes, the best correct jsdom configuration, learning stability and break-even |
@@ -81,6 +82,18 @@ artifact, with each runner's environment JSON.
 - Hosted runners are shared virtual machines: absolute times vary more than
   on a quiet dedicated machine. jsdom and warpdom alternate on the same
   runner, so the ratio per project is the number to compare.
+
+Monorepos run one package at a time; `timing-rounds.sh` records each
+package's runner time per round and configuration in
+`<csv>.packages.csv`, and the report job adds a per-package table
+(handsontable's packages, for example).
+
+A/A controls (mode timing, `configs` input): `warpdom-default-aa` is
+`warpdom-default` under a second name, so the paired ratio of two
+identical configurations shows the noise floor; `warpdom-ablate-unset` is
+`warpdom-default` with `WARPDOM_ABLATE` set to the empty string (every
+other configuration runs with it unset), for the switch's cost when no
+ablation is chosen. The report has a table of both paired ratios.
 
 By default each round runs jsdom, warpdom and happy-dom (`configs`
 input), so the report also has a three-way table: the speed of each DOM
