@@ -303,7 +303,8 @@ export function removeWrappers(files) {
     // Only ever delete what this script creates: wrapper configs, and links
     // that point into this repository.
     let link = false;
-    try { link = fs.lstatSync(f).isSymbolicLink() && fs.realpathSync(f).startsWith(fs.realpathSync(root)); } catch {}
+    // Resolved from the link text, not realpath, so a dangling link is removed too.
+    try { link = fs.lstatSync(f).isSymbolicLink() && path.resolve(path.dirname(f), fs.readlinkSync(f)).startsWith(root + path.sep); } catch {}
     if (link) fs.unlinkSync(f);
     else if (path.basename(f).includes('.dom-trace.')) fs.rmSync(f, { recursive: true, force: true });
   }

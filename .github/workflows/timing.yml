@@ -62,6 +62,9 @@ jobs:
       - run: corepack enable
       - uses: oven-sh/setup-bun@v2
         if: matrix.project == 'ark-ui'
+      # jsdom and happy-dom that the harness links into projects without them.
+      - name: dom-api-tracer dependencies
+        run: npm ci
       - name: warpdom dependencies (parse5, jsdom as the reference)
         run: npm ci
         working-directory: warpdom
