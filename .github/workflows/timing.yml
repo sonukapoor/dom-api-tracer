@@ -1,0 +1,107 @@
+# Suite timings on GitHub-hosted runners: each corpus project in its own
+# job, at its pinned commit (corpus/pins.json), with jsdom and warpdom
+# alternating in Vitest's or Jest's default pool, 2 workers, as
+# scripts/research/timing-rounds.sh does locally. A final job combines the
+# results into one table (median seconds and speedup per project) on the
+# run's summary page and as an artifact.
+#
+# Needs a repository secret WARPDOM_TOKEN: a fine-grained token with
+# read access to the contents of the private warpdom repository.
+name: timing
+
+on:
+  workflow_dispatch:
+    inputs:
+      projects:
+        description: Corpus projects, comma separated
+        default: react-hook-form,solid,floating-ui,analog,radix-primitives,vuetify,emoji-picker-element,svelte,ark-ui,material-ui,react-spectrum,CopilotKit,ariakit,handsontable
+      rounds:
+        description: Rounds per project (jsdom and warpdom alternate in each)
+        default: '3'
+      warpdom_ref:
+        description: warpdom branch, tag or commit
+        default: main
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      projects: ${{ steps.list.outputs.projects }}
+    steps:
+      - id: list
+        run: echo "projects=$(echo '${{ inputs.projects }}' | jq -cR 'split(",") | map(gsub("^\\s+|\\s+$"; ""))')" >> "$GITHUB_OUTPUT"
+
+  time:
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      matrix:
+        project: ${{ fromJSON(needs.plan.outputs.projects) }}
+    env:
+      REPOS_DIR: ${{ github.workspace }}/../repos
+      WARPDOM_DIR: ${{ github.workspace }}/warpdom
+      ENV_DIR: .corpus-env
+      CONFIGS: jsdom-default warpdom-default
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: sonukapoor/warpdom
+          ref: ${{ inputs.warpdom_ref }}
+          token: ${{ secrets.WARPDOM_TOKEN }}
+          path: warpdom
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.23.3
+      # pnpm and yarn at the versions the projects declare (packageManager).
+      - run: corepack enable
+      - uses: oven-sh/setup-bun@v2
+        if: matrix.project == 'ark-ui'
+      - name: warpdom dependencies (parse5, jsdom as the reference)
+        run: npm ci
+        working-directory: warpdom
+      - name: Check out ${{ matrix.project }} at its pinned commit
+        run: node scripts/research/checkout-pinned.mjs --repos-dir "$REPOS_DIR" "${{ matrix.project }}"
+      - name: Time ${{ matrix.project }}
+        run: bash scripts/research/timing-rounds.sh ".corpus-env/timing-ci-${{ matrix.project }}.csv" "${{ inputs.rounds }}" "${{ matrix.project }}"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: timing-${{ matrix.project }}
+          path: |
+            .corpus-env/timing-ci-*.csv
+            .corpus-env/timing-ci-*.env-*.json
+            .corpus-env/timing-*/logs/
+          if-no-files-found: warn
+
+  report:
+    needs: time
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: timing-*
+          path: results
+          merge-multiple: true
+      - name: Combine
+        run: |
+          set -e
+          out=results/timing-ci.csv
+          echo "round,project,config,seconds,differs" > "$out"
+          for f in results/timing-ci-*.csv; do tail -n +2 "$f" >> "$out"; done
+          node scripts/research/timing-report.cjs "$out" | tee results/report.md
+          { echo '## Timing (median of rounds, jsdom vs warpdom)'; echo; cat results/report.md; } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: timing-report
+          path: |
+            results/timing-ci.csv
+            results/report.md
+            results/*.env-*.json

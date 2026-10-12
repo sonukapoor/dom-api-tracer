@@ -34,3 +34,25 @@ Typical order: jsdom baselines come with the first survey; then
 `survey-warpdom.sh` (correctness), `diffgroups.cjs` for any differences,
 `timing-*.sh` + `timing-report.cjs` (speed), `trace-corpus.mjs --profile`
 + `scripts/profile-share.mjs` + `prof-top-dom.cjs` (where time goes).
+
+## Timing on GitHub Actions
+
+`.github/workflows/timing.yml` (run it by hand: Actions, "timing", "Run
+workflow") times each corpus project in its own job on a GitHub-hosted
+Linux runner, at the commit pinned in `corpus/pins.json`, with jsdom and
+warpdom alternating in the default pool (2 workers), 3 rounds by default.
+A final job combines the per-project CSVs and puts the table
+(`timing-report.cjs`) on the run's summary page and in the `timing-report`
+artifact, with each runner's environment JSON.
+
+- `corpus/pins.json` comes from `node scripts/research/write-pins.mjs`
+  (the commits of the local checkouts the published numbers were measured
+  on); re-run it when the corpus checkouts move.
+- `checkout-pinned.mjs` clones a project at its pinned commit where the
+  harness looks for it.
+- The workflow needs a repository secret `WARPDOM_TOKEN`: a fine-grained
+  personal access token with read-only access to the contents of the
+  private warpdom repository.
+- Hosted runners are shared virtual machines: absolute times vary more than
+  on a quiet dedicated machine. jsdom and warpdom alternate on the same
+  runner, so the ratio per project is the number to compare.
