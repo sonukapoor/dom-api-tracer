@@ -12,6 +12,11 @@ name: timing
 on:
   workflow_dispatch:
     inputs:
+      corpus:
+        description: 'Corpus file: corpus.json (the tuning corpus) or held-out.json (projects warpdom was never tuned on; list them in projects)'
+        type: choice
+        options: [corpus.json, held-out.json]
+        default: corpus.json
       projects:
         description: Corpus projects, comma separated
         default: react-hook-form,solid,floating-ui,analog,radix-primitives,vuetify,emoji-picker-element,svelte,ark-ui,material-ui,react-spectrum,CopilotKit,ariakit,handsontable
@@ -62,6 +67,7 @@ jobs:
       REPOS_DIR: ${{ github.workspace }}/../repos
       WARPDOM_DIR: ${{ github.workspace }}/warpdom
       ENV_DIR: .corpus-env
+      CORPUS: corpus/${{ inputs.corpus }}
       CONFIGS: ${{ inputs.configs }}
       PERFILE_DIR: ${{ inputs.perfile && '.corpus-env/perfile' || '' }}
     steps:
@@ -86,7 +92,7 @@ jobs:
         run: npm ci
         working-directory: warpdom
       - name: Check out ${{ matrix.project }} at its pinned commit
-        run: node scripts/research/checkout-pinned.mjs --repos-dir "$REPOS_DIR" "${{ matrix.project }}"
+        run: node scripts/research/checkout-pinned.mjs --repos-dir "$REPOS_DIR" --corpus "$CORPUS" "${{ matrix.project }}"
       - name: Time ${{ matrix.project }}
         run: |
           if [ "${{ inputs.mode }}" = fastmode ]; then

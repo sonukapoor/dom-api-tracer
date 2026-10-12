@@ -7,6 +7,8 @@
 #                 the corpus needs >= 22.23.3). Without nvm, plain `node`.
 #   ENV_DIR       harness output directories (default .corpus-env)
 #   WORK_DIR      scratch files of the experiments (default $ENV_DIR/research-tmp)
+#   CORPUS        corpus file (default corpus/corpus.json; the held-out set
+#                 is corpus/held-out.json)
 #
 # Corpus runs are heavy: run one script at a time (2 workers each).
 
@@ -18,6 +20,7 @@ WARPDOM_DIR=$(cd "$WARPDOM_DIR" && pwd) || { echo "warpdom not found at $WARPDOM
 NODE_VERSION=${NODE_VERSION:-22.23.3}
 ENV_DIR=${ENV_DIR:-.corpus-env}
 WORK_DIR=${WORK_DIR:-$ENV_DIR/research-tmp}
+CORPUS=${CORPUS:-corpus/corpus.json}
 
 cd "$ROOT"
 mkdir -p "$WORK_DIR" && WORK_DIR=$(cd "$WORK_DIR" && pwd)
@@ -33,7 +36,7 @@ else
 fi
 
 # The corpus harness with this setup's checkouts.
-harness() { nodex scripts/trace-corpus.mjs --repos-dir "$REPOS_DIR" --warpdom "$WARPDOM_DIR" "$@"; }
+harness() { nodex scripts/trace-corpus.mjs "$CORPUS" --repos-dir "$REPOS_DIR" --warpdom "$WARPDOM_DIR" "$@"; }
 
 # Reads harness output on stdin; prints the runner time it reports, summed
 # over the project's packages, in seconds.
@@ -49,6 +52,6 @@ baseline_dir() {
 
 # Writes the run's environment (commits, Node, OS, CPU, memory) to $1.
 record_env() {
-  nodex "$RESEARCH_DIR/record-env.mjs" --out "$1" --repos-dir "$REPOS_DIR" --warpdom "$WARPDOM_DIR" >/dev/null
+  nodex "$RESEARCH_DIR/record-env.mjs" --out "$1" --corpus "$CORPUS" --repos-dir "$REPOS_DIR" --warpdom "$WARPDOM_DIR" >/dev/null
   echo "environment recorded in $1"
 }
