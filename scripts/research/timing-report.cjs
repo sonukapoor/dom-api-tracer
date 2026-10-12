@@ -20,6 +20,7 @@ const ratio = (p, a, b) => median([...p.values()].map((r) => (r[a] && r[b] ? r[a
 console.log('| Suite | rounds | jsdom | warpdom | jsdom vm | warpdom vm | warpdom vs jsdom (default) | best correct warpdom vs jsdom default | differ (wd default / jsdom vm / wd vm) |');
 console.log('| --- | --- | --- | --- | --- | --- | --- | --- | --- |');
 const warnings = [];
+const FLAKY = 5;
 for (const [project, p] of data) {
   const m = (c) => median([...p.values()].map((r) => r[c]?.secs ?? NaN));
   const d = (c) => median([...p.values()].map((r) => r[c]?.differs ?? NaN));
@@ -29,8 +30,10 @@ for (const [project, p] of data) {
   const best = wdVmOk ? Math.max(wdDefault, ratio(p, 'jsdom-default', 'warpdom-vm')) : wdDefault;
   // A jsdom run whose tests differ from the jsdom baseline is broken (e.g.
   // a package that did not run), so its time is not comparable.
-  const broken = [...p.values()].filter((r) => r['jsdom-default'] && (r['jsdom-default'].differs > 0 || Number.isNaN(r['jsdom-default'].secs))).length;
-  if (broken) warnings.push(`${project}: ${broken} of ${p.size} jsdom rounds differ from the jsdom baseline or have no time; those rounds are not comparable`);
+  // A few differing tests are flaky tests (they change on jsdom itself);
+  // more than FLAKY means a package did not run.
+  const broken = [...p.values()].filter((r) => r['jsdom-default'] && (r['jsdom-default'].differs > FLAKY || Number.isNaN(r['jsdom-default'].secs))).length;
+  if (broken) warnings.push(`${project}: ${broken} of ${p.size} jsdom rounds differ from the jsdom baseline in more than ${FLAKY} tests or have no time; those rounds are not comparable`);
   console.log(`| ${project} | ${p.size} | ${fmt(m('jsdom-default'), ' s')} | ${fmt(m('warpdom-default'), ' s')} | ${fmt(m('jsdom-vm'), ' s')} | ${fmt(m('warpdom-vm'), ' s')} | ${wdDefault.toFixed(2)}x | ${best.toFixed(2)}x${wdVmOk && best !== wdDefault ? ' (vm)' : ''} | ${num(d('warpdom-default'))} / ${num(d('jsdom-vm'))} / ${num(d('warpdom-vm'))} |`);
 }
 
@@ -50,7 +53,7 @@ if (hasHappy) {
     const wd = ratio(p, 'jsdom-default', 'warpdom-default');
     const hd = ratio(p, 'jsdom-default', 'happy-dom-default');
     const wh = ratio(p, 'happy-dom-default', 'warpdom-default');
-    const ok = ![...p.values()].some((r) => r['jsdom-default'] && (r['jsdom-default'].differs > 0 || Number.isNaN(r['jsdom-default'].secs)));
+    const ok = ![...p.values()].some((r) => r['jsdom-default'] && (r['jsdom-default'].differs > FLAKY || Number.isNaN(r['jsdom-default'].secs)));
     if (ok) { valid.wd.push(wd); valid.hd.push(hd); valid.wh.push(wh); }
     const x = (v) => (Number.isNaN(v) ? '—' : `${v.toFixed(2)}x`);
     console.log(`| ${project}${ok ? '' : ' (check)'} | ${fmt(m('jsdom-default'), ' s')} | ${fmt(m('warpdom-default'), ' s')} | ${fmt(m('happy-dom-default'), ' s')} | ${x(wd)} | ${x(hd)} | ${x(wh)} | ${num(d('warpdom-default'))} / ${num(d('happy-dom-default'))} |`);

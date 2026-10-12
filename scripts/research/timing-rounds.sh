@@ -9,6 +9,9 @@
 # Vitest only; warpdomframes is warpdom with WARPDOM_FAST_FRAMES=1, for a
 # warpdom build that has the fast-frames experiment).
 #
+# TIMEOUT_MIN (default 45): per package run; a package that times out or
+# fails to produce results makes that round's time NA.
+#
 # PERFILE_DIR (optional, Vitest only): also record per-file phase timings
 # (perfile-reporter.mjs) as <dir>/<project>.<config>.<round>.jsonl.
 # Appends round,project,config,seconds,differs to <csv> (created with a
@@ -47,12 +50,15 @@ for round in $(seq 1 $rounds); do
         perfile="$(cd "$PERFILE_DIR" && pwd)/$project.$cfg.$round.jsonl"
         extra="$extra --reporter=$RESEARCH_DIR/perfile-reporter.mjs"
       fi
-      log=$(PERFILE_OUT=$perfile WARPDOM_FAST_FRAMES=$frames harness --only $project --environment $env --out $out --max-workers 2 --timeout 20 $build ${extra:+--extra-args "$extra"} 2>&1)
+      log=$(PERFILE_OUT=$perfile WARPDOM_FAST_FRAMES=$frames harness --only $project --environment $env --out $out --max-workers 2 --timeout ${TIMEOUT_MIN:-45} $build ${extra:+--extra-args "$extra"} 2>&1)
       if [ "$env" = jsdom ] && ! ls "$base"/*.jsdom.json >/dev/null 2>&1; then
         base=$ENV_DIR/jsdom-time/tmp/$project
         mkdir -p "$base" && cp "$out/tmp/$project"/*.jsdom.json "$base"/ 2>/dev/null
       fi
       secs=$(echo "$log" | runner_seconds)
+      # A package that failed to run (timeout, no results) makes the round
+      # incomplete: its time would cover only the other packages.
+      echo "$log" | grep -qE "^\s+failed\s" && secs=""
       # No time: the harness failed; show why.
       [ -n "$secs" ] || { echo "harness output for $project $cfg:"; echo "$log" | tail -40; } >&2
       differs=$(node -e '
