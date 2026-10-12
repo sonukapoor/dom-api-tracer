@@ -55,3 +55,25 @@ record_env() {
   nodex "$RESEARCH_DIR/record-env.mjs" --out "$1" --corpus "$CORPUS" --repos-dir "$REPOS_DIR" --warpdom "$WARPDOM_DIR" >/dev/null
   echo "environment recorded in $1"
 }
+
+# Reads harness output on stdin; prints its runner seconds, or nothing when
+# a package failed to run or timed out (a partial time is not comparable):
+# the caller records NA.
+complete_seconds() {
+  local log; log=$(cat)
+  echo "$log" | grep -qE "^\s+failed\s" && return 0
+  echo "$log" | grep -qE "^\s+ran\s" || return 0
+  echo "$log" | runner_seconds
+}
+
+# Per-test statuses (statuses.cjs): map <results dir> <env> <out.json> <project>.
+status_map() { nodex "$RESEARCH_DIR/statuses.cjs" map "$1" "$2" "$3" --root "$REPOS_DIR/$4"; }
+statuses() { nodex "$RESEARCH_DIR/statuses.cjs" "$@"; }
+
+# Configuration order of round <r> (1-based) over the configurations given:
+# rotated left by r-1, so each takes a different position each round.
+rotate() {
+  local r=$1; shift
+  local a=("$@") n=$# i
+  for ((i = 0; i < n; i++)); do printf '%s ' "${a[$(( (i + r - 1) % n ))]}"; done
+}

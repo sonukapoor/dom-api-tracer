@@ -1,0 +1,150 @@
+#!/usr/bin/env node
+// Per-test statuses of corpus runs: the one key definition and the counting
+// used by every research script (timing-rounds.sh, ablation-isolation.sh,
+// learned.sh), so "tests that differ" means the same thing everywhere.
+//
+// A status map (the normalized, archived form) is
+//   { tests: { <key>: { s: <status>, file: <absolute test file> } },
+//     files: { <fileKey>: { s: <file status>, file: <absolute test file> } } }
+// with
+//   fileKey = <package slug>::<test file relative to the project checkout>
+//   key     = <fileKey>::<full test name>, and " #<n>" appended to the n-th
+//             (n >= 2) test of the same file with the same full name.
+// The file status is the runner's ("failed" when the file failed to run or
+// any of its tests failed). Tests and files are counted separately: a file
+// that fails to load is one file difference plus its missing tests, never
+// an extra "test". `.file` (absolute) is kept for re-running files and for
+// merging re-run results.
+//
+//   statuses.cjs map <results dir> <env> <out.json> [--root <project dir>]
+//       Vitest/Jest JSON results (<slug>.<env>.json) -> a status map.
+//   statuses.cjs compare <base.json> <run.json> [<ref.json>]
+//       prints "differs files_differ false_pass false_fail": tests and files
+//       whose status differs from base; with ref, tests passed in run but not
+//       in ref (failed, skipped or missing) and the reverse.
+//   statuses.cjs failing <map.json>        failing test files (absolute), one line
+//   statuses.cjs leaky <shared.json> <isolated.json>
+//       files failing in shared that do not fail isolated (warpdom's
+//       newlyLeaky: "fails without isolation, passes isolated")
+//   statuses.cjs merge <out.json> <first.json> [<rerun.json>...]
+//       first, with every file present in a rerun replaced by its rerun result
+//   statuses.cjs count <map.json>          prints "tests files"
+const fs = require('fs');
+const path = require('path');
+
+// The part of a test file path that is the same on every machine.
+function relativeFile(name, root) {
+  if (root && name.startsWith(root.replace(/\/$/, '') + '/')) return name.slice(root.replace(/\/$/, '').length + 1);
+  // Without the checkout (an old baseline from another directory): from the
+  // last packages/src/test/tests/examples directory on.
+  const m = name.match(/^.*\/(packages|src|test|tests|examples)\/(.*)$/);
+  return m ? m[2] : name;
+}
+
+// results: parsed runner JSON reports, each with its package slug.
+function fromResults(results, root) {
+  const map = { tests: {}, files: {} };
+  for (const { slug, report } of results) {
+    for (const t of report.testResults ?? []) {
+      const fileKey = `${slug}::${relativeFile(t.name, root)}`;
+      const failed = t.status === 'failed' || (t.assertionResults ?? []).some((a) => a.status === 'failed');
+      map.files[fileKey] = { s: failed ? 'failed' : t.status, file: t.name };
+      const seen = new Map();
+      for (const a of t.assertionResults ?? []) {
+        const n = (seen.get(a.fullName) ?? 0) + 1;
+        seen.set(a.fullName, n);
+        map.tests[`${fileKey}::${a.fullName}${n > 1 ? ` #${n}` : ''}`] = { s: a.status, file: t.name };
+      }
+    }
+  }
+  return map;
+}
+
+function loadDir(dir, env, root) {
+  const results = [];
+  if (fs.existsSync(dir)) {
+    for (const f of fs.readdirSync(dir).filter((n) => n.endsWith(`.${env}.json`)).sort()) {
+      let report;
+      try { report = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')); } catch { continue; }
+      results.push({ slug: f.slice(0, -`.${env}.json`.length), report });
+    }
+  }
+  return fromResults(results, root);
+}
+
+const empty = () => ({ tests: {}, files: {} });
+function read(file) {
+  if (!file || !fs.existsSync(file)) return empty();
+  const m = JSON.parse(fs.readFileSync(file, 'utf8'));
+  return { tests: m.tests ?? {}, files: m.files ?? {} };
+}
+
+const differing = (a, b) => {
+  let d = 0;
+  for (const k of new Set([...Object.keys(a), ...Object.keys(b)])) if (a[k]?.s !== b[k]?.s) d++;
+  return d;
+};
+
+// false_pass: passed in run, not passed (failed, skipped, missing) in ref;
+// false_fail: passed in ref, not passed in run.
+function direction(run, ref) {
+  let falsePass = 0, falseFail = 0;
+  for (const k of new Set([...Object.keys(run.tests), ...Object.keys(ref.tests)])) {
+    const r = run.tests[k]?.s === 'passed', i = ref.tests[k]?.s === 'passed';
+    if (r && !i) falsePass++;
+    if (i && !r) falseFail++;
+  }
+  return { falsePass, falseFail };
+}
+
+function compare(base, run, ref) {
+  const out = { differs: differing(base.tests, run.tests), filesDiffer: differing(base.files, run.files) };
+  if (ref) Object.assign(out, direction(run, ref));
+  return out;
+}
+
+const failing = (map) => [...new Set(Object.values(map.files).filter((v) => v.s === 'failed').map((v) => v.file))];
+
+function leaky(shared, isolated) {
+  const isoFailed = new Set(failing(isolated));
+  const ran = new Set(Object.values(isolated.files).map((v) => v.file));
+  return failing(shared).filter((f) => ran.has(f) && !isoFailed.has(f));
+}
+
+function merge(first, ...reruns) {
+  const replaced = new Set(reruns.flatMap((r) => Object.values(r.files).map((v) => v.file)));
+  const keep = (o) => Object.fromEntries(Object.entries(o).filter(([, v]) => !replaced.has(v.file)));
+  const out = { tests: keep(first.tests), files: keep(first.files) };
+  for (const r of reruns) { Object.assign(out.tests, r.tests); Object.assign(out.files, r.files); }
+  return out;
+}
+
+module.exports = { relativeFile, fromResults, loadDir, read, compare, direction, failing, leaky, merge };
+
+if (require.main === module) {
+  const [cmd, ...args] = process.argv.slice(2);
+  const opt = (name) => { const i = args.indexOf(name); return i >= 0 ? args.splice(i, 2)[1] : undefined; };
+  const write = (file, m) => { fs.mkdirSync(path.dirname(path.resolve(file)), { recursive: true }); fs.writeFileSync(file, JSON.stringify(m)); };
+  if (cmd === 'map') {
+    const root = opt('--root');
+    const [dir, env, out] = args;
+    write(out, loadDir(dir, env, root));
+  } else if (cmd === 'compare') {
+    const [b, r, ref] = args;
+    const c = compare(read(b), read(r), ref ? read(ref) : null);
+    console.log([c.differs, c.filesDiffer, ...(ref ? [c.falsePass, c.falseFail] : [])].join(' '));
+  } else if (cmd === 'failing') {
+    console.log(failing(read(args[0])).join(' '));
+  } else if (cmd === 'leaky') {
+    console.log(leaky(read(args[0]), read(args[1])).join(' '));
+  } else if (cmd === 'merge') {
+    const [out, first, ...reruns] = args;
+    write(out, merge(read(first), ...reruns.map(read)));
+  } else if (cmd === 'count') {
+    const m = read(args[0]);
+    console.log(`${Object.keys(m.tests).length} ${Object.keys(m.files).length}`);
+  } else {
+    process.stderr.write('usage: statuses.cjs map|compare|failing|leaky|merge|count ... (see the header)\n');
+    process.exit(2);
+  }
+}

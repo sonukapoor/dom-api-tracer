@@ -37,7 +37,12 @@ the timing workflow has a `corpus` input to time them on GitHub Actions.
 | `timing-vitest.sh <csv> <rounds> <project...>` | Vitest timing rounds: jsdom/warpdom alternating, default pool and vmThreads |
 | `timing-jest.sh <csv> <rounds> <project...>` | Jest timing rounds: jsdom/warpdom alternating |
 | `timing-report.cjs <csv>` | Medians and speedups of a timing CSV as a Markdown table |
-| `learned.sh <csv> <rounds> <project...>` | Learning fast mode (isolated vs split, chosen by measurement) against jsdom |
+| `ablation-isolation.sh <csv> <rounds> <project...>` | Strong baselines and the ablation of learned isolation (Vitest): jsdom default/shared/vmThreads, warpdom default/vmThreads/shared-fresh/shared-reset/learned, happy-dom shared; warm-up, rotated order, re-learning every round, G2 counts, per-test archive |
+| `learned.sh <csv> <rounds> <project...>` | `ablation-isolation.sh` with jsdom-default, warpdom-default and warpdom-learned (the shipped `warpdom vitest run` where Vitest >= 3.2, else its emulation) |
+| `ablation-report.cjs <csv> [--learning <jsonl>] [--pertest <dir>]` | Ablation summary: speedups with intervals, differing tests/files, false passes, the best correct jsdom configuration, learning stability and break-even |
+| `statuses.cjs` | Per-test status maps and counting (one key definition for every script; tests and files counted separately); `test-statuses.cjs` is its check (in `npm test`) |
+| `learning.cjs` | Learning and learned-run records (JSON lines) for `ablation-isolation.sh` |
+| `capture-reporter.mjs` | Vitest reporter that records every Vitest run `warpdom vitest run` starts (`trace-corpus.mjs --fast-cli`) |
 | `fastmode.sh <csv> <rounds> <project...>` | Fast mode with a plain safety net (superseded by learned.sh) |
 | `headtohead.sh <csv> [rounds]` | jsdom, happy-dom, warpdom x isolated, no-isolate, fast (uses `fresh/`) |
 | `prof-top-dom.cjs <dir>` | Top warpdom functions in a run's CPU profiles (`trace-corpus.mjs --profile`) |
@@ -55,7 +60,11 @@ Typical order: jsdom baselines come with the first survey; then
 `.github/workflows/timing.yml` (run it by hand: Actions, "timing", "Run
 workflow") times each corpus project in its own job on a GitHub-hosted
 Linux runner, at the commit pinned in `corpus/pins.json`, with jsdom and
-warpdom alternating in the default pool (2 workers), 3 rounds by default.
+warpdom alternating in the default pool (2 workers), after one untimed
+warm-up run per configuration, 5 rounds by default with the configuration
+order rotated each round. Every run's per-test statuses are uploaded
+(`pertest/<round>/<project>/<config>.json`). The `mode` input selects
+`timing-rounds.sh`, `learned.sh` (fastmode) or `ablation-isolation.sh`.
 A final job combines the per-project CSVs and puts the table
 (`timing-report.cjs`) on the run's summary page and in the `timing-report`
 artifact, with each runner's environment JSON.

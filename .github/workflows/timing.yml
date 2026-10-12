@@ -21,14 +21,14 @@ on:
         description: Corpus projects, comma separated
         default: react-hook-form,solid,floating-ui,analog,radix-primitives,vuetify,emoji-picker-element,svelte,ark-ui,material-ui,react-spectrum,CopilotKit,ariakit,handsontable
       rounds:
-        description: Rounds per project (jsdom and warpdom alternate in each)
-        default: '3'
+        description: Timed rounds per project, after one untimed warm-up run per configuration (configuration order rotated each round)
+        default: '5'
       warpdom_ref:
         description: warpdom branch, tag or commit
         default: main
       configs:
-        description: Configurations (see timing-rounds.sh), e.g. add warpdomframes-default with warpdom_ref exp/fast-frames
-        default: jsdom-default warpdom-default happy-dom-default
+        description: 'Configurations; empty = the mode''s default (timing: jsdom-default warpdom-default happy-dom-default, see timing-rounds.sh; ablation-isolation: all nine, see ablation-isolation.sh; fastmode: jsdom-default warpdom-default warpdom-learned)'
+        default: ''
       mode:
         description: 'timing (configs above), fastmode (learned.sh) or ablation-isolation (ablation-isolation.sh); the last two for Vitest projects only'
         type: choice
@@ -58,7 +58,8 @@ jobs:
   time:
     needs: plan
     runs-on: ubuntu-latest
-    timeout-minutes: 300
+    # The longest a GitHub-hosted job may run is 360 minutes.
+    timeout-minutes: 355
     strategy:
       fail-fast: false
       matrix:
@@ -69,6 +70,10 @@ jobs:
       ENV_DIR: .corpus-env
       CORPUS: corpus/${{ inputs.corpus }}
       CONFIGS: ${{ inputs.configs }}
+      PERTEST_DIR: .corpus-env/pertest
+      # ablation-isolation.sh / learned.sh start no round they cannot finish
+      # in this many minutes (setup comes before; the job limit is 355).
+      BUDGET_MIN: '320'
       PERFILE_DIR: ${{ inputs.perfile && '.corpus-env/perfile' || '' }}
     steps:
       - uses: actions/checkout@v4
@@ -95,6 +100,7 @@ jobs:
         run: node scripts/research/checkout-pinned.mjs --repos-dir "$REPOS_DIR" --corpus "$CORPUS" "${{ matrix.project }}"
       - name: Time ${{ matrix.project }}
         run: |
+          if [ "${{ inputs.mode }}" = timing ] && [ -z "$CONFIGS" ]; then export CONFIGS="jsdom-default warpdom-default happy-dom-default"; fi
           if [ "${{ inputs.mode }}" = fastmode ]; then
             bash scripts/research/learned.sh ".corpus-env/timing-ci-${{ matrix.project }}.csv" "${{ inputs.rounds }}" "${{ matrix.project }}"
           elif [ "${{ inputs.mode }}" = ablation-isolation ]; then
@@ -124,6 +130,13 @@ jobs:
           path: |
             .corpus-env/timing-ci-*.csv
             .corpus-env/timing-ci-*.env-*.json
+            .corpus-env/timing-ci-*.learning.jsonl
+            .corpus-env/timing-ci-*.notes.txt
+            .corpus-env/pertest/
+            .corpus-env/ab-*/logs/
+            .corpus-env/ab-*/tmp/**/*.fastcli.json
+            .corpus-env/research-tmp/ablation.log
+            .corpus-env/research-tmp/ab-state/
             .corpus-env/timing-*/logs/
             .corpus-env/timing-*/tmp/
             .corpus-env/jsdom-time/tmp/
@@ -149,16 +162,25 @@ jobs:
           set -e
           mkdir -p results
           out=results/timing-ci.csv
-          echo "round,project,config,seconds,differs" > "$out"
           shopt -s nullglob
-          files=(results/timing-ci-*.csv)
+          files=()
+          for f in results/timing-ci-*.csv; do case $f in *.warmup.csv) ;; *) files+=("$f");; esac; done
           if [ ${#files[@]} -eq 0 ]; then
             echo 'No timing results: every project failed (see the time jobs and their logs artifacts).' | tee -a "$GITHUB_STEP_SUMMARY"
             exit 1
           fi
+          head -1 "${files[0]}" > "$out"
           for f in "${files[@]}"; do tail -n +2 "$f" >> "$out"; done
-          node scripts/research/timing-report.cjs "$out" | tee results/report.md
-          { echo '## Timing (median of rounds, jsdom vs warpdom)'; echo; cat results/report.md; } >> "$GITHUB_STEP_SUMMARY"
+          warm=(results/timing-ci-*.warmup.csv)
+          if [ ${#warm[@]} -gt 0 ]; then head -1 "${warm[0]}" > results/warmup.csv; for f in "${warm[@]}"; do tail -n +2 "$f" >> results/warmup.csv; done; fi
+          if [ "${{ inputs.mode }}" = timing ]; then
+            node scripts/research/timing-report.cjs "$out" | tee results/report.md
+            { echo '## Timing (median of rounds, jsdom vs warpdom)'; echo; cat results/report.md; } >> "$GITHUB_STEP_SUMMARY"
+          else
+            cat results/timing-ci-*.learning.jsonl > results/learning.jsonl 2>/dev/null || true
+            node scripts/research/ablation-report.cjs "$out" --learning results/learning.jsonl --pertest results/pertest | tee results/report.md
+            { echo '## Ablation of isolation (median of rounds)'; echo; cat results/report.md; } >> "$GITHUB_STEP_SUMMARY"
+          fi
       - name: Per-file timings
         if: inputs.perfile
         run: |
@@ -174,6 +196,8 @@ jobs:
           name: timing-report
           path: |
             results/timing-ci.csv
+            results/warmup.csv
+            results/learning.jsonl
             results/report.md
             results/perfile.md
             results/*.env-*.json

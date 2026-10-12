@@ -372,6 +372,18 @@ try {
     const tsCfg = await (await import(path.join(esm, 'jest.dom-trace.ts'))).default();
     assert.equal(tsCfg.testEnvironment, 'jsdom', 'jest wrapper: TS config with export default loads');
   }
+  // --fast-cli: the wrapper's config goes through warpdom's withFastMode
+  // (here a stand-in that records its options), naming the project to split.
+  const fastModule = path.join(dir, 'fast-standin.mjs');
+  fs.writeFileSync(fastModule, 'export const withFastMode = (c, o) => async (env) => ({ ...(await c(env)), fastOptions: o });');
+  const fastBase = path.join(dir, 'fast.config.mjs');
+  fs.writeFileSync(fastBase, `export default ${JSON.stringify({ test: { environment: 'jsdom' } })};`);
+  fs.writeFileSync(path.join(dir, 'fast.dom-trace.mjs'), vitestWrapper(fastBase, { trace: false, environment: '/x/vitest.js', fast: { module: fastModule, project: 'unit' } }));
+  const fastCfg = await (await import(path.join(dir, 'fast.dom-trace.mjs'))).default({ mode: 'test' });
+  assert.deepEqual(fastCfg.fastOptions, { project: 'unit' }, 'fast wrapper: withFastMode with the project');
+  assert.equal(fastCfg.test.environment, '/x/vitest.js', 'fast wrapper: environment switched before withFastMode');
+  const { supportsFastCli } = await import(path.join(root, 'scripts/trace-corpus.mjs'));
+  assert.deepEqual(['2.1.9', '3.1.4', '3.2.0', '4.1.7', '5.0.0'].map(supportsFastCli), [false, false, true, true, true], 'fast-cli: Vitest >= 3.2');
   const { slugFor } = await import(path.join(root, 'scripts/trace-corpus.mjs'));
   assert.deepEqual(['.', './', 'packages/react', 'packages/@scope/x'].map(slugFor),
     ['root', 'root', 'packages_react', 'packages_scope_x'], 'harness: package file names');
@@ -379,6 +391,15 @@ try {
 } catch (err) {
   failures++;
   console.log('• vitest wrapper          FAILED\n' + err.message);
+}
+
+// Research scripts: per-test status keys and counting (statuses.cjs).
+try {
+  execFileSync(process.execPath, [path.join(root, 'scripts/research/test-statuses.cjs')], { stdio: 'pipe' });
+  console.log('• research statuses       ok');
+} catch (err) {
+  failures++;
+  console.log('• research statuses       FAILED\n' + String(err.stdout || '') + String(err.stderr || '') + err.message);
 }
 
 if (failures) { console.error(`\n${failures} check(s) failed`); process.exit(1); }
