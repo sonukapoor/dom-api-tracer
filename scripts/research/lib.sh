@@ -22,11 +22,14 @@ WORK_DIR=${WORK_DIR:-$ENV_DIR/research-tmp}
 cd "$ROOT"
 mkdir -p "$WORK_DIR" && WORK_DIR=$(cd "$WORK_DIR" && pwd)
 
-if [ -s "${NVM_DIR:-$HOME/.nvm}/nvm.sh" ]; then
-  source "${NVM_DIR:-$HOME/.nvm}/nvm.sh" >/dev/null
-  nodex() { nvm exec "$NODE_VERSION" node "$@"; }
+# nvm's NODE_VERSION when installed (CI runners have nvm without it, and
+# set up Node themselves), else the node on PATH.
+if [ -s "${NVM_DIR:-$HOME/.nvm}/nvm.sh" ] && source "${NVM_DIR:-$HOME/.nvm}/nvm.sh" >/dev/null \
+    && nvm ls "$NODE_VERSION" >/dev/null 2>&1; then
+  nodex() { nvm exec --silent "$NODE_VERSION" node "$@"; }
 else
   nodex() { node "$@"; }
+  [ "$(node --version)" = "v$NODE_VERSION" ] || echo "note: using node $(node --version), not $NODE_VERSION" >&2
 fi
 
 # The corpus harness with this setup's checkouts.

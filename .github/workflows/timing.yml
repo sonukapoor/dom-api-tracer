@@ -95,9 +95,16 @@ jobs:
       - name: Combine
         run: |
           set -e
+          mkdir -p results
           out=results/timing-ci.csv
           echo "round,project,config,seconds,differs" > "$out"
-          for f in results/timing-ci-*.csv; do tail -n +2 "$f" >> "$out"; done
+          shopt -s nullglob
+          files=(results/timing-ci-*.csv)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo 'No timing results: every project failed (see the time jobs and their logs artifacts).' | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          for f in "${files[@]}"; do tail -n +2 "$f" >> "$out"; done
           node scripts/research/timing-report.cjs "$out" | tee results/report.md
           { echo '## Timing (median of rounds, jsdom vs warpdom)'; echo; cat results/report.md; } >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
