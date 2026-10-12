@@ -107,6 +107,8 @@ jobs:
             .corpus-env/timing-ci-*.csv
             .corpus-env/timing-ci-*.env-*.json
             .corpus-env/timing-*/logs/
+            .corpus-env/timing-*/tmp/
+            .corpus-env/jsdom-time/tmp/
             .corpus-env/perfile/
             .corpus-env/profile-summary/
           if-no-files-found: warn
