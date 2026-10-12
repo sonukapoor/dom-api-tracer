@@ -6,10 +6,29 @@
       "install": false,
       "build": "node -e \"console.log('fixture build ran')\"",
       "packages": [
-        { "dir": "vitest-pkg", "runner": "vitest", "env": { "FIXTURE_ENV": "from-corpus" } },
-        { "dir": "jest-pkg", "runner": "jest" },
-        { "dir": "browser-pkg", "runner": "vitest" },
-        { "dir": "projects-pkg", "runner": "vitest" }
+        {
+          "dir": "vitest-pkg",
+          "runner": "vitest",
+          "env": {
+            "FIXTURE_ENV": "from-corpus"
+          }
+        },
+        {
+          "dir": "jest-pkg",
+          "runner": "jest"
+        },
+        {
+          "dir": "browser-pkg",
+          "runner": "vitest"
+        },
+        {
+          "dir": "projects-pkg",
+          "runner": "vitest"
+        },
+        {
+          "dir": "pinned-pkg",
+          "runner": "vitest"
+        }
       ]
     }
   ]

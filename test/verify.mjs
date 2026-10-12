@@ -181,8 +181,8 @@ try {
   const traceDir = path.join(corpusOut, 'traces', 'fixture-corpus');
   const runsOut = fs.readdirSync(traceDir).filter((f) => f.startsWith('run-'))
     .map((f) => JSON.parse(fs.readFileSync(path.join(traceDir, f), 'utf8')));
-  assert.equal(runsOut.length, 3, 'corpus: trace files');
-  for (const r of runsOut) {
+  assert.equal(runsOut.length, 4, 'corpus: trace files');
+  for (const r of runsOut.filter((r) => !String(r.testFile).includes('pinned'))) {
     assert.equal(r.project, 'fixture-corpus', 'corpus: packages share the project name');
     assert.equal(r.usage['Document#createElement']?.call, 2, `corpus: createElement in ${r.testFile}`);
   }
@@ -215,6 +215,9 @@ try {
   const ran = fs.readFileSync(envLog, 'utf8').trim().split('\n');
   assert.ok(ran.some((l) => l.startsWith('vitest ') && /HappyDOM/.test(l)), 'env mode: vitest ran on happy-dom');
   assert.ok(ran.some((l) => l.startsWith('jest ') && /HappyDOM/.test(l)), 'env mode: jest ran on happy-dom');
+  // A file pinning jsdom with a comment is switched too, and counted.
+  assert.ok(ran.some((l) => l.startsWith('pinned ') && /HappyDOM/.test(l)), 'env mode: pinned file ran on happy-dom');
+  assert.equal(pk['pinned-pkg'].pinnedSwitched, 1, 'env mode: pinned file switch counted');
   assert.ok(!fs.existsSync(path.join(envOut, 'traces', 'fixture-corpus')), 'env mode: no tracing');
 
   const profiles = fs.readdirSync(path.join(envOut, 'profiles', 'fixture-corpus'), { recursive: true }).filter((f) => String(f).endsWith('.cpuprofile'));
