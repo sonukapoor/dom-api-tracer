@@ -41,6 +41,8 @@ for round in $(seq 1 $rounds); do
         mkdir -p "$base" && cp "$out/tmp/$project"/*.jsdom.json "$base"/ 2>/dev/null
       fi
       secs=$(echo "$log" | runner_seconds)
+      # No time: the harness failed; show why.
+      [ -n "$secs" ] || { echo "harness output for $project $cfg:"; echo "$log" | tail -40; } >&2
       differs=$(node -e '
         const fs=require("fs");const [base,run,env]=process.argv.slice(1);
         const load=(dir,suffix)=>{const m=new Map();if(!fs.existsSync(dir))return m;for(const f of fs.readdirSync(dir).filter(n=>n.endsWith(suffix))){const r=JSON.parse(fs.readFileSync(dir+"/"+f));for(const t of r.testResults){const fn=t.name.split(/\/(packages|src|test|tests|examples)\//).pop();for(const a of t.assertionResults)m.set(f.split(".")[0]+"::"+fn+"::"+a.fullName,a.status)}}return m};

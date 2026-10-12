@@ -78,6 +78,8 @@ jobs:
             .corpus-env/timing-ci-*.env-*.json
             .corpus-env/timing-*/logs/
           if-no-files-found: warn
+          # .corpus-env starts with a dot: hidden files are skipped by default.
+          include-hidden-files: true
 
   report:
     needs: time
