@@ -28,6 +28,10 @@
         {
           "dir": "pinned-pkg",
           "runner": "vitest"
+        },
+        {
+          "dir": "jest-pinned-pkg",
+          "runner": "jest"
         }
       ]
     }

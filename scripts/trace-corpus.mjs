@@ -7,6 +7,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { createRequire } from 'node:module';
 
 const root = path.resolve(import.meta.dirname, '..');
 const TRACER = {
@@ -334,7 +335,7 @@ export function removeWrappers(files) {
     // Resolved from the link text, not realpath, so a dangling link is removed too.
     try { link = fs.lstatSync(f).isSymbolicLink() && path.resolve(path.dirname(f), fs.readlinkSync(f)).startsWith(root + path.sep); } catch {}
     if (link) fs.unlinkSync(f);
-    else if (path.basename(f).includes('.dom-trace.') || path.basename(f) === `vitest-environment-${PINNED_WARPDOM}`) fs.rmSync(f, { recursive: true, force: true });
+    else if (path.basename(f).includes('.dom-trace.') || path.basename(f) === `vitest-environment-${PINNED_WARPDOM}` || path.basename(f) === JEST_PINNED_PACKAGE) fs.rmSync(f, { recursive: true, force: true });
   }
   setPending((list) => list.filter((f) => !files.includes(f)));
 }
@@ -423,6 +424,39 @@ function pinnedEnvironmentPackage(pkgDir, environmentFile) {
   return target;
 }
 
+// Jest reads a test file's \`@jest-environment <name>\` comment in its
+// workers and resolves it (jest-resolve resolveTestEnvironment) by first
+// looking for the package jest-environment-<name> from the project's
+// rootDir; for 'jsdom' the name was already expanded to
+// 'jest-environment-jsdom', so that first lookup is
+// 'jest-environment-jest-environment-jsdom'. No real package has that name,
+// so a temporary one in the package's node_modules switches files pinned
+// to jsdom (also with the full name) without editing them or shadowing the
+// project's jest-environment-jsdom. Not created if the name exists.
+export const JEST_PINNED_PACKAGE = 'jest-environment-jest-environment-jsdom';
+export function jestPinnedPackage(pkgDir, environment) {
+  const target = path.join(pkgDir, 'node_modules', JEST_PINNED_PACKAGE);
+  if (fs.existsSync(target)) return null;
+  const file = createRequire(import.meta.url).resolve(environment);
+  // An ES module target (warpdom's jest.js) is re-exported; a CommonJS one
+  // (@happy-dom/jest-environment) required.
+  const esm = file.endsWith('.mjs') || (file.endsWith('.js') && packageType(file) === 'module');
+  setPending((list) => [...list.filter((f) => f !== target), target]);
+  fs.mkdirSync(target, { recursive: true });
+  fs.writeFileSync(path.join(target, 'package.json'), JSON.stringify({ name: JEST_PINNED_PACKAGE, type: esm ? 'module' : 'commonjs', main: './index.js' }));
+  fs.writeFileSync(path.join(target, 'index.js'), esm
+    ? `export { default } from ${JSON.stringify(pathToFileURL(file).href)};\n`
+    : `module.exports = require(${JSON.stringify(file)});\n`);
+  return target;
+}
+function packageType(file) {
+  for (let dir = path.dirname(file); dir !== path.dirname(dir); dir = path.dirname(dir)) {
+    const pj = path.join(dir, 'package.json');
+    if (fs.existsSync(pj)) return JSON.parse(fs.readFileSync(pj, 'utf8')).type ?? 'commonjs';
+  }
+  return 'commonjs';
+}
+
 export function provideDomPackage(nodeModules, name) {
   const target = path.join(nodeModules, name);
   if (fs.existsSync(path.join(target, 'package.json'))) return null;
@@ -459,6 +493,12 @@ function runEnvironment({ pkg, projectDir, logDir, tmpDir, profileDir, opts }) {
   } else if (opts.environment === 'happy-dom') {
     environment = path.join(root, 'node_modules', '@happy-dom', 'jest-environment');
     result.providedFrom = 'dom-api-tracer';
+  }
+  // Jest test files pinned to jsdom with a comment (\`@jest-environment
+  // jsdom\`) switch too (jestPinnedPackage).
+  if (runner === 'jest' && opts.environment !== 'jsdom') {
+    const shim = jestPinnedPackage(pkgDir, environment);
+    if (shim) created.push(shim);
   }
 
   const slug = slugFor(pkg.dir);
