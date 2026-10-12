@@ -59,6 +59,26 @@ if (hasHappy) {
   console.log(`\nMedians over ${valid.wd.length} suites with valid jsdom rounds: warpdom vs jsdom ${med(valid.wd).toFixed(2)}x, happy-dom vs jsdom ${med(valid.hd).toFixed(2)}x, warpdom vs happy-dom ${med(valid.wh).toFixed(2)}x.`);
 }
 
+// Fast mode (learned.sh: warpdom-learned-split or -isolated per round,
+// against that round's jsdom default run).
+const learned = rows.some((r) => r[2].startsWith('warpdom-learned-'));
+if (learned) {
+  console.log('\n| Suite | jsdom default | warpdom fast mode | mode | speedup | tests differing from jsdom |');
+  console.log('| --- | --- | --- | --- | --- | --- |');
+  const speedups = [];
+  for (const [project, p] of data) {
+    const cfg = [...p.values()].flatMap((r) => Object.keys(r)).find((c) => c.startsWith('warpdom-learned-'));
+    if (!cfg) continue;
+    const m = (c) => median([...p.values()].map((r) => r[c]?.secs ?? NaN));
+    const d = median([...p.values()].map((r) => r[cfg]?.differs ?? NaN));
+    const x = ratio(p, 'jsdom-default', cfg);
+    speedups.push(x);
+    console.log(`| ${project} | ${fmt(m('jsdom-default'), ' s')} | ${fmt(m(cfg), ' s')} | ${cfg.replace('warpdom-learned-', '')} | ${x.toFixed(2)}x | ${num(d)} |`);
+  }
+  const v = speedups.filter((n) => !Number.isNaN(n)).sort((a, b) => a - b);
+  if (v.length) console.log(`\nFast mode median over ${v.length} suites: ${(v.length % 2 ? v[v.length >> 1] : (v[v.length / 2 - 1] + v[v.length / 2]) / 2).toFixed(2)}x.`);
+}
+
 // Experiments (warpdomframes-*): their median time, speedup over jsdom and
 // differences, in a second table.
 const experiments = [...new Set(rows.map((r) => r[2]))].filter((c) => c.startsWith('warpdomframes-'));

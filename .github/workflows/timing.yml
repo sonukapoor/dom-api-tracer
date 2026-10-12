@@ -24,6 +24,11 @@ on:
       configs:
         description: Configurations (see timing-rounds.sh), e.g. add warpdomframes-default with warpdom_ref exp/fast-frames
         default: jsdom-default warpdom-default happy-dom-default
+      mode:
+        description: 'timing (configs above) or fastmode (learned.sh: jsdom vs warpdom fast mode, Vitest projects only)'
+        type: choice
+        options: [timing, fastmode]
+        default: timing
       perfile:
         description: Also record per-file phase timings (Vitest projects)
         type: boolean
@@ -83,7 +88,12 @@ jobs:
       - name: Check out ${{ matrix.project }} at its pinned commit
         run: node scripts/research/checkout-pinned.mjs --repos-dir "$REPOS_DIR" "${{ matrix.project }}"
       - name: Time ${{ matrix.project }}
-        run: bash scripts/research/timing-rounds.sh ".corpus-env/timing-ci-${{ matrix.project }}.csv" "${{ inputs.rounds }}" "${{ matrix.project }}"
+        run: |
+          if [ "${{ inputs.mode }}" = fastmode ]; then
+            bash scripts/research/learned.sh ".corpus-env/timing-ci-${{ matrix.project }}.csv" "${{ inputs.rounds }}" "${{ matrix.project }}"
+          else
+            bash scripts/research/timing-rounds.sh ".corpus-env/timing-ci-${{ matrix.project }}.csv" "${{ inputs.rounds }}" "${{ matrix.project }}"
+          fi
       - name: Profile ${{ matrix.project }}
         if: inputs.profile
         run: |
