@@ -14,7 +14,8 @@ for (const [round, project, config, secs, differs] of rows) {
   p.get(round)[config] = { secs: secs === 'NA' ? NaN : +secs, differs: +differs };
 }
 const median = (a) => { const s = a.filter((x) => !Number.isNaN(x)).sort((x, y) => x - y); return s.length ? s[(s.length - 1) >> 1] : NaN; };
-const fmt = (n) => (Number.isNaN(n) ? '—' : n.toFixed(1));
+const fmt = (n, unit = '') => (Number.isNaN(n) ? '—' : n.toFixed(1) + unit);
+const num = (n) => (Number.isNaN(n) ? '—' : n);
 const ratio = (p, a, b) => median([...p.values()].map((r) => (r[a] && r[b] ? r[a].secs / r[b].secs : NaN)));
 console.log('| Suite | rounds | jsdom | warpdom | jsdom vm | warpdom vm | warpdom vs jsdom (default) | best correct warpdom vs jsdom default | differ (wd default / jsdom vm / wd vm) |');
 console.log('| --- | --- | --- | --- | --- | --- | --- | --- | --- |');
@@ -25,5 +26,5 @@ for (const [project, p] of data) {
   // Best warpdom configuration whose results match jsdom (<= 5 differences).
   const wdVmOk = d('warpdom-vm') <= 5;
   const best = wdVmOk ? Math.max(wdDefault, ratio(p, 'jsdom-default', 'warpdom-vm')) : wdDefault;
-  console.log(`| ${project} | ${p.size} | ${fmt(m('jsdom-default'))} s | ${fmt(m('warpdom-default'))} s | ${fmt(m('jsdom-vm'))} s | ${fmt(m('warpdom-vm'))} s | ${wdDefault.toFixed(2)}x | ${best.toFixed(2)}x${wdVmOk && best !== wdDefault ? ' (vm)' : ''} | ${d('warpdom-default')} / ${d('jsdom-vm')} / ${d('warpdom-vm')} |`);
+  console.log(`| ${project} | ${p.size} | ${fmt(m('jsdom-default'), ' s')} | ${fmt(m('warpdom-default'), ' s')} | ${fmt(m('jsdom-vm'), ' s')} | ${fmt(m('warpdom-vm'), ' s')} | ${wdDefault.toFixed(2)}x | ${best.toFixed(2)}x${wdVmOk && best !== wdDefault ? ' (vm)' : ''} | ${num(d('warpdom-default'))} / ${num(d('jsdom-vm'))} / ${num(d('warpdom-vm'))} |`);
 }
