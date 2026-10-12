@@ -30,9 +30,9 @@ on:
         description: Configurations (see timing-rounds.sh), e.g. add warpdomframes-default with warpdom_ref exp/fast-frames
         default: jsdom-default warpdom-default happy-dom-default
       mode:
-        description: 'timing (configs above) or fastmode (learned.sh: jsdom vs warpdom fast mode, Vitest projects only)'
+        description: 'timing (configs above), fastmode (learned.sh) or ablation-isolation (ablation-isolation.sh); the last two for Vitest projects only'
         type: choice
-        options: [timing, fastmode]
+        options: [timing, fastmode, ablation-isolation]
         default: timing
       perfile:
         description: Also record per-file phase timings (Vitest projects)
@@ -97,6 +97,8 @@ jobs:
         run: |
           if [ "${{ inputs.mode }}" = fastmode ]; then
             bash scripts/research/learned.sh ".corpus-env/timing-ci-${{ matrix.project }}.csv" "${{ inputs.rounds }}" "${{ matrix.project }}"
+          elif [ "${{ inputs.mode }}" = ablation-isolation ]; then
+            bash scripts/research/ablation-isolation.sh ".corpus-env/timing-ci-${{ matrix.project }}.csv" "${{ inputs.rounds }}" "${{ matrix.project }}"
           else
             bash scripts/research/timing-rounds.sh ".corpus-env/timing-ci-${{ matrix.project }}.csv" "${{ inputs.rounds }}" "${{ matrix.project }}"
           fi

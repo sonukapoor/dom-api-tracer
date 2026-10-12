@@ -143,3 +143,31 @@ for (const target of ['warpdom-default', 'happy-dom-default']) {
   }).sort((x, y) => x - y);
   console.log(`\nMedian speedup over ${suites.length} suites: ${point.toFixed(2)}x (95% bootstrap interval ${percentile(boot, 0.025).toFixed(2)}-${percentile(boot, 0.975).toFixed(2)}x, suites and rounds resampled, ${RESAMPLES} resamples).`);
 }
+
+// Every configuration other than jsdom-default (ablations and experiments
+// included): median time, speedup against jsdom-default in the same round
+// (median of per-round ratios, with the range or a 95% bootstrap interval as
+// above), and tests that differ from jsdom.
+const others = [...new Set(rows.map((r) => r[2]))].filter((c) => c !== 'jsdom-default');
+const extra = others.filter((c) => !['warpdom-default', 'happy-dom-default', 'jsdom-vm', 'warpdom-vm'].includes(c) && !c.startsWith('warpdomframes-') && !c.startsWith('warpdom-learned-'));
+if (extra.length) {
+  const r = rng(0xab1a7e);
+  console.log('\n**All configurations against jsdom-default** (speedup: median of per-round ratios; range below 5 rounds, else 95% bootstrap interval)\n');
+  console.log('| Suite | configuration | rounds | median time | speedup | interval | differ |');
+  console.log('| --- | --- | --- | --- | --- | --- | --- |');
+  for (const [project, p] of data) {
+    for (const c of others) {
+      const rounds = [...p.values()].filter((x) => x[c]);
+      if (!rounds.length) continue;
+      const ratios = rounds.map((x) => (x['jsdom-default'] ? x['jsdom-default'].secs / x[c].secs : NaN)).filter((x) => !Number.isNaN(x));
+      const t = median(rounds.map((x) => x[c].secs));
+      const d = median(rounds.map((x) => x[c].differs));
+      let interval = '—';
+      if (ratios.length >= 5) {
+        const meds = Array.from({ length: RESAMPLES }, () => midMedian(ratios.map(() => pick(ratios, r)))).sort((x, y) => x - y);
+        interval = `${percentile(meds, 0.025).toFixed(2)}-${percentile(meds, 0.975).toFixed(2)}x (95% CI)`;
+      } else if (ratios.length) interval = `${Math.min(...ratios).toFixed(2)}-${Math.max(...ratios).toFixed(2)}x (range)`;
+      console.log(`| ${project} | ${c} | ${rounds.length} | ${fmt(t, ' s')} | ${ratios.length ? midMedian(ratios).toFixed(2) + 'x' : '—'} | ${interval} | ${num(d)} |`);
+    }
+  }
+}

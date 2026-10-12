@@ -7,7 +7,9 @@
 # Per round, per project, each configuration in CONFIGS in turn
 # (<jsdom|happy-dom|warpdom|warpdomframes>-<default|vm>; vm adds --pool=vmThreads,
 # Vitest only; warpdomframes is warpdom with WARPDOM_FAST_FRAMES=1, for a
-# warpdom build that has the fast-frames experiment).
+# warpdom build that has the fast-frames experiment). Ablations of warpdom:
+# warpdomeager (all interfaces created with the window), warpdomnocache (no
+# query result cache), warpdomlatest (latest jsdom profile for every project).
 #
 # TIMEOUT_MIN (default 45): per package run; a package that times out or
 # fails to produce results makes that round's time NA.
@@ -39,8 +41,14 @@ for round in $(seq 1 $rounds); do
     for cfg in $CONFIGS; do
       build=""
       case "$built" in *" $project "*) build="--no-build";; *) built="$built$project ";; esac
-      env=${cfg%-*}; extra=""; frames=""
-      [ "$env" = warpdomframes ] && { env=warpdom; frames=1; }
+      env=${cfg%-*}; extra=""; frames=""; ablate=""
+      case "$env" in
+        warpdomframes) env=warpdom; frames=1;;
+        # Ablations (warpdom's WARPDOM_ABLATE, docs/research/ablation-plan.md in warpdom).
+        warpdomeager) env=warpdom; ablate=eager-interfaces;;
+        warpdomnocache) env=warpdom; ablate=no-query-cache;;
+        warpdomlatest) env=warpdom; ablate=latest-profile;;
+      esac
       [ "${cfg##*-}" = "vm" ] && extra="--pool=vmThreads"
       out=$ENV_DIR/timing-$cfg
       rm -rf $out
@@ -50,7 +58,7 @@ for round in $(seq 1 $rounds); do
         perfile="$(cd "$PERFILE_DIR" && pwd)/$project.$cfg.$round.jsonl"
         extra="$extra --reporter=$RESEARCH_DIR/perfile-reporter.mjs"
       fi
-      log=$(PERFILE_OUT=$perfile WARPDOM_FAST_FRAMES=$frames harness --only $project --environment $env --out $out --max-workers 2 --timeout ${TIMEOUT_MIN:-45} $build ${extra:+--extra-args "$extra"} 2>&1)
+      log=$(PERFILE_OUT=$perfile WARPDOM_FAST_FRAMES=$frames WARPDOM_ABLATE=$ablate harness --only $project --environment $env --out $out --max-workers 2 --timeout ${TIMEOUT_MIN:-45} $build ${extra:+--extra-args "$extra"} 2>&1)
       if [ "$env" = jsdom ] && ! ls "$base"/*.jsdom.json >/dev/null 2>&1; then
         base=$ENV_DIR/jsdom-time/tmp/$project
         mkdir -p "$base" && cp "$out/tmp/$project"/*.jsdom.json "$base"/ 2>/dev/null
