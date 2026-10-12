@@ -1,6 +1,6 @@
 # Suite timings on GitHub-hosted runners: each corpus project in its own
-# job, at its pinned commit (corpus/pins.json), with jsdom and warpdom
-# alternating in Vitest's or Jest's default pool, 2 workers, as
+# job, at its pinned commit (corpus/pins.json), with jsdom, warpdom and
+# happy-dom alternating in Vitest's or Jest's default pool, 2 workers, as
 # scripts/research/timing-rounds.sh does locally. A final job combines the
 # results into one table (median seconds and speedup per project) on the
 # run's summary page and as an artifact.
@@ -23,7 +23,7 @@ on:
         default: main
       configs:
         description: Configurations (see timing-rounds.sh), e.g. add warpdomframes-default with warpdom_ref exp/fast-frames
-        default: jsdom-default warpdom-default
+        default: jsdom-default warpdom-default happy-dom-default
       perfile:
         description: Also record per-file phase timings (Vitest projects)
         type: boolean

@@ -56,3 +56,11 @@ artifact, with each runner's environment JSON.
 - Hosted runners are shared virtual machines: absolute times vary more than
   on a quiet dedicated machine. jsdom and warpdom alternate on the same
   runner, so the ratio per project is the number to compare.
+
+By default each round runs jsdom, warpdom and happy-dom (`configs`
+input), so the report also has a three-way table: the speed of each DOM
+and how many tests differ from jsdom on warpdom and on happy-dom, with
+medians over the suites whose jsdom rounds are valid. A jsdom round that
+differs from the jsdom baseline means the run was broken (for example a
+package that did not run); the report flags it and leaves the suite out
+of the medians.

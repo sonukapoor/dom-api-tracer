@@ -36,6 +36,29 @@ for (const [project, p] of data) {
 
 if (warnings.length) console.log('\n**Check:** ' + warnings.join('; ') + '.');
 
+// Three-way (happy-dom-* present): speed of all three DOMs and how many
+// tests differ from jsdom on each, plus medians over the suites whose
+// jsdom rounds are all valid.
+const hasHappy = rows.some((r) => r[2] === 'happy-dom-default');
+if (hasHappy) {
+  console.log('\n| Suite | jsdom | warpdom | happy-dom | warpdom vs jsdom | happy-dom vs jsdom | warpdom vs happy-dom | tests differing from jsdom: warpdom / happy-dom |');
+  console.log('| --- | --- | --- | --- | --- | --- | --- | --- |');
+  const valid = { wd: [], hd: [], wh: [] };
+  for (const [project, p] of data) {
+    const m = (c) => median([...p.values()].map((r) => r[c]?.secs ?? NaN));
+    const d = (c) => median([...p.values()].map((r) => r[c]?.differs ?? NaN));
+    const wd = ratio(p, 'jsdom-default', 'warpdom-default');
+    const hd = ratio(p, 'jsdom-default', 'happy-dom-default');
+    const wh = ratio(p, 'happy-dom-default', 'warpdom-default');
+    const ok = ![...p.values()].some((r) => r['jsdom-default'] && (r['jsdom-default'].differs > 0 || Number.isNaN(r['jsdom-default'].secs)));
+    if (ok) { valid.wd.push(wd); valid.hd.push(hd); valid.wh.push(wh); }
+    const x = (v) => (Number.isNaN(v) ? '—' : `${v.toFixed(2)}x`);
+    console.log(`| ${project}${ok ? '' : ' (check)'} | ${fmt(m('jsdom-default'), ' s')} | ${fmt(m('warpdom-default'), ' s')} | ${fmt(m('happy-dom-default'), ' s')} | ${x(wd)} | ${x(hd)} | ${x(wh)} | ${num(d('warpdom-default'))} / ${num(d('happy-dom-default'))} |`);
+  }
+  const med = (a) => { const v = a.filter((n) => !Number.isNaN(n)).sort((x, y) => x - y); return v.length ? (v.length % 2 ? v[v.length >> 1] : (v[v.length / 2 - 1] + v[v.length / 2]) / 2) : NaN; };
+  console.log(`\nMedians over ${valid.wd.length} suites with valid jsdom rounds: warpdom vs jsdom ${med(valid.wd).toFixed(2)}x, happy-dom vs jsdom ${med(valid.hd).toFixed(2)}x, warpdom vs happy-dom ${med(valid.wh).toFixed(2)}x.`);
+}
+
 // Experiments (warpdomframes-*): their median time, speedup over jsdom and
 // differences, in a second table.
 const experiments = [...new Set(rows.map((r) => r[2]))].filter((c) => c.startsWith('warpdomframes-'));

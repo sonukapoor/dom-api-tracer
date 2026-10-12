@@ -5,7 +5,7 @@
 #   CONFIGS="jsdom-default warpdom-default" scripts/research/timing-rounds.sh <csv> <rounds> <project...>
 #
 # Per round, per project, each configuration in CONFIGS in turn
-# (<jsdom|warpdom|warpdomframes>-<default|vm>; vm adds --pool=vmThreads,
+# (<jsdom|happy-dom|warpdom|warpdomframes>-<default|vm>; vm adds --pool=vmThreads,
 # Vitest only; warpdomframes is warpdom with WARPDOM_FAST_FRAMES=1, for a
 # warpdom build that has the fast-frames experiment).
 #
@@ -38,7 +38,7 @@ for round in $(seq 1 $rounds); do
       case "$built" in *" $project "*) build="--no-build";; *) built="$built$project ";; esac
       env=${cfg%-*}; extra=""; frames=""
       [ "$env" = warpdomframes ] && { env=warpdom; frames=1; }
-      [ "${cfg#*-}" = "vm" ] && extra="--pool=vmThreads"
+      [ "${cfg##*-}" = "vm" ] && extra="--pool=vmThreads"
       out=$ENV_DIR/timing-$cfg
       rm -rf $out
       perfile=""
