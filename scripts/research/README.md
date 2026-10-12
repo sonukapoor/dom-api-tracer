@@ -15,6 +15,21 @@ repo; Node; OS; CPU; memory; load) with `record-env.mjs`.
 Corpus runs are heavy: one at a time, 2 workers, on an otherwise idle
 machine.
 
+## Held-out set
+
+`corpus/held-out.json` lists projects warpdom was never tuned on (its
+compatibility work was driven by `corpus/corpus.json`, so parity there
+overstates parity on unseen suites). Keep it separate: do not fix warpdom
+against these projects, or they stop being held out. Every script here
+takes the corpus file from `CORPUS` (default `corpus/corpus.json`):
+
+    CORPUS=corpus/held-out.json ENV_DIR=.corpus-env/heldout scripts/research/survey-warpdom.sh naive-ui
+    ENV_DIR=.corpus-env/heldout node scripts/research/diffgroups.cjs naive-ui
+
+Its pins are in `corpus/held-out-pins.json` (`write-pins.mjs --corpus
+corpus/held-out.json`; `checkout-pinned.mjs --corpus ...` reads them), and
+the timing workflow has a `corpus` input to time them on GitHub Actions.
+
 | Script | What it does |
 | --- | --- |
 | `survey-warpdom.sh <project...>` | Runs each project on warpdom (isolated) and counts tests whose status differs from the jsdom baseline |
@@ -46,6 +61,7 @@ A final job combines the per-project CSVs and puts the table
 artifact, with each runner's environment JSON.
 
 - `corpus/pins.json` comes from `node scripts/research/write-pins.mjs`
+  (`--corpus corpus/held-out.json` writes `corpus/held-out-pins.json`)
   (the commits of the local checkouts the published numbers were measured
   on); re-run it when the corpus checkouts move.
 - `checkout-pinned.mjs` clones a project at its pinned commit where the
