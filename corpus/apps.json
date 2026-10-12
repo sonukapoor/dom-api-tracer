@@ -1,0 +1,30 @@
+{
+  "selection": {
+    "purpose": "Web application test suites (warpdom docs/research/revision-plan.md item 13): real front-end applications, not libraries, whose unit/component tests run on jsdom, to check that results on the tuning and held-out corpora (component libraries) carry over to application code. Selected 2026-10-12, pinned to the default-branch HEAD at pinnedAt (corpus/apps-pins.json) before any measurement; warpdom was never tuned on these projects (treat them as held out).",
+    "pinnedAt": "2026-10-12T20:29:54Z",
+    "criteria": "an application (deployed product, not a published library); tests on jsdom with Vitest or Jest (one of each preferred); installs from public registries without secrets; jsdom suite well under 30 minutes on a 4-vCPU GitHub runner with 2 workers; Node 22.23.3 (the corpus Node).",
+    "rejected": {
+      "mastodon": "moved from Jest to Vitest 5 (projects legacy-tests and a browser-mode storybook project); kept as a Vitest fallback, not needed",
+      "element-web": "moved from Jest to Vitest (pnpm workspace with Vitest projects), so not the Jest application; a Vitest alternative to Excalidraw",
+      "superset, twenty": "Jest applications, but engines require Node 24 and the suites are large (Superset runs Jest with an 8 GB heap)",
+      "mattermost, grafana": "Jest applications whose suites their own CI shards across machines: far over 30 minutes with 2 workers",
+      "outline": "moved to Vitest",
+      "standardnotes": "Jest application, but a 1.8 GB repository; wire-webapp fits better"
+    }
+  },
+  "projects": [
+    {
+      "name": "excalidraw",
+      "repo": "https://github.com/excalidraw/excalidraw",
+      "notes": "Excalidraw, the whiteboard web application (excalidraw-app plus the editor packages it is built from), Vitest 3.0.6, jsdom 22.1.0 (environment: jsdom in the root vitest.config.mts, default pool and isolation, setupTests.ts, sequence.hooks parallel). One root Vitest run covers packages/* and excalidraw-app: 143 test files, 2556 tests (47 skipped). Local (M-series laptop, 2 workers): jsdom 2508 passed / 0 failed in 111 s, warpdom 2507/1 failed in 96 s, happy-dom 2464/44 failed in 88 s. Vitest < 3.2, so ablation-isolation's warpdom-learned uses the emulation, not warpdom vitest run. yarn 1 (yarn.lock), no build step needed (aliases point at sources). Nothing excluded or patched.",
+      "packages": [{ "dir": ".", "runner": "vitest" }]
+    },
+    {
+      "name": "wire-webapp",
+      "repo": "https://github.com/wireapp/wire-webapp",
+      "notes": "Wire, the end-to-end encrypted messenger web application (apps/webapp, an Nx monorepo with the libraries it is built from), Jest 30.5.2 with jest-environment-jsdom 30.5.2 (jsdom 29.1.1 at the root), testEnvironment jsdom, @swc/jest and babel-jest transforms. 589 test files, about 4945 tests (19 skipped). Local (2 workers): jsdom 4926 passed / 0 failed in 80 s, warpdom 4785/2 failed in 88 s (139 fewer tests collected: 3 files fail), happy-dom 4854/50 failed in 162 s. yarn 4 (yarn install --immutable); its postinstall clones the public github.com/wireapp/wire-web-config-default (git, no credentials). The tests import the workspace libraries' built output (lib/), so the build step builds the *-lib Nx projects only (not the webpack app). engines says Node >= 24.10 but install, build and tests run on Node 22.23.3 (yarn 4 does not enforce engines). Only apps/webapp's Jest suite is measured (apps/server and the libraries' own tests are node-environment or not application UI). Nothing patched.",
+      "build": "NX_NO_CLOUD=true NX_DAEMON=false yarn nx run-many -t build --projects='*-lib'",
+      "packages": [{ "dir": "apps/webapp", "runner": "jest" }]
+    }
+  ]
+}

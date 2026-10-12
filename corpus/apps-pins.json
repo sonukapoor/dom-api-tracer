@@ -1,0 +1,14 @@
+{
+  "excalidraw": {
+    "repo": "https://github.com/excalidraw/excalidraw",
+    "commit": "541653c7c9d587d463a47daacff9fb30e45a52e7",
+    "date": "2026-10-12T14:33:19+02:00",
+    "pinnedAt": "2026-10-12T20:29:54Z"
+  },
+  "wire-webapp": {
+    "repo": "https://github.com/wireapp/wire-webapp",
+    "commit": "0c1366dc74341de652d6f13bcaf6c7ab096c89f5",
+    "date": "2026-10-12T14:26:03Z",
+    "pinnedAt": "2026-10-12T20:29:54Z"
+  }
+}

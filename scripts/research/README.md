@@ -103,6 +103,10 @@ report job `versions-report.cjs` (`versions.csv`, `versions-groups.json`
 in the `timing-report` artifact; the archived per-test maps with failure
 messages are in each project's artifact under `versions/`).
 
+`corpus/apps.json` (corpus input `apps.json`, pins in
+`corpus/apps-pins.json`) holds web application suites, pinned before
+measuring, with the reasons for choosing them.
+
 By default each round runs jsdom, warpdom and happy-dom (`configs`
 input), so the report also has a three-way table: the speed of each DOM
 and how many tests differ from jsdom on warpdom and on happy-dom, with
