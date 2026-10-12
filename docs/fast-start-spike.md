@@ -1,6 +1,6 @@
 # Spike: how fast can a test DOM start?
 
-*2026-10-09. Code: `spikes/fast-start/`. Node 22.17.1, Vitest 5.0.3,
+*2026-10-09. Code: `spikes/fast-start/`, removed from the repository on 2026-10-12 (it became warpdom); in the history up to commit ec4545f. Node 22.17.1, Vitest 5.0.3,
 jsdom 30.1.2, happy-dom 20.14.5, one laptop, two workers.*
 
 ## Why
