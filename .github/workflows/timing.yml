@@ -28,6 +28,10 @@ on:
         description: Also record per-file phase timings (Vitest projects)
         type: boolean
         default: false
+      profile:
+        description: After timing, one CPU-profiled run per DOM; uploads where the time went (not the profiles)
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -80,6 +84,21 @@ jobs:
         run: node scripts/research/checkout-pinned.mjs --repos-dir "$REPOS_DIR" "${{ matrix.project }}"
       - name: Time ${{ matrix.project }}
         run: bash scripts/research/timing-rounds.sh ".corpus-env/timing-ci-${{ matrix.project }}.csv" "${{ inputs.rounds }}" "${{ matrix.project }}"
+      - name: Profile ${{ matrix.project }}
+        if: inputs.profile
+        run: |
+          source scripts/research/lib.sh
+          mkdir -p .corpus-env/profile-summary
+          for env in jsdom warpdom; do
+            out=.corpus-env/profile-$env
+            harness --only "${{ matrix.project }}" --environment $env --profile --no-build --max-workers 2 --out $out | grep -E "^\s+(ran|failed)"
+            node scripts/profile-share.mjs $out/profiles > .corpus-env/profile-summary/${{ matrix.project }}-$env.profile-share.txt
+            node scripts/profile-share.mjs $out/profiles --json > .corpus-env/profile-summary/${{ matrix.project }}-$env.profile-share.json
+            [ $env = warpdom ] && node scripts/research/prof-top-dom.cjs $out/profiles > .corpus-env/profile-summary/${{ matrix.project }}-warpdom.top-dom.txt
+            # Profiles are large; only the summaries are uploaded.
+            rm -rf $out/profiles
+          done
+          cat .corpus-env/profile-summary/*.txt
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -89,6 +108,7 @@ jobs:
             .corpus-env/timing-ci-*.env-*.json
             .corpus-env/timing-*/logs/
             .corpus-env/perfile/
+            .corpus-env/profile-summary/
           if-no-files-found: warn
           # .corpus-env starts with a dot: hidden files are skipped by default.
           include-hidden-files: true
