@@ -21,6 +21,13 @@ on:
       warpdom_ref:
         description: warpdom branch, tag or commit
         default: main
+      configs:
+        description: Configurations (see timing-rounds.sh), e.g. add warpdomframes-default with warpdom_ref exp/fast-frames
+        default: jsdom-default warpdom-default
+      perfile:
+        description: Also record per-file phase timings (Vitest projects)
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -46,7 +53,8 @@ jobs:
       REPOS_DIR: ${{ github.workspace }}/../repos
       WARPDOM_DIR: ${{ github.workspace }}/warpdom
       ENV_DIR: .corpus-env
-      CONFIGS: jsdom-default warpdom-default
+      CONFIGS: ${{ inputs.configs }}
+      PERFILE_DIR: ${{ inputs.perfile && '.corpus-env/perfile' || '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/checkout@v4
@@ -80,6 +88,7 @@ jobs:
             .corpus-env/timing-ci-*.csv
             .corpus-env/timing-ci-*.env-*.json
             .corpus-env/timing-*/logs/
+            .corpus-env/perfile/
           if-no-files-found: warn
           # .corpus-env starts with a dot: hidden files are skipped by default.
           include-hidden-files: true
@@ -110,10 +119,21 @@ jobs:
           for f in "${files[@]}"; do tail -n +2 "$f" >> "$out"; done
           node scripts/research/timing-report.cjs "$out" | tee results/report.md
           { echo '## Timing (median of rounds, jsdom vs warpdom)'; echo; cat results/report.md; } >> "$GITHUB_STEP_SUMMARY"
+      - name: Per-file timings
+        if: inputs.perfile
+        run: |
+          shopt -s nullglob
+          for project in $(ls results/perfile/*.jsonl | xargs -n1 basename | cut -d. -f1 | sort -u); do
+            list() { ls results/perfile/$project.$1.*.jsonl | paste -sd, -; }
+            [ -n "$(list jsdom-default)" ] && [ -n "$(list warpdom-default)" ] || continue
+            { echo "## $project"; node scripts/research/perfile.cjs jsdom=$(list jsdom-default) warpdom=$(list warpdom-default); echo; } >> results/perfile.md
+          done
+          [ -f results/perfile.md ] && { echo '## Per-file timings'; echo '```'; cat results/perfile.md; echo '```'; } >> "$GITHUB_STEP_SUMMARY" || true
       - uses: actions/upload-artifact@v4
         with:
           name: timing-report
           path: |
             results/timing-ci.csv
             results/report.md
+            results/perfile.md
             results/*.env-*.json

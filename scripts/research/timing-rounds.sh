@@ -5,7 +5,12 @@
 #   CONFIGS="jsdom-default warpdom-default" scripts/research/timing-rounds.sh <csv> <rounds> <project...>
 #
 # Per round, per project, each configuration in CONFIGS in turn
-# (<jsdom|warpdom>-<default|vm>; vm adds --pool=vmThreads, Vitest only).
+# (<jsdom|warpdom|warpdomframes>-<default|vm>; vm adds --pool=vmThreads,
+# Vitest only; warpdomframes is warpdom with WARPDOM_FAST_FRAMES=1, for a
+# warpdom build that has the fast-frames experiment).
+#
+# PERFILE_DIR (optional, Vitest only): also record per-file phase timings
+# (perfile-reporter.mjs) as <dir>/<project>.<config>.<round>.jsonl.
 # Appends round,project,config,seconds,differs to <csv> (created with a
 # header if missing); seconds is the runner time the harness reports summed
 # over the project's packages; differs counts tests whose status differs
@@ -31,11 +36,18 @@ for round in $(seq 1 $rounds); do
     for cfg in $CONFIGS; do
       build=""
       case "$built" in *" $project "*) build="--no-build";; *) built="$built$project ";; esac
-      env=${cfg%-*}; extra=""
+      env=${cfg%-*}; extra=""; frames=""
+      [ "$env" = warpdomframes ] && { env=warpdom; frames=1; }
       [ "${cfg#*-}" = "vm" ] && extra="--pool=vmThreads"
       out=$ENV_DIR/timing-$cfg
       rm -rf $out
-      log=$(harness --only $project --environment $env --out $out --max-workers 2 --timeout 20 $build ${extra:+--extra-args "$extra"} 2>&1)
+      perfile=""
+      if [ -n "$PERFILE_DIR" ]; then
+        mkdir -p "$PERFILE_DIR"
+        perfile="$(cd "$PERFILE_DIR" && pwd)/$project.$cfg.$round.jsonl"
+        extra="$extra --reporter=$RESEARCH_DIR/perfile-reporter.mjs"
+      fi
+      log=$(PERFILE_OUT=$perfile WARPDOM_FAST_FRAMES=$frames harness --only $project --environment $env --out $out --max-workers 2 --timeout 20 $build ${extra:+--extra-args "$extra"} 2>&1)
       if [ "$env" = jsdom ] && ! ls "$base"/*.jsdom.json >/dev/null 2>&1; then
         base=$ENV_DIR/jsdom-time/tmp/$project
         mkdir -p "$base" && cp "$out/tmp/$project"/*.jsdom.json "$base"/ 2>/dev/null

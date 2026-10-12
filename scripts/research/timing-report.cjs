@@ -28,3 +28,19 @@ for (const [project, p] of data) {
   const best = wdVmOk ? Math.max(wdDefault, ratio(p, 'jsdom-default', 'warpdom-vm')) : wdDefault;
   console.log(`| ${project} | ${p.size} | ${fmt(m('jsdom-default'), ' s')} | ${fmt(m('warpdom-default'), ' s')} | ${fmt(m('jsdom-vm'), ' s')} | ${fmt(m('warpdom-vm'), ' s')} | ${wdDefault.toFixed(2)}x | ${best.toFixed(2)}x${wdVmOk && best !== wdDefault ? ' (vm)' : ''} | ${num(d('warpdom-default'))} / ${num(d('jsdom-vm'))} / ${num(d('warpdom-vm'))} |`);
 }
+
+// Experiments (warpdomframes-*): their median time, speedup over jsdom and
+// differences, in a second table.
+const experiments = [...new Set(rows.map((r) => r[2]))].filter((c) => c.startsWith('warpdomframes-'));
+if (experiments.length) {
+  console.log('\n| Suite | configuration | median | vs jsdom default | vs warpdom default | differ |');
+  console.log('| --- | --- | --- | --- | --- | --- |');
+  for (const [project, p] of data) {
+    for (const c of experiments) {
+      const m = median([...p.values()].map((r) => r[c]?.secs ?? NaN));
+      if (Number.isNaN(m)) continue;
+      const d = median([...p.values()].map((r) => r[c]?.differs ?? NaN));
+      console.log(`| ${project} | ${c} | ${fmt(m, ' s')} | ${ratio(p, 'jsdom-default', c).toFixed(2)}x | ${ratio(p, 'warpdom-default', c).toFixed(2)}x | ${num(d)} |`);
+    }
+  }
+}
