@@ -2,7 +2,8 @@
 // Summarizes a timing CSV from timing-vitest.sh / timing-jest.sh as a
 // Markdown table: per suite, the median time of each configuration over
 // the rounds, the median of the per-round jsdom/warpdom ratios, and the
-// median number of tests whose status differs from jsdom.
+// median number of tests whose status differs from jsdom; then the
+// uncertainty of the speedups (ranges or bootstrap intervals, see the end).
 //
 //   node scripts/research/timing-report.cjs <timing.csv>
 const rows = require('fs').readFileSync(process.argv[2], 'utf8').trim().split('\n').slice(1).map((l) => l.split(','));
@@ -96,4 +97,49 @@ if (experiments.length) {
       console.log(`| ${project} | ${c} | ${fmt(m, ' s')} | ${ratio(p, 'jsdom-default', c).toFixed(2)}x | ${ratio(p, 'warpdom-default', c).toFixed(2)}x | ${num(d)} |`);
     }
   }
+}
+
+// Uncertainty of the speedups over jsdom's default pool. Per suite: with
+// fewer than 5 rounds the range of the per-round ratios (a bootstrap of 3
+// values says little more), else a 95% bootstrap interval of the median of
+// the per-round ratios. Across suites: a 95% bootstrap interval of the
+// median speedup, resampling suites and, within each, its rounds (two
+// levels). Fixed seed, so the same CSV gives the same intervals.
+function rng(seed) {
+  let a = seed >>> 0;
+  return () => { a = (a + 0x6d2b79f5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+}
+const midMedian = (a) => { const v = [...a].sort((x, y) => x - y); const n = v.length; return n % 2 ? v[n >> 1] : (v[n / 2 - 1] + v[n / 2]) / 2; };
+const pick = (a, r) => a[Math.floor(r() * a.length)];
+const percentile = (sorted, q) => sorted[Math.min(sorted.length - 1, Math.max(0, Math.round(q * (sorted.length - 1))))];
+const RESAMPLES = 10000;
+for (const target of ['warpdom-default', 'happy-dom-default']) {
+  const suites = [];
+  for (const [project, p] of data) {
+    const rounds = [...p.values()];
+    if (rounds.some((r) => r['jsdom-default'] && (r['jsdom-default'].differs > FLAKY || Number.isNaN(r['jsdom-default'].secs)))) continue;
+    const ratios = rounds.map((r) => (r['jsdom-default'] && r[target] ? r['jsdom-default'].secs / r[target].secs : NaN)).filter((x) => !Number.isNaN(x));
+    if (ratios.length) suites.push({ project, ratios });
+  }
+  if (suites.length === 0) continue;
+  const r = rng(0x5eed);
+  console.log(`\n**${target.replace('-default', '')} vs jsdom: speedup and its uncertainty** (median of per-round ratios; range for fewer than 5 rounds, else 95% bootstrap interval)\n`);
+  console.log('| Suite | rounds | speedup | interval |');
+  console.log('| --- | --- | --- | --- |');
+  for (const { project, ratios } of suites) {
+    const m = midMedian(ratios);
+    let lo, hi, kind;
+    if (ratios.length < 5) { lo = Math.min(...ratios); hi = Math.max(...ratios); kind = 'range'; }
+    else {
+      const meds = Array.from({ length: RESAMPLES }, () => midMedian(ratios.map(() => pick(ratios, r)))).sort((x, y) => x - y);
+      lo = percentile(meds, 0.025); hi = percentile(meds, 0.975); kind = '95% CI';
+    }
+    console.log(`| ${project} | ${ratios.length} | ${m.toFixed(2)}x | ${lo.toFixed(2)}-${hi.toFixed(2)}x (${kind}) |`);
+  }
+  const point = midMedian(suites.map((s) => midMedian(s.ratios)));
+  const boot = Array.from({ length: RESAMPLES }, () => {
+    const sample = suites.map(() => pick(suites, r));
+    return midMedian(sample.map((s) => midMedian(s.ratios.map(() => pick(s.ratios, r)))));
+  }).sort((x, y) => x - y);
+  console.log(`\nMedian speedup over ${suites.length} suites: ${point.toFixed(2)}x (95% bootstrap interval ${percentile(boot, 0.025).toFixed(2)}-${percentile(boot, 0.975).toFixed(2)}x, suites and rounds resampled, ${RESAMPLES} resamples).`);
 }
