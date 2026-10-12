@@ -38,6 +38,9 @@ the timing workflow has a `corpus` input to time them on GitHub Actions.
 | `timing-jest.sh <csv> <rounds> <project...>` | Jest timing rounds: jsdom/warpdom alternating |
 | `timing-report.cjs <csv> [--packages <csv>]` | Medians and speedups of a timing CSV as a Markdown table; the A/A controls' paired ratios; per package times (jsdom/warpdom, warm-up and timed) |
 | `configs.sh` | Configuration names of `timing-rounds.sh` (`parse_config`), WARPDOM_ABLATE per configuration (`with_ablate`), per-package times from harness output (`package_times`); `test-configs.cjs` checks it |
+| `versions.sh <out> <project...>` | Version dependence without warpdom: jsdom only, the project's own jsdom twice (flaky tests), then jsdom 20.0.3, 26.1.0, 30.1.2 (svelte also cssstyle 4.1.0, 4.6.0) forced through overrides; checkout restored afterwards |
+| `versions.cjs` | Helpers of `versions.sh`: install commands without a frozen lockfile, overrides per package manager, the jsdom each runner resolves |
+| `versions-report.cjs <out>` | Per suite and version: tests and files differing from the own jsdom (flaky left out), NA reasons, whether the version was forced, differing tests grouped by first error line; `test-versions.cjs` checks both |
 | `ablation-isolation.sh <csv> <rounds> <project...>` | Strong baselines and the ablation of learned isolation (Vitest): jsdom default/shared/vmThreads, warpdom default/vmThreads/shared-fresh/shared-reset/learned, happy-dom shared; warm-up, rotated order, re-learning every round, G2 counts, per-test archive |
 | `learned.sh <csv> <rounds> <project...>` | `ablation-isolation.sh` with jsdom-default, warpdom-default and warpdom-learned (the shipped `warpdom vitest run` where Vitest >= 3.2, else its emulation) |
 | `ablation-report.cjs <csv> [--learning <jsonl>] [--pertest <dir>]` | Ablation summary: speedups with intervals, differing tests/files, false passes, the best correct jsdom configuration, learning stability and break-even |
@@ -94,6 +97,11 @@ identical configurations shows the noise floor; `warpdom-ablate-unset` is
 `warpdom-default` with `WARPDOM_ABLATE` set to the empty string (every
 other configuration runs with it unset), for the switch's cost when no
 ablation is chosen. The report has a table of both paired ratios.
+
+Mode `versions` runs `versions.sh` per project (one job each) and the
+report job `versions-report.cjs` (`versions.csv`, `versions-groups.json`
+in the `timing-report` artifact; the archived per-test maps with failure
+messages are in each project's artifact under `versions/`).
 
 By default each round runs jsdom, warpdom and happy-dom (`configs`
 input), so the report also has a three-way table: the speed of each DOM

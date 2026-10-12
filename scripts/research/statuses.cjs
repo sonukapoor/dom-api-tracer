@@ -41,26 +41,35 @@ function relativeFile(name, root) {
   return m ? m[2] : name;
 }
 
+// First line of a failure message: colors removed, numbers kept.
+function firstLine(msg) {
+  return String(msg ?? '').replace(/\x1b\[[0-9;]*m/g, '').split('\n').map((l) => l.trim()).find(Boolean)?.slice(0, 200) ?? '';
+}
+
 // results: parsed runner JSON reports, each with its package slug.
-function fromResults(results, root) {
+// messages: also record failure messages (.m).
+function fromResults(results, root, { messages = false } = {}) {
   const map = { tests: {}, files: {} };
   for (const { slug, report } of results) {
     for (const t of report.testResults ?? []) {
       const fileKey = `${slug}::${relativeFile(t.name, root)}`;
       const failed = t.status === 'failed' || (t.assertionResults ?? []).some((a) => a.status === 'failed');
       map.files[fileKey] = { s: failed ? 'failed' : t.status, file: t.name };
+      if (messages && failed && t.message) map.files[fileKey].m = firstLine(t.message);
       const seen = new Map();
       for (const a of t.assertionResults ?? []) {
         const n = (seen.get(a.fullName) ?? 0) + 1;
         seen.set(a.fullName, n);
-        map.tests[`${fileKey}::${a.fullName}${n > 1 ? ` #${n}` : ''}`] = { s: a.status, file: t.name };
+        const entry = { s: a.status, file: t.name };
+        if (messages && a.status === 'failed') entry.m = firstLine(a.failureMessages?.[0]);
+        map.tests[`${fileKey}::${a.fullName}${n > 1 ? ` #${n}` : ''}`] = entry;
       }
     }
   }
   return map;
 }
 
-function loadDir(dir, env, root) {
+function loadDir(dir, env, root, options) {
   const results = [];
   if (fs.existsSync(dir)) {
     for (const f of fs.readdirSync(dir).filter((n) => n.endsWith(`.${env}.json`)).sort()) {
@@ -69,7 +78,7 @@ function loadDir(dir, env, root) {
       results.push({ slug: f.slice(0, -`.${env}.json`.length), report });
     }
   }
-  return fromResults(results, root);
+  return fromResults(results, root, options);
 }
 
 const empty = () => ({ tests: {}, files: {} });
@@ -79,11 +88,13 @@ function read(file) {
   return { tests: m.tests ?? {}, files: m.files ?? {} };
 }
 
-const differing = (a, b) => {
-  let d = 0;
-  for (const k of new Set([...Object.keys(a), ...Object.keys(b)])) if (a[k]?.s !== b[k]?.s) d++;
-  return d;
-};
+// Keys whose status differs between two key -> { s } maps.
+const differingKeys = (a, b) => [...new Set([...Object.keys(a), ...Object.keys(b)])].filter((k) => a[k]?.s !== b[k]?.s);
+const differing = (a, b, exclude) => differingKeys(a, b).filter((k) => !exclude?.has(k)).length;
+
+// The flaky tests and files: those whose status differs between two runs
+// of the same configuration ({ tests: Set, files: Set }).
+const flaky = (a, b) => ({ tests: new Set(differingKeys(a.tests, b.tests)), files: new Set(differingKeys(a.files, b.files)) });
 
 // false_pass: passed in run, not passed (failed, skipped, missing) in ref;
 // false_fail: passed in ref, not passed in run.
@@ -97,8 +108,9 @@ function direction(run, ref) {
   return { falsePass, falseFail };
 }
 
-function compare(base, run, ref) {
-  const out = { differs: differing(base.tests, run.tests), filesDiffer: differing(base.files, run.files) };
+// exclude: { tests: Set, files: Set } left out of differs/filesDiffer (flaky).
+function compare(base, run, ref, exclude) {
+  const out = { differs: differing(base.tests, run.tests, exclude?.tests), filesDiffer: differing(base.files, run.files, exclude?.files) };
   if (ref) Object.assign(out, direction(run, ref));
   return out;
 }
@@ -119,7 +131,7 @@ function merge(first, ...reruns) {
   return out;
 }
 
-module.exports = { relativeFile, fromResults, loadDir, read, compare, direction, failing, leaky, merge };
+module.exports = { relativeFile, firstLine, fromResults, loadDir, read, differingKeys, flaky, compare, direction, failing, leaky, merge };
 
 if (require.main === module) {
   const [cmd, ...args] = process.argv.slice(2);
@@ -127,11 +139,15 @@ if (require.main === module) {
   const write = (file, m) => { fs.mkdirSync(path.dirname(path.resolve(file)), { recursive: true }); fs.writeFileSync(file, JSON.stringify(m)); };
   if (cmd === 'map') {
     const root = opt('--root');
+    const mi = args.indexOf('--messages');
+    const messages = mi >= 0 && Boolean(args.splice(mi, 1));
     const [dir, env, out] = args;
-    write(out, loadDir(dir, env, root));
+    write(out, loadDir(dir, env, root, { messages }));
   } else if (cmd === 'compare') {
+    const ei = args.indexOf('--exclude');
+    const exclude = ei >= 0 ? (([x, y]) => flaky(read(x), read(y)))(args.splice(ei, 3).slice(1)) : null;
     const [b, r, ref] = args;
-    const c = compare(read(b), read(r), ref ? read(ref) : null);
+    const c = compare(read(b), read(r), ref ? read(ref) : null, exclude);
     console.log([c.differs, c.filesDiffer, ...(ref ? [c.falsePass, c.falseFail] : [])].join(' '));
   } else if (cmd === 'failing') {
     console.log(failing(read(args[0])).join(' '));

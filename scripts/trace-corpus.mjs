@@ -339,10 +339,13 @@ function copyWarpdom(warpdomDir, pkgDir) {
 export function removeWrappers(files) {
   for (const f of files) {
     // Only ever delete what this script creates: wrapper configs, and links
-    // that point into this repository.
+    // that point into this repository (or the DOM_TRACE_DOM_MODULES directory).
     let link = false;
     // Resolved from the link text, not realpath, so a dangling link is removed too.
-    try { link = fs.lstatSync(f).isSymbolicLink() && path.resolve(path.dirname(f), fs.readlinkSync(f)).startsWith(root + path.sep); } catch {}
+    try {
+      const to = path.resolve(path.dirname(f), fs.readlinkSync(f));
+      link = fs.lstatSync(f).isSymbolicLink() && [root, domModules()].some((d) => to.startsWith(d + path.sep));
+    } catch {}
     if (link) fs.unlinkSync(f);
     else if (path.basename(f).includes('.dom-trace.') || path.basename(f) === `vitest-environment-${PINNED_WARPDOM}` || path.basename(f) === JEST_PINNED_PACKAGE) fs.rmSync(f, { recursive: true, force: true });
   }
@@ -466,11 +469,15 @@ function packageType(file) {
   return 'commonjs';
 }
 
+// The node_modules DOM packages are linked from: this repository's, or
+// DOM_TRACE_DOM_MODULES (another version, e.g. scripts/research/versions.sh
+// installs jsdom versions into directories of their own).
+export const domModules = () => path.resolve(process.env.DOM_TRACE_DOM_MODULES || path.join(root, 'node_modules'));
 export function provideDomPackage(nodeModules, name) {
   const target = path.join(nodeModules, name);
   if (fs.existsSync(path.join(target, 'package.json'))) return null;
   setPending((list) => [...list.filter((f) => f !== target), target]);
-  fs.symlinkSync(path.join(root, 'node_modules', name), target, 'dir');
+  fs.symlinkSync(path.join(domModules(), name), target, 'dir');
   return target;
 }
 

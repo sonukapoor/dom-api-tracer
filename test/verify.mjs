@@ -243,6 +243,18 @@ try {
   assert.equal(fs.realpathSync(link), fs.realpathSync(path.join(root, 'node_modules', 'happy-dom')), 'env mode: package linked');
   removeWrappers([link]);
   assert.ok(!fs.existsSync(link) && fs.existsSync(path.join(root, 'node_modules', 'happy-dom', 'package.json')), 'env mode: link removed, package intact');
+  // DOM_TRACE_DOM_MODULES: linked from another node_modules (a jsdom
+  // version of its own, scripts/research/versions.sh), removed the same way.
+  const otherModules = path.join(out, 'jsdom-other', 'node_modules');
+  fs.mkdirSync(path.join(otherModules, 'jsdom'), { recursive: true });
+  fs.writeFileSync(path.join(otherModules, 'jsdom', 'package.json'), '{"name":"jsdom","version":"20.0.3"}');
+  process.env.DOM_TRACE_DOM_MODULES = otherModules;
+  try {
+    const other = provideDomPackage(fakeModules, 'jsdom');
+    assert.equal(JSON.parse(fs.readFileSync(path.join(other, 'package.json'), 'utf8')).version, '20.0.3', 'env mode: DOM_TRACE_DOM_MODULES linked');
+    removeWrappers([other]);
+    assert.ok(!fs.existsSync(other) && fs.existsSync(path.join(otherModules, 'jsdom', 'package.json')), 'env mode: DOM_TRACE_DOM_MODULES link removed');
+  } finally { delete process.env.DOM_TRACE_DOM_MODULES; }
   console.log('• environment mode        ok');
 } catch (err) {
   failures++;
@@ -395,8 +407,8 @@ try {
 
 // Research scripts: per-test status keys and counting (statuses.cjs),
 // timing configurations and per-package times (configs.sh), the timing
-// report's A/A and per-package tables.
-for (const [name, file] of [['statuses', 'test-statuses.cjs'], ['configs', 'test-configs.cjs']]) {
+// report's A/A and per-package tables, the jsdom version experiment.
+for (const [name, file] of [['statuses', 'test-statuses.cjs'], ['configs', 'test-configs.cjs'], ['versions', 'test-versions.cjs']]) {
   try {
     execFileSync(process.execPath, [path.join(root, 'scripts/research', file)], { stdio: 'pipe' });
     console.log(`• research ${name.padEnd(14)} ok`);

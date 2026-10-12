@@ -30,9 +30,9 @@ on:
         description: 'Configurations; empty = the mode''s default (timing: jsdom-default warpdom-default happy-dom-default, see timing-rounds.sh; ablation-isolation: all nine, see ablation-isolation.sh; fastmode: jsdom-default warpdom-default warpdom-learned)'
         default: ''
       mode:
-        description: 'timing (configs above), fastmode (learned.sh) or ablation-isolation (ablation-isolation.sh); the last two for Vitest projects only'
+        description: 'timing (configs above), fastmode (learned.sh), ablation-isolation (ablation-isolation.sh; these two Vitest only) or versions (versions.sh: jsdom only, own jsdom twice and other versions by overrides; rounds and configs unused)'
         type: choice
-        options: [timing, fastmode, ablation-isolation]
+        options: [timing, fastmode, ablation-isolation, versions]
         default: timing
       perfile:
         description: Also record per-file phase timings (Vitest projects)
@@ -103,6 +103,8 @@ jobs:
           if [ "${{ inputs.mode }}" = timing ] && [ -z "$CONFIGS" ]; then export CONFIGS="jsdom-default warpdom-default happy-dom-default"; fi
           if [ "${{ inputs.mode }}" = fastmode ]; then
             bash scripts/research/learned.sh ".corpus-env/timing-ci-${{ matrix.project }}.csv" "${{ inputs.rounds }}" "${{ matrix.project }}"
+          elif [ "${{ inputs.mode }}" = versions ]; then
+            bash scripts/research/versions.sh .corpus-env/versions "${{ matrix.project }}"
           elif [ "${{ inputs.mode }}" = ablation-isolation ]; then
             bash scripts/research/ablation-isolation.sh ".corpus-env/timing-ci-${{ matrix.project }}.csv" "${{ inputs.rounds }}" "${{ matrix.project }}"
           else
@@ -132,6 +134,8 @@ jobs:
             .corpus-env/timing-ci-*.env-*.json
             .corpus-env/timing-ci-*.learning.jsonl
             .corpus-env/timing-ci-*.notes.txt
+            .corpus-env/versions/
+            .corpus-env/versions-*/logs/
             .corpus-env/pertest/
             .corpus-env/ab-*/logs/
             .corpus-env/ab-*/tmp/**/*.fastcli.json
@@ -164,6 +168,16 @@ jobs:
           out=results/timing-ci.csv
           shopt -s nullglob
           files=()
+          if [ "${{ inputs.mode }}" = versions ]; then
+            # versions.sh output: <project>/<variant>/meta.json under results (the
+            # artifact root depends on which paths matched).
+            meta=$(find results -path '*/own-a/meta.json' | head -1)
+            if [ -z "$meta" ]; then echo 'No versions results (see the time jobs).' | tee -a "$GITHUB_STEP_SUMMARY"; exit 1; fi
+            vdir=$(dirname "$(dirname "$(dirname "$meta")")")
+            node scripts/research/versions-report.cjs "$vdir" --csv results/versions.csv --groups results/versions-groups.json | tee results/report.md
+            { echo '## jsdom version dependence'; echo; cat results/report.md; } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
           for f in results/timing-ci-*.csv; do case $f in *.warmup.csv|*.packages.csv) ;; *) files+=("$f");; esac; done
           if [ ${#files[@]} -eq 0 ]; then
             echo 'No timing results: every project failed (see the time jobs and their logs artifacts).' | tee -a "$GITHUB_STEP_SUMMARY"
@@ -200,6 +214,8 @@ jobs:
             results/timing-ci.csv
             results/warmup.csv
             results/packages.csv
+            results/versions.csv
+            results/versions-groups.json
             results/learning.jsonl
             results/report.md
             results/perfile.md
