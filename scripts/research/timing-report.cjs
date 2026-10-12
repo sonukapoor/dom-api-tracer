@@ -19,6 +19,7 @@ const num = (n) => (Number.isNaN(n) ? '—' : n);
 const ratio = (p, a, b) => median([...p.values()].map((r) => (r[a] && r[b] ? r[a].secs / r[b].secs : NaN)));
 console.log('| Suite | rounds | jsdom | warpdom | jsdom vm | warpdom vm | warpdom vs jsdom (default) | best correct warpdom vs jsdom default | differ (wd default / jsdom vm / wd vm) |');
 console.log('| --- | --- | --- | --- | --- | --- | --- | --- | --- |');
+const warnings = [];
 for (const [project, p] of data) {
   const m = (c) => median([...p.values()].map((r) => r[c]?.secs ?? NaN));
   const d = (c) => median([...p.values()].map((r) => r[c]?.differs ?? NaN));
@@ -26,8 +27,14 @@ for (const [project, p] of data) {
   // Best warpdom configuration whose results match jsdom (<= 5 differences).
   const wdVmOk = d('warpdom-vm') <= 5;
   const best = wdVmOk ? Math.max(wdDefault, ratio(p, 'jsdom-default', 'warpdom-vm')) : wdDefault;
+  // A jsdom run whose tests differ from the jsdom baseline is broken (e.g.
+  // a package that did not run), so its time is not comparable.
+  const broken = [...p.values()].filter((r) => r['jsdom-default'] && (r['jsdom-default'].differs > 0 || Number.isNaN(r['jsdom-default'].secs))).length;
+  if (broken) warnings.push(`${project}: ${broken} of ${p.size} jsdom rounds differ from the jsdom baseline or have no time; those rounds are not comparable`);
   console.log(`| ${project} | ${p.size} | ${fmt(m('jsdom-default'), ' s')} | ${fmt(m('warpdom-default'), ' s')} | ${fmt(m('jsdom-vm'), ' s')} | ${fmt(m('warpdom-vm'), ' s')} | ${wdDefault.toFixed(2)}x | ${best.toFixed(2)}x${wdVmOk && best !== wdDefault ? ' (vm)' : ''} | ${num(d('warpdom-default'))} / ${num(d('jsdom-vm'))} / ${num(d('warpdom-vm'))} |`);
 }
+
+if (warnings.length) console.log('\n**Check:** ' + warnings.join('; ') + '.');
 
 // Experiments (warpdomframes-*): their median time, speedup over jsdom and
 // differences, in a second table.
