@@ -15,7 +15,7 @@ url: "https://github.com/sonukapoor/dom-api-tracer"
 authors:
   - family-names: Kapoor
     given-names: Sonu
-    affiliation: "Independent contributor"
+    affiliation: "Independent Researcher"
     orcid: "https://orcid.org/0009-0009-6074-6238"
 abstract: >-
   dom-api-tracer plugs into Vitest or Jest, instruments the DOM
@@ -53,7 +53,7 @@ preferred-citation:
   authors:
     - family-names: Kapoor
       given-names: Sonu
-      affiliation: "Independent contributor"
+      affiliation: "Independent Researcher"
       orcid: "https://orcid.org/0009-0009-6074-6238"
   journal: "Journal of Web Engineering"
   year: 2026
