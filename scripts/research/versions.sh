@@ -21,13 +21,22 @@
 # At the end the files are restored once more and the project's own
 # install command (frozen) run, so the checkout is as before.
 #
+# A forced jsdom must load its dependencies (versions.cjs DEPS: cssstyle,
+# nwsapi, parse5, whatwg-url) inside its own declared ranges, not versions
+# the project's overrides or hoisting give (naive-ui: jsdom 20 resolved
+# cssstyle 5.2.1). After the install, versions.cjs check lists the ones
+# outside; each is forced to jsdom's range (overrides, as jsdom itself)
+# and the project installed again; still outside means NA with the reason.
+#
 # A variant whose install or run fails is NA with the reason (data: e.g.
 # an old Jest that cannot load a new jsdom). Output per project in
 # <out dir>/<project>/<variant>/: map.json (statuses.cjs map with
 # failure messages), meta.json ({ variant, status, reason, seconds,
-# resolved: per package the jsdom/cssstyle its runner resolves, linked:
-# the version linked into packages without one }), harness.log,
-# install.log. Summarize with versions-report.cjs <out dir>.
+# resolved: per package the jsdom its runner resolves and the versions of
+# jsdom's DEPS it loads, with jsdom's ranges and the ones outside them,
+# linked: the version linked into packages without one, forced_deps: the
+# dependencies forced to jsdom's ranges }), harness.log, install.log.
+# Summarize with versions-report.cjs <out dir>.
 #
 # TIMEOUT_MIN (default 45) per package run.
 [ $# -ge 2 ] || { echo "usage: [VARIANTS=...] versions.sh <out dir> <project...>" >&2; exit 2; }
@@ -39,10 +48,12 @@ V=$RESEARCH_DIR/versions.cjs
 CORPUS=$(cd "$(dirname "$CORPUS")" && pwd)/$(basename "$CORPUS")
 
 # meta <file> <variant> <status> <reason> <seconds> <resolved json> <linked>
+# (FORCED_DEPS: the dependencies forced to jsdom's ranges, "<dep> <range>" lines)
 meta() {
-  nodex -e 'const [f, variant, status, reason, seconds, resolved, linked] = process.argv.slice(1);
+  FORCED_DEPS=${FORCED_DEPS:-} nodex -e 'const [f, variant, status, reason, seconds, resolved, linked] = process.argv.slice(1);
+    const forced = (process.env.FORCED_DEPS || "").split("\n").filter(Boolean);
     require("fs").writeFileSync(f, JSON.stringify({ variant, status, reason: reason || null, seconds: seconds === "" ? null : +seconds,
-      resolved: JSON.parse(resolved || "{}"), linked: linked || null }, null, 2));' "$@"
+      resolved: JSON.parse(resolved || "{}"), linked: linked || null, forced_deps: forced }, null, 2));' "$@"
 }
 
 for p in "$@"; do
@@ -88,19 +99,39 @@ for p in "$@"; do
       restore; continue
     fi
     echo "VERSIONS $p $name: installing ($install_cmd)"
-    if ! (cd "$dir" && CI=1 bash -c "$install_cmd") > "$d/install.log" 2>&1; then
+    install_variant() {
+      (cd "$dir" && CI=1 bash -c "$install_cmd") >> "$d/install.log" 2>&1 && return 0
       meta "$d/meta.json" "$name" NA "install failed: $(grep -iE 'err|error' "$d/install.log" | head -2 | paste -sd' ' - | cut -c1-300)" "" "{}" ""
       echo "VERSIONS $p $name: NA (install failed)"
-      restore; continue
-    fi
+      return 1
+    }
+    install_variant || { restore; continue; }
+    FORCED_DEPS=""
     if [ "${v%@*}" = jsdom ]; then
       # A copy of jsdom@<version> for packages that have no jsdom of their own.
       mods=$WORK_DIR/dom-modules/$name
       [ -f "$mods/node_modules/jsdom/package.json" ] || { mkdir -p "$mods" && (cd "$mods" && echo '{}' > package.json && npm install --no-audit --no-fund "$v" > install.log 2>&1); }
+      # The forced jsdom's dependencies inside its declared ranges: force
+      # the ones outside to jsdom's range and install again, once.
+      fixes=$(DOM_TRACE_DOM_MODULES=$mods/node_modules nodex "$V" check "$CORPUS" "$dir" "$p")
+      if [ -n "$fixes" ]; then
+        echo "VERSIONS $p $name: jsdom's dependencies outside its ranges, forcing: $(echo "$fixes" | paste -sd, -)"
+        while read -r dep range; do nodex "$V" apply "$dir" "$dep" "$range" >> "$d/install.log" 2>&1 < /dev/null; done <<< "$fixes"
+        FORCED_DEPS=$fixes
+        install_variant || { restore; continue; }
+        left=$(DOM_TRACE_DOM_MODULES=$mods/node_modules nodex "$V" check "$CORPUS" "$dir" "$p")
+        if [ -n "$left" ]; then
+          meta "$d/meta.json" "$name" NA "inconsistent dependencies after forcing them: jsdom ${v#*@} loads $(DOM_TRACE_DOM_MODULES=$mods/node_modules nodex "$V" check "$CORPUS" "$dir" "$p" --explain | paste -sd, -)" "" \
+            "$(DOM_TRACE_DOM_MODULES=$mods/node_modules nodex "$V" resolved "$CORPUS" "$dir" "$p")" "$v"
+          echo "VERSIONS $p $name: NA (dependencies still outside jsdom's ranges)"
+          restore; continue
+        fi
+      fi
       DOM_TRACE_DOM_MODULES=$mods/node_modules LINKED="$v" run_variant "$name"
     else
       LINKED="dom-api-tracer jsdom (no $v)" run_variant "$name"
     fi
+    FORCED_DEPS=""
     restore
   done
   # The checkout as before: files restored above, the project's own install.

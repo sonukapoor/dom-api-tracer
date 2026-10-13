@@ -52,6 +52,36 @@ V.apply(bun, 'cssstyle', '4.1.0');
 assert.deepEqual(pj(bun).overrides, { cssstyle: '4.1.0' });
 assert.deepEqual(V.files(pnpm), ['package.json', 'pnpm-workspace.yaml', 'pnpm-lock.yaml']);
 
+// npm ranges (jsdom's dependency ranges).
+for (const [v, r, ok] of [['2.3.0', '^2.3.0', true], ['5.2.1', '^2.3.0', false], ['0.2.5', '^0.2.3', true], ['0.3.0', '^0.2.3', false],
+  ['7.1.2', '~7.1.1', true], ['7.2.0', '~7.1.1', false], ['4.6.0', '>=4.1.0 <5', true], ['5.0.0', '>=4.1.0 <5', false],
+  ['2.0.0', '1.x || 2.x', true], ['2.2.20', '2.2.20', true], ['2.2.21', '2.2.20', false], ['1.5.0', '1.0.0 - 2.0.0', true]]) {
+  assert.equal(V.satisfies(v, r), ok, `${v} ${r}`);
+}
+// resolved/check: a project whose hoisting gives jsdom 20 cssstyle 5 (as
+// naive-ui's did); parse5 inside the range, the other two not installed.
+const depDir = path.join(tmp, 'deps');
+const pkgJson = (dir, j) => { fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify(j)); };
+pkgJson(depDir, { name: 'deps' });
+pkgJson(path.join(depDir, 'node_modules/vitest'), { name: 'vitest', version: '1.0.0' });
+pkgJson(path.join(depDir, 'node_modules/jsdom'), { name: 'jsdom', version: '20.0.3', dependencies: { cssstyle: '^2.3.0', parse5: '^7.1.1', nwsapi: '^2.2.2', 'whatwg-url': '^11.0.0' } });
+pkgJson(path.join(depDir, 'node_modules/cssstyle'), { name: 'cssstyle', version: '5.2.1' });
+pkgJson(path.join(depDir, 'node_modules/parse5'), { name: 'parse5', version: '7.1.2' });
+const corpusDeps = path.join(tmp, 'corpus-deps.json');
+fs.writeFileSync(corpusDeps, JSON.stringify({ projects: [{ name: 'deps', packages: [{ dir: '.', runner: 'vitest' }] }] }));
+const res = V.resolved(corpusDeps, depDir, 'deps')['.'];
+assert.equal(res.jsdom, '20.0.3');
+assert.equal(res.cssstyle, '5.2.1');
+assert.deepEqual(res.inconsistent, ['cssstyle']);
+assert.deepEqual(V.check(corpusDeps, depDir, 'deps'), ['cssstyle ^2.3.0']);
+assert.deepEqual(V.check(corpusDeps, depDir, 'deps', { explain: true }), ['cssstyle 5.2.1 (needs ^2.3.0)']);
+// Forced to jsdom's range (versions.sh applies it and installs again).
+V.apply(depDir, 'cssstyle', '^2.3.0');
+assert.deepEqual(pj(depDir).overrides, { cssstyle: '^2.3.0' });
+pkgJson(path.join(depDir, 'node_modules/cssstyle'), { name: 'cssstyle', version: '2.3.0' });
+assert.deepEqual(V.check(corpusDeps, depDir, 'deps'), []);
+assert.match(fs.readFileSync(path.join(__dirname, 'versions.sh'), 'utf8'), /check "\$CORPUS" "\$dir" "\$p"\)\n\s+if \[ -n "\$fixes" \]/, 'versions.sh checks the forced jsdom\'s dependencies');
+
 // The report: own-a/own-b flaky, a forced version, an NA variant, groups.
 const out = path.join(tmp, 'out');
 const write = (variant, meta, tests) => {
@@ -74,6 +104,8 @@ write('own-b', own, [['t1', 'passed'], ['t2', 'failed', 'Timeout 5000ms'], ['t3'
 write('jsdom-30.1.2', { resolved: { '.': { jsdom: '30.1.2', cssstyle: null } } },
   [['t1', 'failed', 'TypeError: x.style is 1'], ['t2', 'failed', 'Timeout 5000ms'], ['t3', 'failed', 'TypeError: x.style is 2'], ['t4', 'passed']]);
 write('jsdom-20.0.3', { status: 'NA', reason: 'install failed: ERR', resolved: {} }, null);
+write('jsdom-21.1.0', { forced_deps: ['cssstyle ^3.0.0'], resolved: { '.': { jsdom: '21.1.0', cssstyle: '3.0.0', nwsapi: '2.2.2', ranges: { cssstyle: '^3.0.0', nwsapi: '^2.2.3' }, inconsistent: ['nwsapi'] } } },
+  [['t1', 'passed'], ['t2', 'passed'], ['t3', 'passed'], ['t4', 'passed']]);
 write('cssstyle-4.6.0', { resolved: { '.': { jsdom: '25.0.1', cssstyle: '4.1.0' } } }, [['t1', 'passed'], ['t2', 'passed'], ['t3', 'passed'], ['t4', 'passed']]);
 const csv = path.join(tmp, 'v.csv');
 const groupsJson = path.join(tmp, 'g.json');
@@ -87,6 +119,9 @@ assert.match(row('cssstyle-4.6.0'), /\| 25\.0\.1 \(cssstyle 4\.1\.0\) \| no \|/,
 const g = JSON.parse(fs.readFileSync(groupsJson, 'utf8'));
 assert.deepEqual(g['proj jsdom-30.1.2'].map((x) => [x.key, x.count]), [['passed -> failed | TypeError: x.style is N', 2]]);
 assert.match(fs.readFileSync(csv, 'utf8'), /^project,variant,status,/);
-assert.match(fs.readFileSync(csv, 'utf8'), /\nproj,jsdom-30\.1\.2,ok,30\.1\.2,yes,4,1,2,0,1,1,10,\n/);
+assert.match(fs.readFileSync(csv, 'utf8'), /\nproj,jsdom-30\.1\.2,ok,30\.1\.2,yes,,,,,,4,1,2,0,1,1,10,\n/);
+// jsdom's dependencies: versions, the ones outside jsdom's range, forced ones.
+assert.match(row('jsdom-21.1.0'), /\| 21\.1\.0 \(cssstyle 3\.0\.0, nwsapi 2\.2\.2 outside \^2\.2\.3; forced cssstyle \^3\.0\.0\) \|/);
+assert.match(fs.readFileSync(csv, 'utf8'), /\nproj,jsdom-21\.1\.0,ok,"21\.1\.0 \(.*\)",yes,3\.0\.0,2\.2\.2 outside \^2\.2\.3,,,cssstyle \^3\.0\.0,/);
 fs.rmSync(tmp, { recursive: true, force: true });
 console.log('versions: ok');

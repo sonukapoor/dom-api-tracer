@@ -13,6 +13,10 @@
 // forced version (versions.cjs resolved; packages without a jsdom of their
 // own use the one linked in). Differing tests are grouped by status change
 // and the first line of the failure message (numbers folded to N).
+// "jsdom resolved" also lists the versions of jsdom's dependencies it loads
+// (versions.cjs DEPS), marked "outside" when not in jsdom's declared range,
+// and the dependencies versions.sh forced to jsdom's ranges; the CSV has
+// them in columns of their own.
 const fs = require('fs');
 const path = require('path');
 const S = require('./statuses.cjs');
@@ -31,10 +35,19 @@ const byVersion = (a, b) => ORDER(a) - ORDER(b) || a.localeCompare(b, 'en', { nu
 // What a variant forces: { name, version } from "jsdom-26.1.0".
 const forcedOf = (variant) => { const m = variant.match(/^(jsdom|cssstyle)-(.+)$/); return m ? { name: m[1], version: m[2] } : null; };
 
+const DEPS = ['cssstyle', 'nwsapi', 'parse5', 'whatwg-url'];
+// The versions of a dependency over the packages ("a / b"), "outside" when
+// some package's jsdom loads it outside its range.
+function depVersions(meta, d) {
+  const rs = Object.values(meta?.resolved ?? {});
+  const vs = [...new Set(rs.map((r) => r[d]).filter(Boolean))].join(' / ');
+  return vs && rs.some((r) => r.inconsistent?.includes(d)) ? `${vs} outside ${[...new Set(rs.map((r) => r.ranges?.[d]).filter(Boolean))].join(' / ')}` : vs;
+}
 function jsdomSummary(meta) {
   const vs = Object.values(meta?.resolved ?? {}).map((r) => r.jsdom ?? `linked ${meta.linked ?? '?'}`);
-  const cs = [...new Set(Object.values(meta?.resolved ?? {}).map((r) => r.cssstyle).filter(Boolean))];
-  return [...new Set(vs)].join(' / ') + (cs.length ? ` (cssstyle ${cs.join(' / ')})` : '');
+  const deps = DEPS.map((d) => [d, depVersions(meta, d)]).filter(([, v]) => v).map(([d, v]) => `${d} ${v}`);
+  const forcedDeps = meta?.forced_deps?.length ? `; forced ${meta.forced_deps.join(', ')}` : '';
+  return [...new Set(vs)].join(' / ') + (deps.length || forcedDeps ? ` (${deps.join(', ')}${forcedDeps})` : '');
 }
 
 function forced(meta, f) {
@@ -81,6 +94,8 @@ for (const p of projects) {
       project: p, variant: v, status: m?.status ?? 'NA', reason: m?.reason ?? '', jsdom: jsdomSummary(m), forced: forced(m, forcedOf(v)),
       tests: Object.keys(run.tests).length, files: Object.keys(run.files).length, seconds: m?.seconds ?? null,
       tests_differ: null, files_differ: null, flaky_tests: fl.tests.size, flaky_files: fl.files.size,
+      ...Object.fromEntries(DEPS.map((d) => [d.replace('-', '_'), depVersions(m, d)])),
+      forced_deps: (m?.forced_deps ?? []).join('; '),
     };
     if (!ownOk && v !== 'own-a') { row.status = 'NA'; row.reason = row.reason || 'own-a (the project\'s own jsdom) failed'; }
     if (!ownBOk) row.flaky_tests = row.flaky_files = null;
@@ -126,7 +141,7 @@ if (keys.length) {
 }
 
 if (csvFile) {
-  const cols = ['project', 'variant', 'status', 'jsdom', 'forced', 'tests', 'files', 'tests_differ', 'files_differ', 'flaky_tests', 'flaky_files', 'seconds', 'reason'];
+  const cols = ['project', 'variant', 'status', 'jsdom', 'forced', ...DEPS.map((d) => d.replace('-', '_')), 'forced_deps', 'tests', 'files', 'tests_differ', 'files_differ', 'flaky_tests', 'flaky_files', 'seconds', 'reason'];
   const q = (v) => (v === null || v === undefined ? '' : /[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : String(v));
   fs.writeFileSync(csvFile, [cols.join(','), ...rows.map((r) => cols.map((c) => q(r[c])).join(','))].join('\n') + '\n');
 }

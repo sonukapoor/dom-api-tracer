@@ -17,10 +17,19 @@
 //       override that conflicts with one). Prints the files changed.
 //   versions.cjs files <project dir>   files apply and an install may change
 //   versions.cjs resolved <corpus.json> <project dir> <project>
-//       JSON { <package dir>: { jsdom, cssstyle } }: the jsdom the package's
+//       JSON { <package dir>: { jsdom, cssstyle, nwsapi, parse5,
+//       'whatwg-url', ranges, inconsistent } }: the jsdom the package's
 //       runner loads (Vitest: resolved from vitest's own location, as
 //       Vitest imports it; Jest: from jest-environment-jsdom), null when the
-//       project has none (the harness then links one, DOM_TRACE_DOM_MODULES)
+//       project has none (the harness then links one: DOM_TRACE_DOM_MODULES,
+//       else this repository's; its dependencies are reported from there);
+//       the versions of DEPS that jsdom loads (resolved from jsdom's own
+//       location), jsdom's declared ranges for them, and the ones outside
+//       their range
+//   versions.cjs check <corpus.json> <project dir> <project>
+//       one line "<dep> <range>" per dependency some package's jsdom loads
+//       outside jsdom's declared range (the range to force it to); nothing
+//       when consistent. --explain: "<dep> <version> (needs <range>)"
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -141,6 +150,61 @@ function versionFrom(fromFile, name) {
   try { return readJson(createRequire(fromFile).resolve(`${name}/package.json`)).version; } catch { return null; }
 }
 
+// The dependencies of jsdom whose version decides its behavior in tests
+// (CSS, selectors, parsing, URLs): a forced jsdom must load versions inside
+// its own declared ranges, not ones a project's overrides or hoisting give
+// (jsdom 20 with cssstyle 5).
+const DEPS = ['cssstyle', 'nwsapi', 'parse5', 'whatwg-url'];
+
+// Whether <version> satisfies an npm range: ||, space-separated
+// comparators (<, <=, >, >=, =), ^, ~, x/* wildcards and hyphen ranges.
+// Prereleases compare by their release only (enough for jsdom's ranges).
+function satisfies(version, range) {
+  const v = String(version).replace(/^v/, '').split(/[-+]/)[0].split('.').map(Number);
+  const cmp = (a, b) => { for (let i = 0; i < 3; i++) if ((a[i] ?? 0) !== (b[i] ?? 0)) return (a[i] ?? 0) - (b[i] ?? 0); return 0; };
+  const parts = (s) => s.replace(/^[=v]+/, '').split('.').filter((x) => x !== '').map((x) => (/^[x*]$/i.test(x) ? null : Number(x.split(/[-+]/)[0])));
+  const comparator = (c) => {
+    const m = c.match(/^(<=|>=|<|>|=|\^|~)?\s*(.*)$/);
+    const op = m[1] ?? '', p = parts(m[2] || '*');
+    const n = p.findIndex((x) => x === null || x === undefined); const known = n < 0 ? p.length : n;
+    const lo = [0, 1, 2].map((i) => (i < known ? p[i] : 0));
+    if (op === '^') {
+      const i = lo[0] > 0 || known <= 1 ? 0 : lo[1] > 0 || known <= 2 ? 1 : 2;
+      const hi = [0, 1, 2].map((j) => (j < i ? lo[j] : j === i ? lo[j] + 1 : 0));
+      return cmp(v, lo) >= 0 && cmp(v, hi) < 0;
+    }
+    if (op === '~' || (op === '' && known < 3) || op === '=') {
+      if (known === 0) return true;
+      if (op === '=' && known === 3) return cmp(v, lo) === 0;
+      const i = op === '~' ? Math.min(known, 2) - 1 : known - 1;
+      const hi = [0, 1, 2].map((j) => (j < i ? lo[j] : j === i ? lo[j] + 1 : 0));
+      return cmp(v, lo) >= 0 && cmp(v, hi) < 0;
+    }
+    if (op === '') return cmp(v, lo) === 0;
+    const c2 = cmp(v, lo);
+    return op === '>' ? c2 > 0 : op === '>=' ? c2 >= 0 : op === '<' ? c2 < 0 : c2 <= 0;
+  };
+  return String(range).split('||').some((alt) => {
+    const a = alt.trim();
+    const h = a.match(/^(\S+)\s+-\s+(\S+)$/);
+    if (h) return comparator(`>=${h[1]}`) && comparator(`<=${h[2]}`);
+    const cs = a.replace(/(<=|>=|<|>|=|\^|~)\s+/g, '$1').split(/\s+/).filter(Boolean);
+    return (cs.length ? cs : ['*']).every(comparator);
+  });
+}
+
+// jsdom's own package.json and its DEPS as it loads them.
+function jsdomDeps(jsdomFile) {
+  const decl = readJson(jsdomFile).dependencies ?? {};
+  const out = { ranges: {}, inconsistent: [] };
+  for (const d of DEPS) {
+    out[d] = versionFrom(jsdomFile, d);
+    if (decl[d]) out.ranges[d] = decl[d];
+    if (out[d] && decl[d] && !satisfies(out[d], decl[d])) out.inconsistent.push(d);
+  }
+  return out;
+}
+
 function resolved(corpusFile, dir, name) {
   const out = {};
   for (const pkg of project(corpusFile, name).packages) {
@@ -157,12 +221,28 @@ function resolved(corpusFile, dir, name) {
     try { jsdomFile = fs.realpathSync(createRequire(from).resolve('jsdom/package.json')); } catch {
       try { jsdomFile = fs.realpathSync(req.resolve('jsdom/package.json')); } catch {}
     }
-    out[pkg.dir] = { jsdom, cssstyle: jsdomFile ? versionFrom(jsdomFile, 'cssstyle') : null };
+    // No jsdom of its own: the one the harness links in.
+    if (!jsdomFile) {
+      const linked = path.join(process.env.DOM_TRACE_DOM_MODULES || path.join(__dirname, '..', '..', 'node_modules'), 'jsdom', 'package.json');
+      if (fs.existsSync(linked)) jsdomFile = fs.realpathSync(linked);
+    }
+    out[pkg.dir] = { jsdom, ...(jsdomFile ? jsdomDeps(jsdomFile) : { cssstyle: null, ranges: {}, inconsistent: [] }) };
   }
   return out;
 }
 
-module.exports = { projectDir, packageManager, unfrozen, installCommand, setOverride, setYamlOverride, apply, files, resolved };
+// The dependencies to force: "<dep> <range>" for each one some package's
+// jsdom loads outside its declared range (explain: "<dep> <version>
+// (needs <range>)").
+function check(corpusFile, dir, name, { explain = false } = {}) {
+  const out = new Set();
+  for (const r of Object.values(resolved(corpusFile, dir, name))) {
+    for (const d of r.inconsistent) out.add(explain ? `${d} ${r[d]} (needs ${r.ranges[d]})` : `${d} ${r.ranges[d]}`);
+  }
+  return [...out];
+}
+
+module.exports = { projectDir, packageManager, unfrozen, installCommand, setOverride, setYamlOverride, apply, files, resolved, satisfies, check, DEPS };
 
 if (require.main === module) {
   const [cmd, ...a] = process.argv.slice(2);
@@ -171,5 +251,6 @@ if (require.main === module) {
   else if (cmd === 'apply') console.log(apply(a[0], a[1], a[2]).join('\n'));
   else if (cmd === 'files') console.log(files(a[0]).join('\n'));
   else if (cmd === 'resolved') console.log(JSON.stringify(resolved(path.resolve(a[0]), a[1], a[2])));
-  else { process.stderr.write('usage: versions.cjs dir|install|apply|files|resolved ... (see the header)\n'); process.exit(2); }
+  else if (cmd === 'check') { const c = check(path.resolve(a[0]), a[1], a[2], { explain: a.includes('--explain') }); if (c.length) console.log(c.join('\n')); }
+  else { process.stderr.write('usage: versions.cjs dir|install|apply|files|resolved|check ... (see the header)\n'); process.exit(2); }
 }
