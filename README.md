@@ -223,6 +223,14 @@ npm test   # runs the fixtures under Vitest+jsdom, Vitest+jsdom (no isolation),
            # Vitest+happy-dom and Jest+jsdom, and asserts exact counts
 ```
 
+## Citing
+
+If you use dom-api-tracer in research, please cite it: GitHub's "Cite this
+repository" button reads [CITATION.cff](CITATION.cff), and each release is
+archived on Zenodo with a DOI. The DOM implementation these measurements
+informed and evaluated is
+[warpdom](https://github.com/sonukapoor/warpdom).
+
 ## License
 
 MIT © Sonu Kapoor

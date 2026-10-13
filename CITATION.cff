@@ -1,0 +1,61 @@
+cff-version: 1.2.0
+message: >-
+  If you use dom-api-tracer, please cite it using the metadata below. When
+  the journal article on warpdom is published, please cite the article
+  (preferred-citation).
+type: software
+title: "dom-api-tracer: measure which DOM APIs real test suites use"
+version: 0.1.0
+# DOI: assigned by Zenodo at the v0.1.0 release; add it here afterwards.
+# doi: "10.5281/zenodo.XXXXXXX"
+# date-released: "YYYY-MM-DD"  (the v0.1.0 release date)
+license: MIT
+repository-code: "https://github.com/sonukapoor/dom-api-tracer"
+url: "https://github.com/sonukapoor/dom-api-tracer"
+authors:
+  - family-names: Kapoor
+    given-names: Sonu
+    affiliation: "AFFILIATION (placeholder)"
+    orcid: "https://orcid.org/0000-0000-0000-0000"
+abstract: >-
+  dom-api-tracer plugs into Vitest or Jest, instruments the DOM
+  implementation the tests run on (jsdom or happy-dom), and records
+  every DOM method call, property read and property write per test file,
+  which a CLI aggregates into a usage report across files and projects. It
+  also contains the research harness used to evaluate warpdom: a pinned
+  corpus of open-source projects, scripts that run each project's own test
+  suite traced and untraced under different DOM environments, and the
+  timing, correctness and profiling workflows.
+keywords:
+  - DOM
+  - jsdom
+  - happy-dom
+  - testing
+  - Vitest
+  - Jest
+  - instrumentation
+  - API usage
+  - benchmarking
+references:
+  - type: software
+    title: "warpdom: a fast, jsdom-compatible DOM for unit and component tests"
+    authors:
+      - family-names: Kapoor
+        given-names: Sonu
+    repository-code: "https://github.com/sonukapoor/warpdom"
+    # doi: "10.5281/zenodo.XXXXXXX"
+    notes: >-
+      The DOM implementation that dom-api-tracer's measurements informed and
+      evaluated.
+preferred-citation:
+  type: article
+  title: "TITLE OF THE JOURNAL ARTICLE (placeholder)"
+  authors:
+    - family-names: Kapoor
+      given-names: Sonu
+      affiliation: "AFFILIATION (placeholder)"
+      orcid: "https://orcid.org/0000-0000-0000-0000"
+  journal: "Journal of Web Engineering"
+  year: 2026
+  # volume, issue, start, end and doi: fill in at publication.
+  # doi: "10.XXXX/XXXXX"
