@@ -5,5 +5,4 @@ dom-trace-report/
 *.tgz
 .corpus/
 .DS_Store
-CLAUDE.md
 .corpus-env/
