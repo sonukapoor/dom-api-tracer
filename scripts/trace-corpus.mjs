@@ -97,7 +97,7 @@ function run(cmd, args, { cwd, env, timeoutMin, logFile, shell = false }) {
   const res = spawnSync(cmd, args, {
     cwd, shell, encoding: 'utf8', maxBuffer: 256 * 1024 * 1024,
     env: { ...process.env, CI: '1', ...env },
-    timeout: timeoutMin ? timeoutMin * 60_000 : undefined,
+    timeout: timeoutMin ? Math.round(timeoutMin * 60_000) : undefined,
   });
   const output = `$ ${[cmd, ...args].join(' ')}\n${res.stdout || ''}${res.stderr || ''}${res.error ? `\n${res.error.message}` : ''}`;
   if (logFile) {

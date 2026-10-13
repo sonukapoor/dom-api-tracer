@@ -24,7 +24,10 @@
 //    the timing report's FLAKY idea made exact); without, differs is 0 in
 //    every round.
 // 3. The suites where every non-default jsdom configuration changes results.
-// 4. Learning stability: per suite, the learnings (round 0 = the warm-up's,
+// 3b. Policy and DOM: per suite with jsdom-learned (learned isolation's
+//    policy on jsdom, no reset), its speedup over jsdom-default and
+//    warpdom-learned's over it (what warpdom's DOM adds to the policy).
+// 4. Learning stability: per suite and learned configuration, the learnings (round 0 = the warm-up's,
 //    then one per round), mean pairwise Jaccard similarity of the leaky
 //    sets, mode agreement (share of learnings choosing the most common
 //    mode), the learning cost (t_sh + t_split: what learning adds to an
@@ -54,7 +57,7 @@ for (const r of rows) {
 }
 // The jsdom configurations: the baseline and its alternatives.
 const JSDOMS = ['jsdom-default', 'jsdom-shared', 'jsdom-vm', 'jsdom-sharedclean'];
-const ORDER = [...JSDOMS, 'warpdom-default', 'warpdom-vm', 'warpdom-sharedfresh', 'warpdom-sharedreset', 'warpdom-learned', 'happydom-shared'];
+const ORDER = [...JSDOMS, 'jsdom-learned', 'warpdom-default', 'warpdom-vm', 'warpdom-sharedfresh', 'warpdom-sharedreset', 'warpdom-learned', 'happydom-shared'];
 const configsOf = (p) => { const s = new Set([...p.values()].flatMap((r) => Object.keys(r))); return [...ORDER.filter((c) => s.has(c)), ...[...s].filter((c) => !ORDER.includes(c))]; };
 
 const valid = (a) => a.filter((x) => !Number.isNaN(x));
@@ -160,18 +163,37 @@ if (learnedOverBest.length) {
 }
 console.log(`\n**Suites where every non-default jsdom configuration changes results:** ${everyBreaks.length ? everyBreaks.join('; ') : 'none'}.`);
 
+// 3b. Policy and DOM.
+const withJl = [...data].filter(([, p]) => timed(p, 'jsdom-learned').length);
+if (withJl.length) {
+  console.log('\n## Policy and DOM\n');
+  console.log('jsdom-learned: learned isolation\'s policy (the harness emulation) on jsdom, without any reset between files. Speedups: median of per-round ratios. Differing tests: max over rounds against jsdom-default; false passes: sum over rounds (G2 violations).\n');
+  console.log('| Suite | jsdom-learned | over jsdom-default | interval | tests differ (max) | false passes | warpdom-learned over jsdom-learned | interval |');
+  console.log('| --- | --- | --- | --- | --- | --- | --- | --- |');
+  for (const [project, p] of withJl) {
+    const J = timed(p, 'jsdom-learned');
+    const a = ratiosOf(p, 'jsdom-default', 'jsdom-learned');
+    const b = timed(p, 'warpdom-learned').length ? ratiosOf(p, 'jsdom-learned', 'warpdom-learned') : [];
+    console.log(`| ${project} | ${fmt(medTime(p, 'jsdom-learned'), 1, ' s')} | ${fmt(midMedian(a), 2, 'x')} | ${interval(a)} | ${cnt(max(J.map((r) => r['jsdom-learned'].differs)))} | ${cnt(total(J.map((r) => r['jsdom-learned'].fp)))} | ${fmt(midMedian(b), 2, 'x')} | ${interval(b)} |`);
+  }
+}
+
 // 4. Learning.
 if (learningFile && fs.existsSync(learningFile)) {
   const recs = fs.readFileSync(learningFile, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l));
   const jaccard = (a, b) => { const A = new Set(a), B = new Set(b); const u = new Set([...A, ...B]); if (!u.size) return 1; let i = 0; for (const x of A) if (B.has(x)) i++; return i / u.size; };
   console.log('\n## Learning stability and cost\n');
-  console.log('Learnings: round 0 (the warm-up; the timed learned runs use its state) and one from scratch per round. Jaccard: mean over pairs of learnings of the leaky sets\' similarity (1 = identical). Learning cost: median t_sh + t_split. Break-even: cost / (median warpdom-default - median warpdom-learned).\n');
-  console.log('| Suite | method | learnings | leaky files (min-max) | Jaccard | modes | mode agreement | median t_iso / t_sh / t_split | learning cost | break-even runs | new leaky in timed runs | files re-run |');
-  console.log('| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |');
-  const projects = [...new Set(recs.map((r) => r.project))];
-  for (const project of projects) {
-    const L = recs.filter((r) => r.project === project && r.kind === 'learn');
-    const R = recs.filter((r) => r.project === project && r.kind === 'run');
+  console.log('Learnings: round 0 (the warm-up; the timed learned runs use its state) and one from scratch per round. Jaccard: mean over pairs of learnings of the leaky sets\' similarity (1 = identical). Learning cost: median t_sh + t_split. Break-even: cost / (median isolated run - median learned run), the isolated run being the same DOM\'s default (warpdom-default, or jsdom-default for jsdom-learned).\n');
+  console.log('| Suite | configuration | method | learnings | leaky files (min-max) | Jaccard | modes | mode agreement | median t_iso / t_sh / t_split | learning cost | break-even runs | new leaky in timed runs | files re-run |');
+  console.log('| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |');
+  // Records without a config are warpdom-learned's (cli, older emulation).
+  const cfgOf = (r) => r.config ?? 'warpdom-learned';
+  const groups = [...new Set(recs.map((r) => `${r.project}\t${cfgOf(r)}`))];
+  for (const g of groups) {
+    const [project, config] = g.split('\t');
+    const isolatedOf = config === 'jsdom-learned' ? 'jsdom-default' : 'warpdom-default';
+    const L = recs.filter((r) => r.project === project && cfgOf(r) === config && r.kind === 'learn');
+    const R = recs.filter((r) => r.project === project && cfgOf(r) === config && r.kind === 'run');
     const pairs = [];
     for (let i = 0; i < L.length; i++) for (let j = i + 1; j < L.length; j++) pairs.push(jaccard(L[i].leaky, L[j].leaky));
     const modes = new Map();
@@ -179,10 +201,10 @@ if (learningFile && fs.existsSync(learningFile)) {
     const top = Math.max(0, ...modes.values());
     const cost = midMedian(L.map((r) => (r.t_sh == null || r.t_split == null ? NaN : r.t_sh + r.t_split)));
     const p = data.get(project);
-    const gain = p ? medTime(p, 'warpdom-default') - medTime(p, 'warpdom-learned') : NaN;
+    const gain = p ? medTime(p, isolatedOf) - medTime(p, config) : NaN;
     const breakEven = Number.isNaN(cost) || Number.isNaN(gain) ? '—' : gain <= 0 ? 'never (learned not faster)' : (cost / gain).toFixed(1);
     const sizes = L.map((r) => r.leaky.length);
     const m = (k) => fmt(midMedian(L.map((r) => (r[k] == null ? NaN : r[k]))), 1);
-    console.log(`| ${project} | ${[...new Set(L.map((r) => r.method))].join(', ')} | ${L.length} | ${sizes.length ? `${Math.min(...sizes)}-${Math.max(...sizes)}` : '—'} | ${pairs.length ? (pairs.reduce((s, x) => s + x, 0) / pairs.length).toFixed(2) : '—'} | ${[...modes].map(([k, v]) => `${k} ${v}`).join(', ')} | ${L.length ? (top / L.length).toFixed(2) : '—'} | ${m('t_iso')} / ${m('t_sh')} / ${m('t_split')} s | ${fmt(cost, 1, ' s')} | ${breakEven} | ${R.reduce((s, r) => s + (r.new_leaky?.length ?? 0), 0)} | ${R.reduce((s, r) => s + (r.rerun ?? 0), 0)} |`);
+    console.log(`| ${project} | ${config} | ${[...new Set(L.map((r) => r.method))].join(', ')} | ${L.length} | ${sizes.length ? `${Math.min(...sizes)}-${Math.max(...sizes)}` : '—'} | ${pairs.length ? (pairs.reduce((s, x) => s + x, 0) / pairs.length).toFixed(2) : '—'} | ${[...modes].map(([k, v]) => `${k} ${v}`).join(', ')} | ${L.length ? (top / L.length).toFixed(2) : '—'} | ${m('t_iso')} / ${m('t_sh')} / ${m('t_split')} s | ${fmt(cost, 1, ' s')} | ${breakEven} | ${R.reduce((s, r) => s + (r.new_leaky?.length ?? 0), 0)} | ${R.reduce((s, r) => s + (r.rerun ?? 0), 0)} |`);
   }
 }

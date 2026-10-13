@@ -13,6 +13,11 @@
 #                        Library's cleanup, Vitest's mocks, timers, stubs,
 #                        body, storage, title, cookies, URL), what a
 #                        practitioner could copy; the same for every project
+#   jsdom-learned        learned isolation's policy on jsdom without any
+#                        reset: the emulation below (learned-emulation.sh,
+#                        LEARN_ENV=jsdom, no setup file in shared runs),
+#                        re-learned every round like warpdom-learned; what
+#                        the policy gives without warpdom's resettable DOM
 #   warpdom-default      warpdom, Vitest's isolation
 #   warpdom-vm           warpdom, --pool=vmThreads
 #   warpdom-sharedfresh  warpdom without isolation, a new window per file
@@ -39,11 +44,13 @@
 #     false_pass / false_fail: tests passed in this configuration but not
 #     (failed, skipped or missing) in ref, and the reverse, ref being the
 #     same DOM's isolated run of this round (warpdom-default for warpdom-*,
-#     jsdom-default for jsdom-* and happydom-shared). For warpdom-learned,
-#     false_pass counts the violations of G2 (a test that passes only
-#     because files shared a window).
-#     method (warpdom-learned): cli or harness, see below.
-#   <csv>.learning.jsonl  every learning and learned run (learning.cjs)
+#     jsdom-default for jsdom-* and happydom-shared). For warpdom-learned
+#     and jsdom-learned, false_pass counts the violations of G2 (a test
+#     that passes only because files shared a window).
+#     method (warpdom-learned): cli or harness, see below; jsdom-learned:
+#     harness.
+#   <csv>.learning.jsonl  every learning and learned run (learning.cjs;
+#     config warpdom-learned or jsdom-learned)
 #   <csv>.warmup.csv      the warm-up runs (the CSV's columns)
 #   $PERTEST_DIR/<round>/<project>/<config>.json  (default <csv>.pertest)
 #     every run's per-test statuses (statuses.cjs map form; round 0 is the
@@ -94,7 +101,7 @@ S=$WORK_DIR
 W=$WARPDOM_DIR
 E=$ENV_DIR
 rounds=$1; shift
-ALL="jsdom-default jsdom-shared jsdom-vm jsdom-sharedclean warpdom-default warpdom-vm warpdom-sharedfresh warpdom-sharedreset warpdom-learned happydom-shared"
+ALL="jsdom-default jsdom-shared jsdom-vm jsdom-sharedclean jsdom-learned warpdom-default warpdom-vm warpdom-sharedfresh warpdom-sharedreset warpdom-learned happydom-shared"
 CONFIGS=${CONFIGS:-$ALL}
 for c in $CONFIGS; do
   case " $ALL " in *" $c "*) ;; *) echo "unknown configuration $c (known: $ALL)" >&2; exit 2;; esac
@@ -147,6 +154,9 @@ learn_cli() {
 }
 # The emulation (rules, learning, learned runs): learned-emulation.sh.
 source "$RESEARCH_DIR/learned-emulation.sh"
+# jl <command...>: an emulation function for jsdom-learned (jsdom, no
+# reset in shared runs).
+jl() { LENV=jsdom LFIRST= "$@"; }
 
 # The first learning (the warm-up of warpdom-learned): the state the timed
 # runs start from, and the method (cli or harness) for the project.
@@ -187,6 +197,15 @@ run_config() {
         secs=learning; return
       fi
       learned_run $r $md/$c.json; return;;
+    jsdom-learned)
+      # Always the emulation; its state in $S/ab-jstate-$p, its learning
+      # runs' maps in <round>/<project>/jsdom-learn/.
+      mkdir -p $md/jsdom-learn
+      if [ $r = 0 ]; then
+        jl learn_harness 0 $S/ab-jstate-$p $md/jsdom-learn
+        secs=learning; return
+      fi
+      jl learned_run $r $md/$c.json $S/ab-jstate-$p; return;;
   esac
   status_map $E/ab-run/tmp/$p $env $md/$c.json $p
   [ -n "$secs" ] || na $r $c ab-run
@@ -207,7 +226,7 @@ rows() {
       else cmp="$(statuses compare $md/jsdom-default.json $md/$c.json) NA NA"; fi
     else cmp="NA NA NA NA"; fi
     read -r d fd fp ff <<< "$cmp"
-    method=""; [ $c = warpdom-learned ] && method=$(cat $S/ab-method-$p)
+    method=""; [ $c = warpdom-learned ] && method=$(cat $S/ab-method-$p); [ $c = jsdom-learned ] && method=harness
     echo "$r,$p,$c,${t:-NA},$d,$fd,$fp,$ff,$ref,$pos,$method" >> "$out"
     echo "ABLATION round $r $p $c: ${t:-NA}s, $d tests / $fd files differ, $fp false passes, $ff false fails${ref:+ (vs $ref)}"
   done
@@ -229,6 +248,10 @@ for round in $(seq 0 $rounds); do
       # runs keep the warm-up's state.
       if [ "$(cat $S/ab-method-$p)" = cli ]; then learn_cli $round $S/ab-relearn/$p $PT/$round/$p/learn.json || true
       else learn_harness $round $S/ab-relearn-$p $PT/$round/$p; fi
+    fi
+    if [ $round -gt 0 ] && [[ " $CONFIGS " == *" jsdom-learned "* ]]; then
+      mkdir -p $PT/$round/$p/jsdom-learn
+      jl learn_harness $round $S/ab-jrelearn-$p $PT/$round/$p/jsdom-learn
     fi
     for c in $order; do
       run_config $round $c

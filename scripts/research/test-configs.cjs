@@ -27,6 +27,11 @@ for (const script of ['timing-rounds.sh', 'ablation-isolation.sh']) {
   assert.match(fs.readFileSync(path.join(__dirname, script), 'utf8'), /--no-isolate.*--project-setup "\$RESEARCH_DIR\/shared-cleanup\.mjs"/, `${script} runs jsdom-sharedclean with the cleanup`);
 }
 assert.match(fs.readFileSync(path.join(__dirname, 'ablation-isolation.sh'), 'utf8'), /^ALL="[^"]*\bjsdom-sharedclean\b/m, 'ablation-isolation.sh runs jsdom-sharedclean by default');
+// jsdom-learned: the shared emulation on jsdom without the reset, its own state.
+const ab = fs.readFileSync(path.join(__dirname, 'ablation-isolation.sh'), 'utf8');
+assert.match(ab, /^ALL="[^"]*\bjsdom-learned\b/m);
+assert.match(ab, /^jl\(\) \{ LENV=jsdom LFIRST= "\$@"; \}/m);
+assert.match(ab, /jl learned_run \$r \$md\/\$c\.json \$S\/ab-jstate-\$p/);
 assert.equal(parse('warpdom-fast'), null, 'unknown pool');
 assert.equal(parse('linkedom-default'), null, 'unknown DOM');
 

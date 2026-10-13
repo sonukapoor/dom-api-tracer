@@ -12,7 +12,12 @@
 # Missing results count as failures: a test or file without a result in a
 # shared run (a hang, a crash, a stopped run) makes its file one to
 # isolate (statuses.cjs isolate), and a shared run without a time (failed
-# or stopped at its deadline) means isolated mode.
+# or stopped at its deadline) means isolated mode. In a learned run, a
+# file of the shared part without any result is re-run isolated like a
+# failing one (statuses.cjs missing, against the learning's isolated run).
+#
+# Learning and learned-run records carry --config "$LENV-learned"
+# (learning.cjs), so one JSON lines file holds both DOMs.
 LENV=${LEARN_ENV:-warpdom}
 LFIRST=${LEARN_FIRST-$first}
 
@@ -75,29 +80,32 @@ learn_harness() {
     fi
   fi
   echo "$iso" > $st.isolate; echo "$leaky" > $st.leaky; echo $mode > $st.mode; echo "${ti:-0}" > $st.tiso
+  # Every file the isolated run reported: what a shared run must report.
+  cp $md/learn-isolated.json $st.reference.json
   local total; total=$(add "$(add "$ti" "$ts")" "$tsplit")
-  nodex "$RESEARCH_DIR/learning.cjs" harness "$jsonl" $r $p learn "$REPOS_DIR/$p" \
+  nodex "$RESEARCH_DIR/learning.cjs" harness "$jsonl" $r $p learn "$REPOS_DIR/$p" --config $LENV-learned \
     --t_iso "${ti:-NA}" --t_sh "${ts:-NA}" --t_split "${tsplit:-NA}" --mode $mode --leaky "$leaky" --isolate "$iso" --reason "$reason" --seconds "${total:-NA}"
   echo "LEARN round $r $p (harness): $(count $iso) files to isolate ($(count $leaky) leaky); isolated ${ti:-NA}s, shared ${ts:-NA}s, split ${tsplit:-NA}s -> $mode ($reason)"
 }
-# learned_run <round> <map out>: one timed learned run on the kept state;
-# sets secs.
+# learned_run <round> <map out> [<state prefix>]: one timed learned run on
+# the kept state (default $S/ab-state-$p, learn_harness's prefix); sets secs.
 learned_run() {
   local r=$1 mapout=$2
-  if [ "$(cat $S/ab-method-$p)" = cli ]; then
+  if [ "$LENV" = warpdom ] && [ "$(cat $S/ab-method-$p 2>/dev/null)" = cli ]; then
     secs=$(run ab-run --environment warpdom --fast-cli run --fast-state $S/ab-state/$p)
     status_map $E/ab-run/tmp/$p warpdom $mapout $p
     nodex "$RESEARCH_DIR/learning.cjs" cli $E/ab-run/tmp/$p "$jsonl" $r $p run
     [ -n "$secs" ] || na $r warpdom-learned ab-run
     return
   fi
-  local st=$S/ab-state-$p iso n t1 t2=0 t3=0 ti rerun nr new="" tmp=$S/ab-lr started fell
+  local st=${3:-$S/ab-state-$p} iso n t1 t2=0 t3=0 ti rerun nr new="" tmp started fell
+  tmp=$st-lr
   iso=$(cat $st.isolate); n=$(count $iso); ti=$(cat $st.tiso)
   if [ "$(cat $st.mode)" = isolated ]; then
     secs=$(run ab-run --environment $LENV)
     status_map $E/ab-run/tmp/$p $LENV $mapout $p
-    [ -n "$secs" ] || na $r warpdom-learned ab-run
-    nodex "$RESEARCH_DIR/learning.cjs" harness "$jsonl" $r $p run "$REPOS_DIR/$p" --mode isolated --leaky "$(cat $st.leaky)" --isolate "$iso" --seconds "${secs:-NA}"
+    [ -n "$secs" ] || na $r $LENV-learned ab-run
+    nodex "$RESEARCH_DIR/learning.cjs" harness "$jsonl" $r $p run "$REPOS_DIR/$p" --config $LENV-learned --mode isolated --leaky "$(cat $st.leaky)" --isolate "$iso" --seconds "${secs:-NA}"
     return
   fi
   started=$(now)
@@ -111,7 +119,7 @@ learned_run() {
     status_map $E/ab-run/tmp/$p $LENV $mapout $p
     echo isolated > $st.mode
     secs=$(add "$fell" "$t2")
-    nodex "$RESEARCH_DIR/learning.cjs" harness "$jsonl" $r $p run "$REPOS_DIR/$p" --mode split --mode_after isolated \
+    nodex "$RESEARCH_DIR/learning.cjs" harness "$jsonl" $r $p run "$REPOS_DIR/$p" --config $LENV-learned --mode split --mode_after isolated \
       --leaky "$(cat $st.leaky)" --isolate "$iso" --seconds "${secs:-NA}"
     echo "LEARNED round $r $p (harness): ${secs:-NA}s, the split's shared run stopped or failed: isolated run, isolated from now on"
     return
@@ -123,9 +131,12 @@ learned_run() {
     [ -n "$t2" ] || na $r learned-isolated ab-run
     status_map $E/ab-run/tmp/$p $LENV $tmp-iso.json $p
   fi
-  # Files failing without isolation run again isolated (their results
-  # count) and are isolated from now on, leaky or not.
-  rerun=$(statuses failing $tmp-fast.json); nr=$(count $rerun)
+  # Files failing without isolation, or without any result there (missing
+  # counts as failing), run again isolated (their results count) and are
+  # isolated from now on, leaky or not.
+  rerun=$(statuses failing $tmp-fast.json)
+  [ -f $st.reference.json ] && rerun=$(union "$rerun" "$(minus "$(statuses missing $tmp-fast.json $st.reference.json)" "$iso")")
+  nr=$(count $rerun)
   if [ "$nr" != 0 ]; then
     t3=$(run ab-run --environment $LENV --extra-args "--passWithNoTests $rerun")
     [ -n "$t3" ] || na $r learned-rerun ab-run
@@ -138,7 +149,7 @@ learned_run() {
   secs=$(add "$(add "$t1" "$t2")" "$t3")
   local after=split tsplit; tsplit=$(add "$t1" "$t2")
   [ "$(keeps $ti $tsplit)" = 1 ] || { after=isolated; echo isolated > $st.mode; }
-  nodex "$RESEARCH_DIR/learning.cjs" harness "$jsonl" $r $p run "$REPOS_DIR/$p" --mode split --mode_after $after \
+  nodex "$RESEARCH_DIR/learning.cjs" harness "$jsonl" $r $p run "$REPOS_DIR/$p" --config $LENV-learned --mode split --mode_after $after \
     --leaky "$(cat $st.leaky)" --isolate "$(cat $st.isolate)" --new "$new" --rerun "$rerun" --seconds "${secs:-NA}"
   echo "LEARNED round $r $p (harness): ${secs:-NA}s, $n isolated, $nr re-run, $(count $new) new leaky; split $tsplit s vs isolated $ti s -> $after"
 }

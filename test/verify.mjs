@@ -282,7 +282,8 @@ try {
   };
   try {
     assert.equal(passed('shared-plain', []), 2, 'shared cleanup: without it, the second file starts dirty');
-    assert.equal(passed('shared-clean', ['--project-setup', path.join(root, 'scripts/research/shared-cleanup.mjs')]), 4, 'shared cleanup: every file starts clean');
+    // A fractional --timeout (the learned emulation's deadlines) is rounded to whole milliseconds.
+    assert.equal(passed('shared-clean', ['--project-setup', path.join(root, 'scripts/research/shared-cleanup.mjs'), '--timeout', '0.535']), 4, 'shared cleanup: every file starts clean');
   } finally { fs.rmSync(path.join(fixture, 'pkg/node_modules'), { recursive: true, force: true }); }
   const left = fs.readdirSync(fixture, { recursive: true }).filter((f) => String(f).includes('.dom-trace.'));
   assert.deepEqual(left, [], 'shared cleanup: copied setup file and wrapper removed');

@@ -9,7 +9,7 @@
 //   learning.cjs harness <jsonl> <round> <project> <learn|run> <project dir> [--key value ...]
 //       from the harness emulation: --t_iso --t_sh --t_split --mode
 //       --leaky "<abs files>" --seconds --rerun "<abs files>" --new "<abs files>"
-//       --isolate "<abs files>" --reason --mode_after
+//       --isolate "<abs files>" --reason --mode_after --config
 //
 // Fields: round (0 = the warm-up, whose learning is the state the timed
 // learned runs start from), project, kind (learn: learning from scratch;
@@ -82,6 +82,8 @@ if (cmd === 'cli') {
   for (let i = 0; i < rest.length; i += 2) o[rest[i].replace(/^--/, '')] = rest[i + 1];
   const files = (s) => (s ?? '').split(/\s+/).filter(Boolean).map((f) => (f.startsWith(root + '/') ? f.slice(root.length + 1) : f));
   const rec = { round: +round, project, kind, method: 'harness', seconds: num(o.seconds), mode: o.mode ?? null };
+  // The configuration (warpdom-learned, jsdom-learned); records without one are warpdom-learned's.
+  if (o.config) rec.config = o.config;
   // --isolate (files run isolated) and --reason / --mode_after come from
   // the emulation of warpdom's state version 2; without --isolate, the
   // leaky files were the isolated ones.

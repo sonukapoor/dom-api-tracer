@@ -23,6 +23,8 @@
 //       whose status differs from base; with ref, tests passed in run but not
 //       in ref (failed, skipped or missing) and the reverse.
 //   statuses.cjs failing <map.json>        failing test files (absolute), one line
+//   statuses.cjs missing <map.json> <reference.json>
+//       test files (absolute) of reference without any result in map
 //   statuses.cjs leaky <shared.json> <isolated.json>
 //       files failing in shared that do not fail isolated (warpdom's
 //       newlyLeaky: "fails without isolation, passes isolated")
@@ -135,6 +137,8 @@ function compare(base, run, ref, exclude) {
 }
 
 const failing = (map) => [...new Set(Object.values(map.files).filter((v) => v.s === 'failed').map((v) => v.file))];
+// Files of reference with no result at all in map (a crash, a hang).
+const missing = (map, reference) => [...new Set(Object.entries(reference.files).filter(([k]) => !map.files[k]).map(([, v]) => v.file))];
 
 function leaky(shared, isolated) {
   const isoFailed = new Set(failing(isolated));
@@ -182,7 +186,7 @@ function jsdomRounds(entries, limit = 5) {
   return { broken, flaky: { tests: varying('tests'), files: varying('files') } };
 }
 
-module.exports = { jsdomRounds, relativeFile, firstLine, fromResults, loadDir, read, differingKeys, flaky, compare, direction, failing, leaky, isolate, merge };
+module.exports = { jsdomRounds, relativeFile, firstLine, fromResults, loadDir, read, differingKeys, flaky, compare, direction, failing, missing, leaky, isolate, merge };
 
 if (require.main === module) {
   const [cmd, ...args] = process.argv.slice(2);
@@ -204,6 +208,8 @@ if (require.main === module) {
     console.log([c.differs, c.filesDiffer, ...(ref ? [c.falsePass, c.falseFail] : [])].join(' '));
   } else if (cmd === 'failing') {
     console.log(failing(read(args[0])).join(' '));
+  } else if (cmd === 'missing') {
+    console.log(missing(read(args[0]), read(args[1])).join(' '));
   } else if (cmd === 'leaky') {
     console.log(leaky(read(args[0]), read(args[1])).join(' '));
   } else if (cmd === 'isolate') {
@@ -223,7 +229,7 @@ if (require.main === module) {
     const m = read(args[0]);
     console.log(`${Object.keys(m.tests).length} ${Object.keys(m.files).length}`);
   } else {
-    process.stderr.write('usage: statuses.cjs map|compare|failing|leaky|isolate|merge|count|jsdom-rounds ... (see the header)\n');
+    process.stderr.write('usage: statuses.cjs map|compare|failing|missing|leaky|isolate|merge|count|jsdom-rounds ... (see the header)\n');
     process.exit(2);
   }
 }
