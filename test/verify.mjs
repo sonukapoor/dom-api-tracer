@@ -261,6 +261,38 @@ try {
   console.log('• environment mode        FAILED\n' + (String(err.stdout || '') + String(err.stderr || '')).slice(-1500) + err.message);
 }
 
+// jsdom-sharedclean (scripts/research/shared-cleanup.mjs through
+// --project-setup): two files share one worker without isolation; each
+// checks that it starts clean, then leaves state behind. Without the
+// cleanup the second file's first test fails; with it all pass, Testing
+// Library's cleanup (a stand-in package) runs once, head styles stay, and
+// the copied setup file is removed.
+try {
+  const fixture = path.join(root, 'test/fixtures/shared-cleanup');
+  const tl = path.join(fixture, 'pkg/node_modules/@testing-library/react');
+  fs.mkdirSync(tl, { recursive: true });
+  fs.writeFileSync(path.join(tl, 'package.json'), '{ "name": "@testing-library/react", "type": "module", "main": "index.js" }');
+  fs.writeFileSync(path.join(tl, 'index.js'), 'export function cleanup() { globalThis.__testingLibraryCleanups = (globalThis.__testingLibraryCleanups ?? 0) + 1; }\n');
+  const passed = (name, extra) => {
+    const dir = path.join(out, name);
+    execFileSync(process.execPath, [path.join(root, 'scripts/trace-corpus.mjs'), path.join(fixture, 'corpus.json'),
+      '--out', dir, '--environment', 'jsdom', '--max-workers', '1', '--extra-args', '--no-isolate', ...extra], { cwd: root, stdio: 'pipe' });
+    return JSON.parse(fs.readFileSync(path.join(dir, 'status.json'), 'utf8')).projects['fixture-shared-cleanup'].packages[0].run?.passed;
+  };
+  try {
+    assert.equal(passed('shared-plain', []), 3, 'shared cleanup: without it, the second file starts dirty');
+    assert.equal(passed('shared-clean', ['--project-setup', path.join(root, 'scripts/research/shared-cleanup.mjs')]), 4, 'shared cleanup: every file starts clean');
+  } finally { fs.rmSync(path.join(fixture, 'pkg/node_modules'), { recursive: true, force: true }); }
+  const left = fs.readdirSync(fixture, { recursive: true }).filter((f) => String(f).includes('.dom-trace.'));
+  assert.deepEqual(left, [], 'shared cleanup: copied setup file and wrapper removed');
+  const { vitestWrapper } = await import(path.join(root, 'scripts/trace-corpus.mjs'));
+  assert.ok(vitestWrapper('/x/vitest.config.mjs', { trace: false, firstSetup: ['/a.mjs', '/b.mjs'] }).includes('...["/a.mjs","/b.mjs"]'), 'wrapper: several first setup files');
+  console.log('• shared cleanup          ok');
+} catch (err) {
+  failures++;
+  console.log('• shared cleanup          FAILED\n' + (String(err.stdout || '') + String(err.stderr || '')).slice(-1500) + err.message);
+}
+
 // setup-cost: Vitest's duration breakdown in both formats, and a run on the
 // fixture corpus with and without isolation.
 try {
@@ -408,7 +440,7 @@ try {
 // Research scripts: per-test status keys and counting (statuses.cjs),
 // timing configurations and per-package times (configs.sh), the timing
 // report's A/A and per-package tables, the jsdom version experiment.
-for (const [name, file] of [['statuses', 'test-statuses.cjs'], ['configs', 'test-configs.cjs'], ['versions', 'test-versions.cjs'], ['learned', 'test-learned.cjs']]) {
+for (const [name, file] of [['statuses', 'test-statuses.cjs'], ['configs', 'test-configs.cjs'], ['versions', 'test-versions.cjs'], ['learned', 'test-learned.cjs'], ['ablation', 'test-ablation.cjs']]) {
   try {
     execFileSync(process.execPath, [path.join(root, 'scripts/research', file)], { stdio: 'pipe' });
     console.log(`• research ${name.padEnd(14)} ok`);

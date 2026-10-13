@@ -11,15 +11,22 @@ const { execFileSync } = require('child_process');
 const sh = (script, input) => execFileSync('bash', ['-c', `source ${JSON.stringify(path.join(__dirname, 'configs.sh'))}; ${script}`], { encoding: 'utf8', input }).trim();
 const parse = (cfg) => { try { return sh(`parse_config ${cfg}`); } catch { return null; } };
 
-assert.equal(parse('jsdom-default'), 'jsdom - - -');
-assert.equal(parse('happy-dom-default'), 'happy-dom - - -');
-assert.equal(parse('warpdom-vm'), 'warpdom - - vmThreads');
-assert.equal(parse('warpdomframes-default'), 'warpdom - 1 -');
-assert.equal(parse('warpdomnocache-default'), 'warpdom no-query-cache - -');
-assert.equal(parse('warpdomlatest-vm'), 'warpdom latest-profile - vmThreads');
+assert.equal(parse('jsdom-default'), 'jsdom - - - -');
+assert.equal(parse('happy-dom-default'), 'happy-dom - - - -');
+assert.equal(parse('warpdom-vm'), 'warpdom - - vmThreads -');
+assert.equal(parse('warpdomframes-default'), 'warpdom - 1 - -');
+assert.equal(parse('warpdomnocache-default'), 'warpdom no-query-cache - - -');
+assert.equal(parse('warpdomlatest-vm'), 'warpdom latest-profile - vmThreads -');
 // The A/A controls: warpdom-default again, and with WARPDOM_ABLATE=''.
-assert.equal(parse('warpdom-default-aa'), 'warpdom - - -');
-assert.equal(parse('warpdom-ablate-unset'), "warpdom '' - -");
+assert.equal(parse('warpdom-default-aa'), 'warpdom - - - -');
+assert.equal(parse('warpdom-ablate-unset'), "warpdom '' - - -");
+// The strong jsdom baseline: no isolation plus the generic cleanup.
+assert.equal(parse('jsdom-sharedclean'), 'jsdom - - - clean');
+assert.equal(parse('happy-dom-sharedclean'), null, 'jsdom only');
+for (const script of ['timing-rounds.sh', 'ablation-isolation.sh']) {
+  assert.match(fs.readFileSync(path.join(__dirname, script), 'utf8'), /--no-isolate.*--project-setup "\$RESEARCH_DIR\/shared-cleanup\.mjs"/, `${script} runs jsdom-sharedclean with the cleanup`);
+}
+assert.match(fs.readFileSync(path.join(__dirname, 'ablation-isolation.sh'), 'utf8'), /^ALL="[^"]*\bjsdom-sharedclean\b/m, 'ablation-isolation.sh runs jsdom-sharedclean by default');
 assert.equal(parse('warpdom-fast'), null, 'unknown pool');
 assert.equal(parse('linkedom-default'), null, 'unknown DOM');
 

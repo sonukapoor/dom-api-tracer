@@ -1,0 +1,10 @@
+{
+  "projects": [
+    {
+      "name": "fixture-shared-cleanup",
+      "path": ".",
+      "install": false,
+      "packages": [{ "dir": "pkg", "runner": "vitest" }]
+    }
+  ]
+}

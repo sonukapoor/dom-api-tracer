@@ -8,6 +8,11 @@
 #   jsdom-default        jsdom, Vitest's isolation (the baseline)
 #   jsdom-shared         jsdom without isolation (--no-isolate)
 #   jsdom-vm             jsdom, --pool=vmThreads
+#   jsdom-sharedclean    jsdom without isolation plus a generic cleanup
+#                        before every test file (shared-cleanup.mjs: Testing
+#                        Library's cleanup, Vitest's mocks, timers, stubs,
+#                        body, storage, title, cookies, URL), what a
+#                        practitioner could copy; the same for every project
 #   warpdom-default      warpdom, Vitest's isolation
 #   warpdom-vm           warpdom, --pool=vmThreads
 #   warpdom-sharedfresh  warpdom without isolation, a new window per file
@@ -89,7 +94,7 @@ S=$WORK_DIR
 W=$WARPDOM_DIR
 E=$ENV_DIR
 rounds=$1; shift
-ALL="jsdom-default jsdom-shared jsdom-vm warpdom-default warpdom-vm warpdom-sharedfresh warpdom-sharedreset warpdom-learned happydom-shared"
+ALL="jsdom-default jsdom-shared jsdom-vm jsdom-sharedclean warpdom-default warpdom-vm warpdom-sharedfresh warpdom-sharedreset warpdom-learned happydom-shared"
 CONFIGS=${CONFIGS:-$ALL}
 for c in $CONFIGS; do
   case " $ALL " in *" $c "*) ;; *) echo "unknown configuration $c (known: $ALL)" >&2; exit 2;; esac
@@ -169,6 +174,7 @@ run_config() {
     jsdom-default) env=jsdom; secs=$(run ab-run --environment jsdom);;
     jsdom-shared) env=jsdom; secs=$(run ab-run --environment jsdom --extra-args "--no-isolate");;
     jsdom-vm) env=jsdom; secs=$(run ab-run --environment jsdom --extra-args "--pool=vmThreads");;
+    jsdom-sharedclean) env=jsdom; secs=$(run ab-run --environment jsdom --extra-args "--no-isolate" --project-setup "$RESEARCH_DIR/shared-cleanup.mjs");;
     warpdom-default) secs=$(run ab-run --environment warpdom);;
     warpdom-vm) secs=$(run ab-run --environment warpdom --extra-args "--pool=vmThreads");;
     warpdom-sharedfresh) secs=$(WARPDOM_ABLATE=fresh-window run ab-run --environment warpdom --extra-args "--no-isolate" $first);;

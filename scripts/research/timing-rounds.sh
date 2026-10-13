@@ -12,7 +12,9 @@
 # query result cache), warpdomlatest (latest jsdom profile for every project).
 # A/A controls: warpdom-default-aa (warpdom-default under a second name) and
 # warpdom-ablate-unset (WARPDOM_ABLATE set to ''; every other configuration
-# runs with it unset). parse_config in configs.sh has the full list.
+# runs with it unset). jsdom-sharedclean (Vitest only): jsdom without
+# isolation plus the generic cleanup of shared-cleanup.mjs before every
+# test file. parse_config in configs.sh has the full list.
 #
 # TIMEOUT_MIN (default 45): per package run; a package that times out or
 # fails to produce results makes that round's time NA.
@@ -87,9 +89,11 @@ for round in $(seq 0 $rounds); do
       case "$built" in *" $project "*) build="--no-build";; *) built="$built$project ";; esac
       # parse_config (configs.sh): environment, WARPDOM_ABLATE, fast frames, pool.
       parsed=$(parse_config "$cfg") || { echo "unknown configuration $cfg" >&2; exit 2; }
-      read -r env ablate frames pool <<< "$parsed"
+      read -r env ablate frames pool shared <<< "$parsed"
       [ "$frames" = - ] && frames=""
       extra=""; [ "$pool" = - ] || extra="--pool=$pool"
+      setup=()
+      if [ "$shared" = clean ]; then extra="$extra --no-isolate"; setup=(--project-setup "$RESEARCH_DIR/shared-cleanup.mjs"); fi
       out=$ENV_DIR/timing-$cfg
       rm -rf $out
       perfile=""
@@ -99,7 +103,7 @@ for round in $(seq 0 $rounds); do
         extra="$extra --reporter=$RESEARCH_DIR/perfile-reporter.mjs"
       fi
       # WARPDOM_ABLATE: unset unless the configuration sets it (with_ablate).
-      log=$(PERFILE_OUT=$perfile WARPDOM_FAST_FRAMES=$frames with_ablate "$ablate" harness --only $project --environment $env --out $out --max-workers 2 --timeout ${TIMEOUT_MIN:-45} $build ${extra:+--extra-args "$extra"} 2>&1)
+      log=$(PERFILE_OUT=$perfile WARPDOM_FAST_FRAMES=$frames with_ablate "$ablate" harness --only $project --environment $env --out $out --max-workers 2 --timeout ${TIMEOUT_MIN:-45} $build ${extra:+--extra-args "$extra"} "${setup[@]}" 2>&1)
       if [ "$env" = jsdom ] && ! ls "$base"/*.jsdom.json >/dev/null 2>&1; then
         base=$ENV_DIR/jsdom-time/tmp/$project
         mkdir -p "$base" && cp "$out/tmp/$project"/*.jsdom.json "$base"/ 2>/dev/null

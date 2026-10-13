@@ -27,7 +27,7 @@ on:
         description: warpdom branch, tag or commit
         default: main
       configs:
-        description: 'Configurations; empty = the mode''s default (timing: jsdom-default warpdom-default happy-dom-default, see timing-rounds.sh; ablation-isolation: all nine, see ablation-isolation.sh; fastmode: jsdom-default warpdom-default warpdom-learned)'
+        description: 'Configurations; empty = the mode''s default (timing: jsdom-default warpdom-default happy-dom-default, see timing-rounds.sh; ablation-isolation: all ten, see ablation-isolation.sh; jsdom-sharedclean is jsdom without isolation plus shared-cleanup.mjs, also in timing; fastmode: jsdom-default warpdom-default warpdom-learned)'
         default: ''
       mode:
         description: 'timing (configs above), fastmode (learned.sh), ablation-isolation (ablation-isolation.sh; these two Vitest only) or versions (versions.sh: jsdom only, own jsdom twice and other versions by overrides; rounds and configs unused)'

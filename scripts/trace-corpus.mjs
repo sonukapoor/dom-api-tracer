@@ -38,6 +38,10 @@ Options:
   --warpdom <dir>    warpdom checkout for --environment warpdom (default: ../warpdom)
   --extra-args <s>   extra runner arguments, space-separated (e.g. a test file filter)
   --first-setup <f>  a Vitest setup file to run before the project's own
+  --project-setup <f>  as --first-setup (after it), but copied next to the
+                     package's Vitest config for the run, so its imports
+                     ('vitest', the project's packages) resolve as the
+                     project's own files do; removed afterwards
   --fast-cli <learn|run>  Vitest + --environment warpdom: run warpdom's shipped fast
                      mode (\`warpdom vitest run\`, Vitest >= 3.2): learn from scratch
                      (--learn) or a normal run with the learned state
@@ -75,6 +79,7 @@ function parseArgs(argv) {
     else if (a === '--warpdom') args.warpdom = argv[++i];
     else if (a === '--extra-args') args.extraArgs = argv[++i].split(' ').filter(Boolean);
     else if (a === '--first-setup') args.firstSetup = path.resolve(argv[++i]);
+    else if (a === '--project-setup') args.projectSetup = path.resolve(argv[++i]);
     else if (a === '--fast-cli') args.fastCli = argv[++i];
     else if (a === '--fast-state') args.fastState = argv[++i];
     else if (a === '-h' || a === '--help') args.help = true;
@@ -173,6 +178,7 @@ function findConfig(pkgDir, runner, explicit) {
 // Options: trace (add the tracer, default true) and environment (switch
 // projects that run on jsdom or happy-dom to this one; node projects keep theirs).
 // execArgv: extra Node flags for test workers (profiling).
+// firstSetup: a setup file or a list of them, run before the project's own.
 // pinned: the environment name that test files pinning jsdom or happy-dom
 // with a comment (\`@vitest-environment jsdom\`) get instead; null leaves them.
 // fast: { module, project } wraps the result in warpdom's withFastMode
@@ -185,8 +191,8 @@ ${fast ? `import { withFastMode } from ${JSON.stringify(pathToFileURL(fast.modul
 const TRACER = ${JSON.stringify(TRACER.vitest)};
 const ENVIRONMENT = ${JSON.stringify(environment)};
 // Setup files that must run before the project's own: the tracer, and an
-// optional extra one (--first-setup).
-const FIRST = [...(${trace} ? [TRACER] : []), ...${JSON.stringify(firstSetup ? [firstSetup] : [])}];
+// optional extra ones (--first-setup, --project-setup).
+const FIRST = [...(${trace} ? [TRACER] : []), ...${JSON.stringify([].concat(firstSetup ?? []))}];
 const addTracer = (test) => (FIRST.length > 0 ? {
   ...test,
   setupFiles: [...FIRST, ...[].concat(test?.setupFiles ?? []).filter((f) => !FIRST.includes(f))],
@@ -357,6 +363,17 @@ function removeLeftoverWrappers() {
   const leftovers = JSON.parse(fs.readFileSync(pendingFile, 'utf8'));
   if (leftovers.length) log(`Removing ${leftovers.length} wrapper config(s) left by an interrupted run`);
   removeWrappers(leftovers);
+}
+
+// --project-setup: the setup file copied next to the config as
+// <name>.dom-trace.<ext> (removed with the wrappers), so Vite resolves its
+// imports from the project, as for the project's own setup files.
+export function copyProjectSetup(file, config) {
+  const ext = path.extname(file);
+  const target = path.join(path.dirname(config), `${path.basename(file, ext)}.dom-trace${ext}`);
+  setPending((list) => [...list.filter((f) => f !== target), target]);
+  fs.copyFileSync(file, target);
+  return target;
 }
 
 function writeWrapper(runner, base, options) {
@@ -534,7 +551,15 @@ function runEnvironment({ pkg, projectDir, logDir, tmpDir, profileDir, opts }) {
     env.NODE_OPTIONS = `${process.env.NODE_OPTIONS ?? ''} ${execArgv.join(' ')}`.trim();
   }
   const pinned = opts.environment === 'warpdom' ? PINNED_WARPDOM : opts.environment;
-  if (opts.fastCli) return runFastCli({ pkg, pkgDir, bin, config, environment, created, env, pinned, slug, logDir, tmpDir, result, opts });
+  // Setup files run first: --first-setup as given, --project-setup copied
+  // next to the config (Vitest only).
+  const firstSetup = [opts.firstSetup ?? []].flat();
+  if (opts.projectSetup && runner === 'vitest') {
+    const copy = copyProjectSetup(opts.projectSetup, config);
+    created.push(copy);
+    firstSetup.push(copy);
+  }
+  if (opts.fastCli) return runFastCli({ firstSetup, pkg, pkgDir, bin, config, environment, created, env, pinned, slug, logDir, tmpDir, result, opts });
   // Files sharing a worker (--no-isolate, the vm pools) get warpdom's
   // environment as a /@fs/ id, as warpdom's fast mode gives it (its
   // vitest-fast.js fsId): Vitest 3 caches the environment's loader with the
@@ -542,7 +567,7 @@ function runEnvironment({ pkg, projectDir, logDir, tmpDir, profileDir, opts }) {
   // floating-ui's packages/react, root test/unit) the next file waits
   // forever for that channel to resolve it.
   if (opts.environment === 'warpdom' && runner === 'vitest' && sharesWorkers([...(pkg.args ?? []), ...(opts.extraArgs ?? [])])) environment = fsId(environment);
-  const wrapper = writeWrapper(runner, config, { trace: false, environment, execArgv: runner === 'vitest' ? execArgv : [], firstSetup: opts.firstSetup ?? null, pinned });
+  const wrapper = writeWrapper(runner, config, { trace: false, environment, execArgv: runner === 'vitest' ? execArgv : [], firstSetup, pinned });
   const resultsFile = path.join(tmpDir, `${slug}.${opts.environment}.json`);
   let res;
   try {
@@ -585,7 +610,7 @@ export const supportsFastCli = (version) => {
   return major > 3 || (major === 3 && minor >= 2);
 };
 
-function runFastCli({ pkg, pkgDir, bin, config, environment, created, env, pinned, slug, logDir, tmpDir, result, opts }) {
+function runFastCli({ firstSetup, pkg, pkgDir, bin, config, environment, created, env, pinned, slug, logDir, tmpDir, result, opts }) {
   const fail = (error) => { removeWrappers(created); return { ...result, status: 'failed', error }; };
   if (pkg.runner !== 'vitest' || opts.environment !== 'warpdom') return fail('fast-cli unsupported: Vitest with warpdom only');
   let version;
@@ -604,7 +629,7 @@ function runFastCli({ pkg, pkgDir, bin, config, environment, created, env, pinne
 
   const copy = path.dirname(path.dirname(environment));
   const wrapper = writeWrapper('vitest', config, {
-    trace: false, environment, firstSetup: opts.firstSetup ?? null, pinned,
+    trace: false, environment, firstSetup, pinned,
     fast: { module: path.join(copy, 'src', 'vitest-fast.js'), project: projects[0] },
   });
   const entry = path.join(copy, 'fast-cli.mjs');

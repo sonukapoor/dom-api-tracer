@@ -2,13 +2,15 @@
 # scripts (sourced by lib.sh; test-configs.cjs checks it in npm test).
 # Only functions: no side effects when sourced.
 
-# parse_config <config>: prints "<environment> <ablate> <frames> <pool>" for
+# parse_config <config>: prints "<environment> <ablate> <frames> <pool> <shared>" for
 # a timing-rounds.sh configuration name, one field per word, "-" for none:
 #   <environment>  jsdom, happy-dom or warpdom (the harness's --environment)
 #   <ablate>       WARPDOM_ABLATE: "-" unset, "''" set to the empty string,
 #                  else its value
 #   <frames>       1 for WARPDOM_FAST_FRAMES=1, else "-"
 #   <pool>         vmThreads for <dom>-vm (Vitest only), else "-"
+#   <shared>       clean for jsdom-sharedclean (--no-isolate and
+#                  shared-cleanup.mjs), else "-"
 # Names: <dom>-<default|vm> with dom one of jsdom, happy-dom, warpdom,
 # warpdomframes (WARPDOM_FAST_FRAMES=1), warpdomeager, warpdomnocache,
 # warpdomlatest (warpdom ablations); and two controls for the A/A run:
@@ -19,12 +21,18 @@
 #                         empty string (every other configuration runs with
 #                         it unset or set to an ablation), so the switch's
 #                         cost when no ablation is chosen shows
+# and a strong jsdom baseline (Vitest only):
+#   jsdom-sharedclean     jsdom without isolation (--no-isolate) and a
+#                         generic cleanup before every test file
+#                         (shared-cleanup.mjs, copied into the project with
+#                         trace-corpus.mjs --project-setup)
 # Unknown names print nothing and return 1.
 parse_config() {
   local cfg=$1 env ablate=- frames=- pool=-
   case "$cfg" in
-    warpdom-default-aa) echo "warpdom - - -"; return 0;;
-    warpdom-ablate-unset) echo "warpdom '' - -"; return 0;;
+    warpdom-default-aa) echo "warpdom - - - -"; return 0;;
+    warpdom-ablate-unset) echo "warpdom '' - - -"; return 0;;
+    jsdom-sharedclean) echo "jsdom - - - clean"; return 0;;
   esac
   case "${cfg##*-}" in
     default) ;;
@@ -41,7 +49,7 @@ parse_config() {
     warpdomlatest) env=warpdom; ablate=latest-profile;;
     *) return 1;;
   esac
-  echo "$env $ablate $frames $pool"
+  echo "$env $ablate $frames $pool -"
 }
 
 # with_ablate <ablate> <command...>: runs the command (a function too) in a

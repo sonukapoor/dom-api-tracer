@@ -16,7 +16,8 @@
 //    against the same DOM's isolated run (sum over rounds; for
 //    warpdom-learned the false passes are G2 violations).
 // 2. Per suite, the best correct jsdom configuration: the fastest (median
-//    time) of jsdom-default, jsdom-shared and jsdom-vm whose results match
+//    time) of jsdom-default, jsdom-shared, jsdom-vm and jsdom-sharedclean
+//    (no isolation plus shared-cleanup.mjs) whose results match
 //    jsdom-default in every round, and warpdom-learned's speedup over it.
 //    "Match": with --pertest, every differing test is one that also
 //    changes between jsdom-default runs (the warm-up's included: flaky,
@@ -51,7 +52,9 @@ for (const r of rows) {
   if (!p.has(r.round)) p.set(r.round, {});
   p.get(r.round)[r.config] = { secs: n(r.seconds), differs: n(r.differs), files: n(r.files_differ), fp: n(r.false_pass), ff: n(r.false_fail), method: r.method };
 }
-const ORDER = ['jsdom-default', 'jsdom-shared', 'jsdom-vm', 'warpdom-default', 'warpdom-vm', 'warpdom-sharedfresh', 'warpdom-sharedreset', 'warpdom-learned', 'happydom-shared'];
+// The jsdom configurations: the baseline and its alternatives.
+const JSDOMS = ['jsdom-default', 'jsdom-shared', 'jsdom-vm', 'jsdom-sharedclean'];
+const ORDER = [...JSDOMS, 'warpdom-default', 'warpdom-vm', 'warpdom-sharedfresh', 'warpdom-sharedreset', 'warpdom-learned', 'happydom-shared'];
 const configsOf = (p) => { const s = new Set([...p.values()].flatMap((r) => Object.keys(r))); return [...ORDER.filter((c) => s.has(c)), ...[...s].filter((c) => !ORDER.includes(c))]; };
 
 const valid = (a) => a.filter((x) => !Number.isNaN(x));
@@ -132,13 +135,13 @@ function correct(project, p, c) {
 
 // 2 and 3. Best correct jsdom configuration.
 console.log('\n## Best correct jsdom configuration\n');
-console.log(`The fastest of jsdom-default, jsdom-shared and jsdom-vm whose results match jsdom-default in every round (${pertestDir ? 'allowing only tests that also change between jsdom-default runs' : 'no differing test in any round; pass --pertest to allow tests that change between jsdom-default runs'}), and warpdom-learned's speedup over it (per-round ratios).\n`);
+console.log(`The fastest of ${JSDOMS.join(', ')} (those that ran) whose results match jsdom-default in every round (${pertestDir ? 'allowing only tests that also change between jsdom-default runs' : 'no differing test in any round; pass --pertest to allow tests that change between jsdom-default runs'}), and warpdom-learned's speedup over it (per-round ratios).\n`);
 console.log('| Suite | correct jsdom configurations | best | its median time | warpdom-learned | speedup over best | interval | learned tests differ (max) | learned false passes |');
 console.log('| --- | --- | --- | --- | --- | --- | --- | --- | --- |');
 const everyBreaks = [];
 const learnedOverBest = [];
 for (const [project, p] of data) {
-  const jsdoms = ['jsdom-default', 'jsdom-shared', 'jsdom-vm'].filter((c) => timed(p, c).length);
+  const jsdoms = JSDOMS.filter((c) => timed(p, c).length);
   const ok = jsdoms.filter((c) => correct(project, p, c) && !Number.isNaN(medTime(p, c)));
   const others = jsdoms.filter((c) => c !== 'jsdom-default');
   if (others.length && others.every((c) => !ok.includes(c))) everyBreaks.push(`${project} (${others.join(', ')})`);
