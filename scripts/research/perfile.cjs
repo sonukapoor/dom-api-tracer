@@ -16,7 +16,7 @@ if (args.length !== 2) {
   console.error('usage: perfile.cjs <a-label>=<a.jsonl>[,...] <b-label>=<b.jsonl>[,...] [--top n]');
   process.exit(2);
 }
-const median = (a) => { const s = [...a].sort((x, y) => x - y); return s.length ? s[(s.length - 1) >> 1] : NaN; };
+const median = (a) => { const s = [...a].sort((x, y) => x - y); const n = s.length; return n ? (n % 2 ? s[n >> 1] : (s[n / 2 - 1] + s[n / 2]) / 2) : NaN; };
 
 // label -> Map(file -> { phase: median ms })
 function load(spec) {

@@ -2,7 +2,7 @@
 // Summarizes a timing CSV from timing-vitest.sh / timing-jest.sh as a
 // Markdown table: per suite, the median time of each configuration over
 // the rounds, the median of the per-round jsdom/warpdom ratios, and the
-// median number of tests whose status differs from jsdom; then the
+// most tests whose status differs from jsdom in any round; then the
 // uncertainty of the speedups (ranges or bootstrap intervals, see the end).
 //
 //   node scripts/research/timing-report.cjs <timing.csv> [--packages <packages.csv>]
@@ -23,7 +23,9 @@ for (const [round, project, config, secs, differs] of rows) {
   if (!p.has(round)) p.set(round, {});
   p.get(round)[config] = { secs: secs === 'NA' ? NaN : +secs, differs: +differs };
 }
-const median = (a) => { const s = a.filter((x) => !Number.isNaN(x)).sort((x, y) => x - y); return s.length ? s[(s.length - 1) >> 1] : NaN; };
+const median = (a) => { const s = a.filter((x) => !Number.isNaN(x)).sort((x, y) => x - y); const n = s.length; return n ? (n % 2 ? s[n >> 1] : (s[n / 2 - 1] + s[n / 2]) / 2) : NaN; };
+// Tests that differ: the most in any round (a round that differs is not hidden by a median).
+const most = (a) => { const s = a.filter((x) => !Number.isNaN(x)); return s.length ? Math.max(...s) : NaN; };
 const fmt = (n, unit = '') => (Number.isNaN(n) ? '—' : n.toFixed(1) + unit);
 const num = (n) => (Number.isNaN(n) ? '—' : n);
 const ratio = (p, a, b) => median([...p.values()].map((r) => (r[a] && r[b] ? r[a].secs / r[b].secs : NaN)));
@@ -33,7 +35,7 @@ const warnings = [];
 const FLAKY = 5;
 for (const [project, p] of data) {
   const m = (c) => median([...p.values()].map((r) => r[c]?.secs ?? NaN));
-  const d = (c) => median([...p.values()].map((r) => r[c]?.differs ?? NaN));
+  const d = (c) => most([...p.values()].map((r) => r[c]?.differs ?? NaN));
   const wdDefault = ratio(p, 'jsdom-default', 'warpdom-default');
   // Best warpdom configuration whose results match jsdom (<= 5 differences).
   const wdVmOk = d('warpdom-vm') <= 5;
@@ -59,7 +61,7 @@ if (hasHappy) {
   const valid = { wd: [], hd: [], wh: [] };
   for (const [project, p] of data) {
     const m = (c) => median([...p.values()].map((r) => r[c]?.secs ?? NaN));
-    const d = (c) => median([...p.values()].map((r) => r[c]?.differs ?? NaN));
+    const d = (c) => most([...p.values()].map((r) => r[c]?.differs ?? NaN));
     const wd = ratio(p, 'jsdom-default', 'warpdom-default');
     const hd = ratio(p, 'jsdom-default', 'happy-dom-default');
     const wh = ratio(p, 'happy-dom-default', 'warpdom-default');
@@ -83,7 +85,7 @@ if (learned) {
     const cfg = [...p.values()].flatMap((r) => Object.keys(r)).find((c) => c.startsWith('warpdom-learned-'));
     if (!cfg) continue;
     const m = (c) => median([...p.values()].map((r) => r[c]?.secs ?? NaN));
-    const d = median([...p.values()].map((r) => r[cfg]?.differs ?? NaN));
+    const d = most([...p.values()].map((r) => r[cfg]?.differs ?? NaN));
     const x = ratio(p, 'jsdom-default', cfg);
     speedups.push(x);
     console.log(`| ${project} | ${fmt(m('jsdom-default'), ' s')} | ${fmt(m(cfg), ' s')} | ${cfg.replace('warpdom-learned-', '')} | ${x.toFixed(2)}x | ${num(d)} |`);
@@ -102,7 +104,7 @@ if (experiments.length) {
     for (const c of experiments) {
       const m = median([...p.values()].map((r) => r[c]?.secs ?? NaN));
       if (Number.isNaN(m)) continue;
-      const d = median([...p.values()].map((r) => r[c]?.differs ?? NaN));
+      const d = most([...p.values()].map((r) => r[c]?.differs ?? NaN));
       console.log(`| ${project} | ${c} | ${fmt(m, ' s')} | ${ratio(p, 'jsdom-default', c).toFixed(2)}x | ${ratio(p, 'warpdom-default', c).toFixed(2)}x | ${num(d)} |`);
     }
   }
@@ -170,7 +172,7 @@ if (extra.length) {
       if (!rounds.length) continue;
       const ratios = rounds.map((x) => (x['jsdom-default'] ? x['jsdom-default'].secs / x[c].secs : NaN)).filter((x) => !Number.isNaN(x));
       const t = median(rounds.map((x) => x[c].secs));
-      const d = median(rounds.map((x) => x[c].differs));
+      const d = most(rounds.map((x) => x[c].differs));
       let interval = '—';
       if (ratios.length >= 5) {
         const meds = Array.from({ length: RESAMPLES }, () => midMedian(ratios.map(() => pick(ratios, r)))).sort((x, y) => x - y);
@@ -205,7 +207,7 @@ if (controls.length) {
         interval = `${percentile(meds, 0.025).toFixed(3)}-${percentile(meds, 0.975).toFixed(3)} (95% CI)`;
       } else interval = `${Math.min(...ratios).toFixed(3)}-${Math.max(...ratios).toFixed(3)} (range)`;
       const dev = Math.max(...ratios.map((x) => Math.abs(x - 1)));
-      console.log(`| ${project} | ${c} | ${ratios.length} | ${midMedian(ratios).toFixed(3)} | ${interval} | ${(dev * 100).toFixed(1)}% | ${num(median(rounds.map((x) => x[c].differs)))} |`);
+      console.log(`| ${project} | ${c} | ${ratios.length} | ${midMedian(ratios).toFixed(3)} | ${interval} | ${(dev * 100).toFixed(1)}% | ${num(most(rounds.map((x) => x[c].differs)))} |`);
     }
   }
   for (const c of controls) {
