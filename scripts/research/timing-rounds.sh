@@ -58,13 +58,31 @@ mkdir -p "$PT" && PT=$(cd "$PT" && pwd)
 record_env "${csv%.csv}.env-$(date +%Y%m%d-%H%M%S).json"
 read -r -a configs <<< "$CONFIGS"
 built=" "
+notes=${csv%.csv}.notes.txt
+# A configuration with no time in the warm-up (it timed out or failed) is
+# not run again for that project: its timed rounds record NA (happy-dom on
+# handsontable timed out every round and used up the 6-hour job limit).
+dropped=" "
+started=$(date +%s); longest=0
 for round in $(seq 0 $rounds); do
+  # BUDGET_MIN (optional): no round is started that cannot finish in time.
+  now=$(date +%s)
+  if [ -n "$BUDGET_MIN" ] && [ $round -gt 1 ] && [ $(( now - started + longest )) -gt $(( BUDGET_MIN * 60 )) ]; then
+    echo "BUDGET: stopped before round $round of $rounds ($(( (now - started) / 60 )) min used, rounds take up to $(( longest / 60 )) min, budget $BUDGET_MIN min): $*" | tee -a "$notes" >&2
+    break
+  fi
+  round_start=$now
   order=$CONFIGS; [ $round -gt 0 ] && order=$(rotate $round "${configs[@]}")
   out_csv=$csv; [ $round = 0 ] && out_csv=$warmcsv
   for project in "$@"; do
     base=$(baseline_dir $project)
     mkdir -p "$PT/$round/$project"
     for cfg in $order; do
+      if [[ "$dropped" == *" $project:$cfg "* ]]; then
+        echo "$round,$project,$cfg,NA,NA,NA" >> "$out_csv"
+        echo "TIMING round $round $project $cfg: skipped (no time in the warm-up)"
+        continue
+      fi
       build=""
       case "$built" in *" $project "*) build="--no-build";; *) built="$built$project ";; esac
       # parse_config (configs.sh): environment, WARPDOM_ABLATE, fast frames, pool.
@@ -100,8 +118,13 @@ for round in $(seq 0 $rounds); do
       read -r differs files_differ <<< "$(statuses compare "$PT/$round/$project/.baseline.json" "$PT/$round/$project/$cfg.json")"
       echo "$round,$project,$cfg,${secs:-NA},$differs,$files_differ" >> "$out_csv"
       echo "TIMING round $round $project $cfg: ${secs:-NA}s, $differs tests / $files_differ files differ"
+      if [ $round = 0 ] && [ -z "$secs" ]; then
+        dropped="$dropped$project:$cfg "
+        echo "warm-up: $project $cfg has no time; not run in the timed rounds" | tee -a "$notes" >&2
+      fi
     done
     rm -f "$PT/$round/$project/.baseline.json"
   done
+  [ $round -gt 0 ] && [ $(( $(date +%s) - round_start )) -gt $longest ] && longest=$(( $(date +%s) - round_start ))
 done
 echo "TIMING done"
