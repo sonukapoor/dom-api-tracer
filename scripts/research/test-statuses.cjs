@@ -52,7 +52,11 @@ assert.deepEqual(S.direction(base, run), { falsePass: 2, falseFail: 0 });
 
 // Without the checkout root, keys fall back to the path after the last
 // packages/src/test/tests/examples directory.
-assert.equal(S.relativeFile('/elsewhere/proj/packages/x/src/a.test.ts'), 'a.test.ts');
+assert.equal(S.relativeFile('/elsewhere/proj/packages/x/src/a.test.ts'), 'x/src/a.test.ts');
+// A root given with '..' (CI: $GITHUB_WORKSPACE/../repos/<project>) still matches.
+assert.equal(S.relativeFile(`${root}/packages/x/test/index.test.ts`, `${root}/packages/../`), 'packages/x/test/index.test.ts');
+// Two packages' test/index.test.ts never share a key without the root either.
+assert.notEqual(S.relativeFile('/w/repos/p/packages/a/test/index.test.ts'), S.relativeFile('/w/repos/p/packages/b/test/index.test.ts'));
 assert.equal(S.relativeFile(`${root}/packages/x/a.test.ts`, root), 'packages/x/a.test.ts');
 
 // Messages (--messages): the first line of a failed test's first failure,

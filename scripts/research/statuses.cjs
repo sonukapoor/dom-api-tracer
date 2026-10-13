@@ -32,12 +32,21 @@
 const fs = require('fs');
 const path = require('path');
 
+const realpath = (p) => { try { return fs.realpathSync(p); } catch { return path.resolve(p); } };
+
 // The part of a test file path that is the same on every machine.
 function relativeFile(name, root) {
-  if (root && name.startsWith(root.replace(/\/$/, '') + '/')) return name.slice(root.replace(/\/$/, '').length + 1);
+  // The root as the runner reports paths: resolved (CI passes .../dom-api-tracer/../repos/<project>)
+  // and with symbolic links followed.
+  if (root) {
+    for (const r of new Set([path.resolve(root), realpath(root)])) {
+      if (name.startsWith(r + '/')) return name.slice(r.length + 1);
+    }
+  }
   // Without the checkout (an old baseline from another directory): from the
-  // last packages/src/test/tests/examples directory on.
-  const m = name.match(/^.*\/(packages|src|test|tests|examples)\/(.*)$/);
+  // first packages/src/test/tests/examples directory on, so monorepo
+  // packages keep their own directory.
+  const m = name.match(/^.*?\/(packages|src|test|tests|examples)\/(.*)$/);
   return m ? m[2] : name;
 }
 
