@@ -45,6 +45,7 @@ the timing workflow has a `corpus` input to time them on GitHub Actions.
 | `learned.sh <csv> <rounds> <project...>` | `ablation-isolation.sh` with jsdom-default, warpdom-default and warpdom-learned (the shipped `warpdom vitest run` where Vitest >= 3.2, else its emulation) |
 | `ablation-report.cjs <csv> [--learning <jsonl>] [--pertest <dir>]` | Ablation summary: speedups with intervals, differing tests/files, false passes, the best correct jsdom configuration, learning stability and break-even |
 | `statuses.cjs` | Per-test status maps and counting (one key definition for every script; tests and files counted separately); `test-statuses.cjs` is its check (in `npm test`) |
+| `learned-emulation.sh` | Learned isolation's emulation (decision rule, learning, learned runs; warpdom's fast mode, state version 2), sourced by `ablation-isolation.sh`; `LEARN_ENV` / `LEARN_FIRST` for another DOM; `test-learned.cjs` checks the rule |
 | `learning.cjs` | Learning and learned-run records (JSON lines) for `ablation-isolation.sh` |
 | `capture-reporter.mjs` | Vitest reporter that records every Vitest run `warpdom vitest run` starts (`trace-corpus.mjs --fast-cli`) |
 | `fastmode.sh <csv> <rounds> <project...>` | Fast mode with a plain safety net (superseded by learned.sh) |

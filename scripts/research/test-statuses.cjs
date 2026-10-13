@@ -62,6 +62,9 @@ const shared3 = S.fromResults([{ slug: 'pkg', report: report([
   ['src/d.test.ts', 'passed', [['d1', 'passed']]],
 ]) }], root);
 assert.deepEqual(S.isolate(shared3, iso3).sort(), ['a', 'b', 'c'].map((f) => `${root}/src/${f}.test.ts`));
+// A file with no result at all without isolation (a hung or crashed worker) is isolated too.
+const noD = { tests: Object.fromEntries(Object.entries(shared3.tests).filter(([k]) => !k.includes('d.test'))), files: Object.fromEntries(Object.entries(shared3.files).filter(([k]) => !k.includes('d.test'))) };
+assert.ok(S.isolate(noD, iso3).includes(`${root}/src/d.test.ts`));
 // Direction: passed in the learned run but not isolated is a false pass.
 assert.deepEqual(S.direction(base, run), { falsePass: 2, falseFail: 0 });
 
