@@ -134,6 +134,7 @@ jobs:
             .corpus-env/timing-ci-*.env-*.json
             .corpus-env/timing-ci-*.learning.jsonl
             .corpus-env/timing-ci-*.notes.txt
+            .corpus-env/timing-ci-*.flaky.json
             .corpus-env/versions/
             .corpus-env/versions-*/logs/
             .corpus-env/pertest/
@@ -190,7 +191,7 @@ jobs:
           pk=(results/timing-ci-*.packages.csv)
           if [ ${#pk[@]} -gt 0 ]; then head -1 "${pk[0]}" > results/packages.csv; for f in "${pk[@]}"; do tail -n +2 "$f" >> results/packages.csv; done; fi
           if [ "${{ inputs.mode }}" = timing ]; then
-            node scripts/research/timing-report.cjs "$out" ${pk:+--packages results/packages.csv} | tee results/report.md
+            node scripts/research/timing-report.cjs "$out" ${pk:+--packages results/packages.csv} --pertest results/pertest | tee results/report.md
             { echo '## Timing (median of rounds, jsdom vs warpdom)'; echo; cat results/report.md; } >> "$GITHUB_STEP_SUMMARY"
           else
             cat results/timing-ci-*.learning.jsonl > results/learning.jsonl 2>/dev/null || true

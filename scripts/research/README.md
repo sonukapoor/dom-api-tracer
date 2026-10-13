@@ -36,7 +36,7 @@ the timing workflow has a `corpus` input to time them on GitHub Actions.
 | `diffgroups.cjs <project>` | Groups one project's differences from the last survey by error message |
 | `timing-vitest.sh <csv> <rounds> <project...>` | Vitest timing rounds: jsdom/warpdom alternating, default pool and vmThreads |
 | `timing-jest.sh <csv> <rounds> <project...>` | Jest timing rounds: jsdom/warpdom alternating |
-| `timing-report.cjs <csv> [--packages <csv>]` | Medians and speedups of a timing CSV as a Markdown table; the A/A controls' paired ratios; per package times (jsdom/warpdom, warm-up and timed) |
+| `timing-report.cjs <csv> [--packages <csv>] [--pertest <dir>]` | Medians and speedups of a timing CSV as a Markdown table; the A/A controls' paired ratios; per package times (jsdom/warpdom, warm-up and timed). Differences are counted against the same round's jsdom-default run; with `--pertest`, raw and without the flaky tests (status changes between the suite's jsdom-default runs, `statuses.cjs jsdomRounds`; `timing-rounds.sh` records them in `<csv>.flaky.json`). A broken jsdom round (no time, or far from the other jsdom runs) leaves out that round only |
 | `configs.sh` | Configuration names of `timing-rounds.sh` (`parse_config`), WARPDOM_ABLATE per configuration (`with_ablate`), per-package times from harness output (`package_times`); `test-configs.cjs` checks it |
 | `versions.sh <out> <project...>` | Version dependence without warpdom: jsdom only, the project's own jsdom twice (flaky tests), then jsdom 20.0.3, 26.1.0, 30.1.2 (svelte also cssstyle 4.1.0, 4.6.0) forced through overrides; checkout restored afterwards |
 | `versions.cjs` | Helpers of `versions.sh`: install commands without a frozen lockfile, overrides per package manager, the jsdom each runner resolves |
@@ -112,7 +112,7 @@ measuring, with the reasons for choosing them.
 By default each round runs jsdom, warpdom and happy-dom (`configs`
 input), so the report also has a three-way table: the speed of each DOM
 and how many tests differ from jsdom on warpdom and on happy-dom, with
-medians over the suites whose jsdom rounds are valid. A jsdom round that
-differs from the jsdom baseline means the run was broken (for example a
-package that did not run); the report flags it and leaves the suite out
-of the medians.
+medians over the suites with valid jsdom rounds. A jsdom round without a
+time, or whose tests differ from the suite's other jsdom runs in more
+than 5 tests (median), means the run was broken (for example a package
+that did not run); the report flags it and leaves out that round.

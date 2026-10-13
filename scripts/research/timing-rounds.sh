@@ -26,35 +26,48 @@
 # rotated by one position per round (rotate in lib.sh), so no
 # configuration always runs first.
 #
-# Appends round,project,config,seconds,differs,files_differ to <csv>
+# Appends round,project,config,seconds,differs,files_differ,ref to <csv>
 # (created with a header if missing); seconds is the runner time the
 # harness reports summed over the project's packages (the harness runs a
 # monorepo's packages one by one: each package's own time goes to
 # <csv without .csv>.packages.csv as round,project,config,package,status,
 # seconds, round 0 the warm-up; timing-report.cjs --packages summarizes it);
-# differs counts tests
-# and files_differ test files whose status differs from the project's jsdom
-# baseline (statuses.cjs, the key definition shared by all research
-# scripts). Every run's per-test statuses go to
+# differs counts tests and files_differ test files whose status differs
+# (statuses.cjs, the key definition shared by all research scripts) from
+# ref: "round", the same round's jsdom-default run (as in
+# ablation-isolation.sh), so one odd jsdom run is not every round's
+# reference; or "baseline", the project's jsdom baseline (baseline_dir),
+# for jsdom-default itself and for rounds whose jsdom-default has no time
+# or is not configured. The rows of a round are written once all its
+# configurations ran. Every run's per-test statuses go to
 # $PERTEST_DIR/<round>/<project>/<config>.json (default <csv>.pertest;
 # round 0 is the warm-up). The run's environment is written to
 # <csv without .csv>.env-<timestamp>.json. Summarize with
-# scripts/research/timing-report.cjs (medians).
+# scripts/research/timing-report.cjs (medians; --pertest for the flaky
+# tests).
+#
+# Flaky tests: at the end, per project, <csv without .csv>.flaky.json gets
+# statuses.cjs jsdom-rounds over all of the job's jsdom-default runs (the
+# warm-up included): broken runs (no time, or a median difference from the
+# others above 5 tests) and the tests and files whose status changes
+# between the others (timing-report.cjs --pertest computes the same and
+# reports differences with and without them).
 #
 # A project is built (corpus.json "build") before its first run only. With
 # no jsdom baseline yet (a fresh machine, e.g. CI), the first jsdom run
-# (the warm-up's) becomes the baseline the differences are counted against.
+# (the warm-up's) becomes the baseline.
 [ $# -ge 3 ] || { echo "usage: CONFIGS=... timing-rounds.sh <csv> <rounds> <project...>" >&2; exit 2; }
 case $1 in /*) csv=$1;; *) csv=$PWD/$1;; esac; shift
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 rounds=$1; shift
 CONFIGS=${CONFIGS:-"jsdom-default warpdom-default jsdom-vm warpdom-vm"}
 mkdir -p "$(dirname "$csv")"
-[ -f "$csv" ] || echo "round,project,config,seconds,differs,files_differ" > "$csv"
+[ -f "$csv" ] || echo "round,project,config,seconds,differs,files_differ,ref" > "$csv"
 warmcsv=${csv%.csv}.warmup.csv
+flakyjson=${csv%.csv}.flaky.json
 pkgcsv=${csv%.csv}.packages.csv
 [ -f "$pkgcsv" ] || echo "round,project,config,package,status,seconds" > "$pkgcsv"
-[ -f "$warmcsv" ] || echo "round,project,config,seconds,differs,files_differ" > "$warmcsv"
+[ -f "$warmcsv" ] || echo "round,project,config,seconds,differs,files_differ,ref" > "$warmcsv"
 PT=${PERTEST_DIR:-${csv%.csv}.pertest}
 mkdir -p "$PT" && PT=$(cd "$PT" && pwd)
 record_env "${csv%.csv}.env-$(date +%Y%m%d-%H%M%S).json"
@@ -79,9 +92,11 @@ for round in $(seq 0 $rounds); do
   for project in "$@"; do
     base=$(baseline_dir $project)
     mkdir -p "$PT/$round/$project"
+    md=$PT/$round/$project
+    rm -f $WORK_DIR/tr-secs-*
     for cfg in $order; do
       if [[ "$dropped" == *" $project:$cfg "* ]]; then
-        echo "$round,$project,$cfg,NA,NA,NA" >> "$out_csv"
+        echo skipped > $WORK_DIR/tr-secs-$cfg
         echo "TIMING round $round $project $cfg: skipped (no time in the warm-up)"
         continue
       fi
@@ -117,18 +132,50 @@ for round in $(seq 0 $rounds); do
       done
       # No time: the harness failed; show why.
       [ -n "$secs" ] || { echo "harness output for $project $cfg (round $round):"; echo "$log" | tail -40; } >&2
-      status_map $out/tmp/$project $env "$PT/$round/$project/$cfg.json" $project
-      status_map $base jsdom "$PT/$round/$project/.baseline.json" $project
-      read -r differs files_differ <<< "$(statuses compare "$PT/$round/$project/.baseline.json" "$PT/$round/$project/$cfg.json")"
-      echo "$round,$project,$cfg,${secs:-NA},$differs,$files_differ" >> "$out_csv"
-      echo "TIMING round $round $project $cfg: ${secs:-NA}s, $differs tests / $files_differ files differ"
+      status_map $out/tmp/$project $env "$md/$cfg.json" $project
+      echo "${secs:-NA}" > $WORK_DIR/tr-secs-$cfg
+      echo "TIMING round $round $project $cfg: ${secs:-NA}s"
       if [ $round = 0 ] && [ -z "$secs" ]; then
         dropped="$dropped$project:$cfg "
         echo "warm-up: $project $cfg has no time; not run in the timed rounds" | tee -a "$notes" >&2
       fi
     done
-    rm -f "$PT/$round/$project/.baseline.json"
+    # The round's rows: differences from this round's jsdom-default run
+    # (if it ran and has a time), else from the project's jsdom baseline.
+    status_map $base jsdom "$md/.baseline.json" $project
+    ref=baseline; [ "$(cat $WORK_DIR/tr-secs-jsdom-default 2>/dev/null)" ] && [ "$(cat $WORK_DIR/tr-secs-jsdom-default)" != NA ] \
+      && [ "$(cat $WORK_DIR/tr-secs-jsdom-default)" != skipped ] && ref=round
+    for cfg in $order; do
+      secs=$(cat $WORK_DIR/tr-secs-$cfg)
+      if [ "$secs" = skipped ]; then echo "$round,$project,$cfg,NA,NA,NA,NA" >> "$out_csv"; continue; fi
+      r=$ref; [ $cfg = jsdom-default ] && r=baseline
+      against=$md/.baseline.json; [ $r = round ] && against=$md/jsdom-default.json
+      read -r differs files_differ <<< "$(statuses compare "$against" "$md/$cfg.json")"
+      echo "$round,$project,$cfg,$secs,$differs,$files_differ,$r" >> "$out_csv"
+      echo "TIMING round $round $project $cfg: ${secs}s, $differs tests / $files_differ files differ (vs $r)"
+    done
+    rm -f "$md/.baseline.json"
   done
   [ $round -gt 0 ] && [ $(( $(date +%s) - round_start )) -gt $longest ] && longest=$(( $(date +%s) - round_start ))
+done
+# Flaky tests per project: every jsdom-default run of this job.
+for project in "$@"; do
+  specs=()
+  for d in "$PT"/*/"$project"; do
+    r=$(basename "$(dirname "$d")")
+    [ -f "$d/jsdom-default.json" ] || continue
+    t=$(awk -F, -v r="$r" -v p="$project" '$1 == r && $2 == p && $3 == "jsdom-default" { print $4 }' "$csv" "$warmcsv" | tail -1)
+    specs+=("$r:${t:--}:$d/jsdom-default.json")
+  done
+  [ ${#specs[@]} -gt 0 ] || continue
+  statuses jsdom-rounds "$WORK_DIR/tr-flaky-$project.json" "${specs[@]}"
+  nodex -e '
+    const fs = require("fs"); const [file, project, add] = process.argv.slice(1);
+    const all = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, "utf8")) : {};
+    all[project] = JSON.parse(fs.readFileSync(add, "utf8"));
+    fs.writeFileSync(file, JSON.stringify(all, null, 1));
+    const f = all[project];
+    console.log(`FLAKY ${project}: ${f.flaky.tests.length} tests, ${f.flaky.files.length} files change between ${f.rounds.length} jsdom-default runs; broken: ${f.broken.join(" ") || "none"}`);
+  ' "$flakyjson" "$project" "$WORK_DIR/tr-flaky-$project.json"
 done
 echo "TIMING done"

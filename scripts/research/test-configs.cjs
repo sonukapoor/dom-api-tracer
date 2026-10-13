@@ -37,7 +37,11 @@ const ablate = (a) => execFileSync('bash', ['-c', `source ${JSON.stringify(path.
 assert.equal(ablate('-'), 'unset');
 assert.equal(ablate("\"''\""), '');
 assert.equal(ablate('no-query-cache'), 'no-query-cache');
-assert.match(fs.readFileSync(path.join(__dirname, 'timing-rounds.sh'), 'utf8'), /with_ablate "\$ablate" harness /, 'timing-rounds.sh runs the harness through with_ablate');
+const rounds = fs.readFileSync(path.join(__dirname, 'timing-rounds.sh'), 'utf8');
+assert.match(rounds, /with_ablate "\$ablate" harness /, 'timing-rounds.sh runs the harness through with_ablate');
+// Differences against the same round's jsdom-default run, the flaky set recorded.
+assert.match(rounds, /\[ \$r = round \] && against=\$md\/jsdom-default\.json/, 'timing-rounds.sh compares with the round\'s jsdom run');
+assert.match(rounds, /statuses jsdom-rounds /, 'timing-rounds.sh records the flaky set');
 
 // Per-package times from harness output: ran, failed, skipped.
 const log = `

@@ -5,7 +5,21 @@
 // most tests whose status differs from jsdom in any round; then the
 // uncertainty of the speedups (ranges or bootstrap intervals, see the end).
 //
-//   node scripts/research/timing-report.cjs <timing.csv> [--packages <packages.csv>]
+//   node scripts/research/timing-report.cjs <timing.csv> [--packages <packages.csv>] [--pertest <dir>]
+//
+// Differences: tests whose status differs from the same round's
+// jsdom-default run (timing-rounds.sh's ref column; older CSVs counted
+// against one jsdom baseline run). With --pertest (the per-test statuses,
+// $PERTEST_DIR of timing-rounds.sh) they are recomputed from the per-test
+// maps against the round's jsdom-default run, and shown as "raw (without
+// flaky)": flaky are the tests whose status changes between the suite's
+// jsdom-default runs (warm-up included; statuses.cjs jsdomRounds).
+//
+// Broken jsdom rounds: a round whose jsdom-default run has no time, or
+// (with --pertest) differs from the suite's other jsdom-default runs in
+// more than FLAKY tests by the median (without --pertest: from the jsdom
+// baseline, its CSV differs), is left out (that round only, every
+// configuration of it); a suite without valid rounds is marked (check).
 //
 // With A/A controls in the CSV (warpdom-default-aa, warpdom-ablate-unset;
 // timing-rounds.sh), a table of the paired ratio warpdom-default / control
@@ -15,24 +29,67 @@
 const argv = process.argv.slice(2);
 const pkgIdx = argv.indexOf('--packages');
 const packagesFile = pkgIdx >= 0 ? argv.splice(pkgIdx, 2)[1] : null;
-const rows = require('fs').readFileSync(argv[0], 'utf8').trim().split('\n').slice(1).filter((l) => l && !l.startsWith('round,')).map((l) => l.split(','));
+const ptIdx = argv.indexOf('--pertest');
+const pertestDir = ptIdx >= 0 ? argv.splice(ptIdx, 2)[1] : null;
+const fs = require('fs');
+const path = require('path');
+const S = require('./statuses.cjs');
+const rows = fs.readFileSync(argv[0], 'utf8').trim().split('\n').slice(1).filter((l) => l && !l.startsWith('round,')).map((l) => l.split(','));
 const data = new Map();
 for (const [round, project, config, secs, differs] of rows) {
   if (!data.has(project)) data.set(project, new Map());
   const p = data.get(project);
   if (!p.has(round)) p.set(round, {});
-  p.get(round)[config] = { secs: secs === 'NA' ? NaN : +secs, differs: +differs };
+  p.get(round)[config] = { secs: secs === 'NA' ? NaN : +secs, differs: differs === 'NA' ? NaN : +differs, stable: NaN };
+}
+const FLAKY = 5;
+// Broken jsdom rounds out (per round), flaky tests and the differences
+// without them (--pertest).
+const warnings = [];
+const readMap = (file) => { try { const m = JSON.parse(fs.readFileSync(file, 'utf8')); return { tests: m.tests ?? {}, files: m.files ?? {} }; } catch { return null; } };
+const flakyCount = new Map();
+for (const [project, p] of data) {
+  let broken;
+  const dirs = pertestDir && fs.existsSync(pertestDir)
+    ? fs.readdirSync(pertestDir).filter((r) => fs.existsSync(path.join(pertestDir, r, project, 'jsdom-default.json'))) : [];
+  if (dirs.length) {
+    const entries = dirs.map((r) => ({ round: r, secs: p.get(r)?.['jsdom-default']?.secs ?? null, map: readMap(path.join(pertestDir, r, project, 'jsdom-default.json')) })).filter((e) => e.map);
+    const jr = S.jsdomRounds(entries, FLAKY);
+    broken = jr.broken.filter((r) => p.has(r));
+    flakyCount.set(project, jr.flaky.tests.size);
+    for (const [r, cfgs] of p) {
+      const base = readMap(path.join(pertestDir, r, project, 'jsdom-default.json'));
+      if (!base) continue;
+      for (const [c, v] of Object.entries(cfgs)) {
+        const run = c === 'jsdom-default' ? null : readMap(path.join(pertestDir, r, project, `${c}.json`));
+        if (c === 'jsdom-default') { v.differs = 0; v.stable = 0; continue; }
+        if (!run) continue;
+        v.differs = S.compare(base, run).differs;
+        v.stable = S.compare(base, run, null, jr.flaky).differs;
+      }
+    }
+  } else {
+    broken = [...p].filter(([, r]) => r['jsdom-default'] && (r['jsdom-default'].differs > FLAKY || Number.isNaN(r['jsdom-default'].secs))).map(([round]) => round);
+  }
+  if (broken.length) {
+    warnings.push(`${project}: jsdom round${broken.length > 1 ? 's' : ''} ${broken.join(', ')} of ${p.size} broken (no time, or differing from the other jsdom runs in more than ${FLAKY} tests): left out`);
+    for (const r of broken) p.delete(r);
+  }
 }
 const median = (a) => { const s = a.filter((x) => !Number.isNaN(x)).sort((x, y) => x - y); const n = s.length; return n ? (n % 2 ? s[n >> 1] : (s[n / 2 - 1] + s[n / 2]) / 2) : NaN; };
 // Tests that differ: the most in any round (a round that differs is not hidden by a median).
 const most = (a) => { const s = a.filter((x) => !Number.isNaN(x)); return s.length ? Math.max(...s) : NaN; };
+// "raw (without flaky)" with --pertest, else raw.
+const differ = (p, c) => {
+  const raw = most([...p.values()].map((r) => r[c]?.differs ?? NaN));
+  const stable = most([...p.values()].map((r) => r[c]?.stable ?? NaN));
+  return Number.isNaN(raw) ? '—' : Number.isNaN(stable) ? String(raw) : `${raw} (${stable})`;
+};
 const fmt = (n, unit = '') => (Number.isNaN(n) ? '—' : n.toFixed(1) + unit);
 const num = (n) => (Number.isNaN(n) ? '—' : n);
 const ratio = (p, a, b) => median([...p.values()].map((r) => (r[a] && r[b] ? r[a].secs / r[b].secs : NaN)));
 console.log('| Suite | rounds | jsdom | warpdom | jsdom vm | warpdom vm | warpdom vs jsdom (default) | best correct warpdom vs jsdom default | differ (wd default / jsdom vm / wd vm) |');
 console.log('| --- | --- | --- | --- | --- | --- | --- | --- | --- |');
-const warnings = [];
-const FLAKY = 5;
 for (const [project, p] of data) {
   const m = (c) => median([...p.values()].map((r) => r[c]?.secs ?? NaN));
   const d = (c) => most([...p.values()].map((r) => r[c]?.differs ?? NaN));
@@ -40,16 +97,11 @@ for (const [project, p] of data) {
   // Best warpdom configuration whose results match jsdom (<= 5 differences).
   const wdVmOk = d('warpdom-vm') <= 5;
   const best = wdVmOk ? Math.max(wdDefault, ratio(p, 'jsdom-default', 'warpdom-vm')) : wdDefault;
-  // A jsdom run whose tests differ from the jsdom baseline is broken (e.g.
-  // a package that did not run), so its time is not comparable.
-  // A few differing tests are flaky tests (they change on jsdom itself);
-  // more than FLAKY means a package did not run.
-  const broken = [...p.values()].filter((r) => r['jsdom-default'] && (r['jsdom-default'].differs > FLAKY || Number.isNaN(r['jsdom-default'].secs))).length;
-  if (broken) warnings.push(`${project}: ${broken} of ${p.size} jsdom rounds differ from the jsdom baseline in more than ${FLAKY} tests or have no time; those rounds are not comparable`);
-  console.log(`| ${project} | ${p.size} | ${fmt(m('jsdom-default'), ' s')} | ${fmt(m('warpdom-default'), ' s')} | ${fmt(m('jsdom-vm'), ' s')} | ${fmt(m('warpdom-vm'), ' s')} | ${wdDefault.toFixed(2)}x | ${best.toFixed(2)}x${wdVmOk && best !== wdDefault ? ' (vm)' : ''} | ${num(d('warpdom-default'))} / ${num(d('jsdom-vm'))} / ${num(d('warpdom-vm'))} |`);
+  console.log(`| ${project}${p.size ? '' : ' (check)'} | ${p.size} | ${fmt(m('jsdom-default'), ' s')} | ${fmt(m('warpdom-default'), ' s')} | ${fmt(m('jsdom-vm'), ' s')} | ${fmt(m('warpdom-vm'), ' s')} | ${wdDefault.toFixed(2)}x | ${best.toFixed(2)}x${wdVmOk && best !== wdDefault ? ' (vm)' : ''} | ${differ(p, 'warpdom-default')} / ${differ(p, 'jsdom-vm')} / ${differ(p, 'warpdom-vm')} |`);
 }
 
 if (warnings.length) console.log('\n**Check:** ' + warnings.join('; ') + '.');
+if (flakyCount.size) console.log(`\nDiffer: the most tests differing from the same round's jsdom-default run in any round; in parentheses without the flaky tests (status changes between the suite's jsdom-default runs): ${[...flakyCount].map(([k, v]) => `${k} ${v}`).join(', ')}.`);
 
 // Three-way (happy-dom-* present): speed of all three DOMs and how many
 // tests differ from jsdom on each, plus medians over the suites whose
@@ -61,14 +113,13 @@ if (hasHappy) {
   const valid = { wd: [], hd: [], wh: [] };
   for (const [project, p] of data) {
     const m = (c) => median([...p.values()].map((r) => r[c]?.secs ?? NaN));
-    const d = (c) => most([...p.values()].map((r) => r[c]?.differs ?? NaN));
     const wd = ratio(p, 'jsdom-default', 'warpdom-default');
     const hd = ratio(p, 'jsdom-default', 'happy-dom-default');
     const wh = ratio(p, 'happy-dom-default', 'warpdom-default');
-    const ok = ![...p.values()].some((r) => r['jsdom-default'] && (r['jsdom-default'].differs > FLAKY || Number.isNaN(r['jsdom-default'].secs)));
+    const ok = p.size > 0;
     if (ok) { valid.wd.push(wd); valid.hd.push(hd); valid.wh.push(wh); }
     const x = (v) => (Number.isNaN(v) ? '—' : `${v.toFixed(2)}x`);
-    console.log(`| ${project}${ok ? '' : ' (check)'} | ${fmt(m('jsdom-default'), ' s')} | ${fmt(m('warpdom-default'), ' s')} | ${fmt(m('happy-dom-default'), ' s')} | ${x(wd)} | ${x(hd)} | ${x(wh)} | ${num(d('warpdom-default'))} / ${num(d('happy-dom-default'))} |`);
+    console.log(`| ${project}${ok ? '' : ' (check)'} | ${fmt(m('jsdom-default'), ' s')} | ${fmt(m('warpdom-default'), ' s')} | ${fmt(m('happy-dom-default'), ' s')} | ${x(wd)} | ${x(hd)} | ${x(wh)} | ${differ(p, 'warpdom-default')} / ${differ(p, 'happy-dom-default')} |`);
   }
   const med = (a) => { const v = a.filter((n) => !Number.isNaN(n)).sort((x, y) => x - y); return v.length ? (v.length % 2 ? v[v.length >> 1] : (v[v.length / 2 - 1] + v[v.length / 2]) / 2) : NaN; };
   console.log(`\nMedians over ${valid.wd.length} suites with valid jsdom rounds: warpdom vs jsdom ${med(valid.wd).toFixed(2)}x, happy-dom vs jsdom ${med(valid.hd).toFixed(2)}x, warpdom vs happy-dom ${med(valid.wh).toFixed(2)}x.`);
@@ -85,10 +136,9 @@ if (learned) {
     const cfg = [...p.values()].flatMap((r) => Object.keys(r)).find((c) => c.startsWith('warpdom-learned-'));
     if (!cfg) continue;
     const m = (c) => median([...p.values()].map((r) => r[c]?.secs ?? NaN));
-    const d = most([...p.values()].map((r) => r[cfg]?.differs ?? NaN));
     const x = ratio(p, 'jsdom-default', cfg);
     speedups.push(x);
-    console.log(`| ${project} | ${fmt(m('jsdom-default'), ' s')} | ${fmt(m(cfg), ' s')} | ${cfg.replace('warpdom-learned-', '')} | ${x.toFixed(2)}x | ${num(d)} |`);
+    console.log(`| ${project} | ${fmt(m('jsdom-default'), ' s')} | ${fmt(m(cfg), ' s')} | ${cfg.replace('warpdom-learned-', '')} | ${x.toFixed(2)}x | ${differ(p, cfg)} |`);
   }
   const v = speedups.filter((n) => !Number.isNaN(n)).sort((a, b) => a - b);
   if (v.length) console.log(`\nFast mode median over ${v.length} suites: ${(v.length % 2 ? v[v.length >> 1] : (v[v.length / 2 - 1] + v[v.length / 2]) / 2).toFixed(2)}x.`);
@@ -104,8 +154,7 @@ if (experiments.length) {
     for (const c of experiments) {
       const m = median([...p.values()].map((r) => r[c]?.secs ?? NaN));
       if (Number.isNaN(m)) continue;
-      const d = most([...p.values()].map((r) => r[c]?.differs ?? NaN));
-      console.log(`| ${project} | ${c} | ${fmt(m, ' s')} | ${ratio(p, 'jsdom-default', c).toFixed(2)}x | ${ratio(p, 'warpdom-default', c).toFixed(2)}x | ${num(d)} |`);
+      console.log(`| ${project} | ${c} | ${fmt(m, ' s')} | ${ratio(p, 'jsdom-default', c).toFixed(2)}x | ${ratio(p, 'warpdom-default', c).toFixed(2)}x | ${differ(p, c)} |`);
     }
   }
 }
@@ -128,7 +177,6 @@ for (const target of ['warpdom-default', 'happy-dom-default']) {
   const suites = [];
   for (const [project, p] of data) {
     const rounds = [...p.values()];
-    if (rounds.some((r) => r['jsdom-default'] && (r['jsdom-default'].differs > FLAKY || Number.isNaN(r['jsdom-default'].secs)))) continue;
     const ratios = rounds.map((r) => (r['jsdom-default'] && r[target] ? r['jsdom-default'].secs / r[target].secs : NaN)).filter((x) => !Number.isNaN(x));
     if (ratios.length) suites.push({ project, ratios });
   }
@@ -172,13 +220,12 @@ if (extra.length) {
       if (!rounds.length) continue;
       const ratios = rounds.map((x) => (x['jsdom-default'] ? x['jsdom-default'].secs / x[c].secs : NaN)).filter((x) => !Number.isNaN(x));
       const t = median(rounds.map((x) => x[c].secs));
-      const d = most(rounds.map((x) => x[c].differs));
       let interval = '—';
       if (ratios.length >= 5) {
         const meds = Array.from({ length: RESAMPLES }, () => midMedian(ratios.map(() => pick(ratios, r)))).sort((x, y) => x - y);
         interval = `${percentile(meds, 0.025).toFixed(2)}-${percentile(meds, 0.975).toFixed(2)}x (95% CI)`;
       } else if (ratios.length) interval = `${Math.min(...ratios).toFixed(2)}-${Math.max(...ratios).toFixed(2)}x (range)`;
-      console.log(`| ${project} | ${c} | ${rounds.length} | ${fmt(t, ' s')} | ${ratios.length ? midMedian(ratios).toFixed(2) + 'x' : '—'} | ${interval} | ${num(d)} |`);
+      console.log(`| ${project} | ${c} | ${rounds.length} | ${fmt(t, ' s')} | ${ratios.length ? midMedian(ratios).toFixed(2) + 'x' : '—'} | ${interval} | ${differ(p, c)} |`);
     }
   }
 }

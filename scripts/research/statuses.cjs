@@ -33,6 +33,12 @@
 //   statuses.cjs merge <out.json> <first.json> [<rerun.json>...]
 //       first, with every file present in a rerun replaced by its rerun result
 //   statuses.cjs count <map.json>          prints "tests files"
+//   statuses.cjs jsdom-rounds <out.json> <round>:<seconds|NA|->:<map.json>...
+//       the jsdom-default runs of one suite (every round of a job, the
+//       warm-up included; "-" for an unknown time): writes { broken:
+//       [rounds], flaky: { tests: [keys], files: [keys] } } (jsdomRounds)
+//   statuses.cjs compare ... --flaky <jsdom-rounds out.json>
+//       differs and files_differ without that file's flaky tests and files
 const fs = require('fs');
 const path = require('path');
 
@@ -156,7 +162,27 @@ function merge(first, ...reruns) {
   return out;
 }
 
-module.exports = { relativeFile, firstLine, fromResults, loadDir, read, differingKeys, flaky, compare, direction, failing, leaky, isolate, merge };
+// The jsdom-default runs of one suite: entries [{ round, secs, map }]
+// (secs NaN when the run had no time, null when unknown). A run is broken
+// when it has no time, or when it differs from the other runs (with a
+// time) in more than `limit` tests by the median over them (a package
+// that ran only partly). Flaky: tests and files whose status (missing
+// included) is not the same in every run that is not broken.
+function jsdomRounds(entries, limit = 5) {
+  const timed = entries.filter((e) => !Number.isNaN(e.secs));
+  const median = (a) => { const v = [...a].sort((x, y) => x - y); const n = v.length; return n % 2 ? v[n >> 1] : (v[n / 2 - 1] + v[n / 2]) / 2; };
+  const broken = entries.filter((e) => {
+    if (Number.isNaN(e.secs)) return true;
+    const others = timed.filter((o) => o !== e);
+    return others.length >= 2 && median(others.map((o) => differing(e.map.tests, o.map.tests))) > limit;
+  }).map((e) => e.round);
+  const ok = entries.filter((e) => !broken.includes(e.round));
+  const varying = (kind) => new Set([...new Set(ok.flatMap((e) => Object.keys(e.map[kind])))]
+    .filter((k) => new Set(ok.map((e) => e.map[kind][k]?.s)).size > 1));
+  return { broken, flaky: { tests: varying('tests'), files: varying('files') } };
+}
+
+module.exports = { jsdomRounds, relativeFile, firstLine, fromResults, loadDir, read, differingKeys, flaky, compare, direction, failing, leaky, isolate, merge };
 
 if (require.main === module) {
   const [cmd, ...args] = process.argv.slice(2);
@@ -170,7 +196,9 @@ if (require.main === module) {
     write(out, loadDir(dir, env, root, { messages }));
   } else if (cmd === 'compare') {
     const ei = args.indexOf('--exclude');
-    const exclude = ei >= 0 ? (([x, y]) => flaky(read(x), read(y)))(args.splice(ei, 3).slice(1)) : null;
+    let exclude = ei >= 0 ? (([x, y]) => flaky(read(x), read(y)))(args.splice(ei, 3).slice(1)) : null;
+    const fl = opt('--flaky');
+    if (fl) { const f = JSON.parse(fs.readFileSync(fl, 'utf8')).flaky; exclude = { tests: new Set(f.tests), files: new Set(f.files) }; }
     const [b, r, ref] = args;
     const c = compare(read(b), read(r), ref ? read(ref) : null, exclude);
     console.log([c.differs, c.filesDiffer, ...(ref ? [c.falsePass, c.falseFail] : [])].join(' '));
@@ -183,11 +211,19 @@ if (require.main === module) {
   } else if (cmd === 'merge') {
     const [out, first, ...reruns] = args;
     write(out, merge(read(first), ...reruns.map(read)));
+  } else if (cmd === 'jsdom-rounds') {
+    const [out, ...specs] = args;
+    const entries = specs.map((spec) => {
+      const [round, secs, ...file] = spec.split(':');
+      return { round, secs: secs === '-' ? null : secs === 'NA' || secs === '' ? NaN : +secs, map: read(file.join(':')) };
+    });
+    const r = jsdomRounds(entries);
+    write(out, { rounds: entries.map((e) => e.round), broken: r.broken, flaky: { tests: [...r.flaky.tests].sort(), files: [...r.flaky.files].sort() } });
   } else if (cmd === 'count') {
     const m = read(args[0]);
     console.log(`${Object.keys(m.tests).length} ${Object.keys(m.files).length}`);
   } else {
-    process.stderr.write('usage: statuses.cjs map|compare|failing|leaky|isolate|merge|count ... (see the header)\n');
+    process.stderr.write('usage: statuses.cjs map|compare|failing|leaky|isolate|merge|count|jsdom-rounds ... (see the header)\n');
     process.exit(2);
   }
 }

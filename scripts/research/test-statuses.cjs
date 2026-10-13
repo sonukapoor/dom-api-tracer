@@ -101,6 +101,20 @@ c = S.compare(base, run, null, fl);
 assert.equal(c.differs, 1, 'the flaky duplicate is excluded, the missing b test is not');
 assert.equal(c.filesDiffer, 1);
 
+// jsdom-default runs of one job: the warm-up (0) differs from the others in
+// one test (flaky, not broken); round 2 lost a file of 10 tests (broken by
+// the median rule); round 3 has no time (broken). Only rounds 0 and 1 and
+// 4 define the flaky set.
+const tests = (n, f = () => 'passed') => report([['src/many.test.ts', 'passed', Array.from({ length: n }, (_, i) => [`t${i}`, f(i)])], ['src/x.test.ts', 'passed', [['x', 'passed']]]]);
+const mk = (rep) => S.fromResults([{ slug: 'pkg', report: rep }], root);
+const ok = mk(tests(12));
+const odd = mk(tests(12, (i) => (i === 3 ? 'failed' : 'passed')));
+const partial = mk({ testResults: tests(12).testResults.slice(1) });
+const jr = S.jsdomRounds([{ round: '0', secs: null, map: odd }, { round: '1', secs: 40, map: ok }, { round: '2', secs: 30, map: partial }, { round: '3', secs: NaN, map: ok }, { round: '4', secs: 41, map: ok }]);
+assert.deepEqual(jr.broken, ['2', '3']);
+assert.deepEqual([...jr.flaky.tests], ['pkg::src/many.test.ts::t3']);
+assert.deepEqual([...jr.flaky.files], ['pkg::src/many.test.ts']);
+
 // The command line: map from results files, compare.
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'statuses-'));
 fs.writeFileSync(path.join(dir, 'pkg.jsdom.json'), JSON.stringify(report([['src/a.test.ts', 'passed', [['menu opens', 'passed'], ['menu opens', 'passed']]]])));
@@ -112,6 +126,13 @@ assert.equal(cli('compare', path.join(dir, 'b.json'), path.join(dir, 'w.json'), 
 assert.equal(cli('count', path.join(dir, 'w.json')), '2 1');
 // --exclude: w vs b with the differences between b and w themselves flaky.
 assert.equal(cli('compare', path.join(dir, 'b.json'), path.join(dir, 'w.json'), '--exclude', path.join(dir, 'b.json'), path.join(dir, 'w.json')), '0 0');
+// jsdom-rounds and compare --flaky: b and w as two jsdom runs make w's
+// differences flaky.
+cli('jsdom-rounds', path.join(dir, 'jr.json'), `0:-:${path.join(dir, 'b.json')}`, `1:12.5:${path.join(dir, 'w.json')}`);
+const jrOut = JSON.parse(fs.readFileSync(path.join(dir, 'jr.json'), 'utf8'));
+assert.deepEqual(jrOut.broken, []);
+assert.deepEqual(jrOut.flaky.tests, ['pkg::src/a.test.ts::menu opens #2']);
+assert.equal(cli('compare', path.join(dir, 'b.json'), path.join(dir, 'w.json'), '--flaky', path.join(dir, 'jr.json')), '0 0');
 cli('map', dir, 'warpdom', path.join(dir, 'wm.json'), '--root', root, '--messages');
 assert.equal(JSON.parse(fs.readFileSync(path.join(dir, 'wm.json'), 'utf8')).files['pkg::src/a.test.ts'].s, 'failed');
 fs.rmSync(dir, { recursive: true, force: true });
