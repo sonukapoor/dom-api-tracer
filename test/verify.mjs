@@ -264,9 +264,10 @@ try {
 // jsdom-sharedclean (scripts/research/shared-cleanup.mjs through
 // --project-setup): two files share one worker without isolation; each
 // checks that it starts clean, then leaves state behind. Without the
-// cleanup the second file's first test fails; with it all pass, Testing
-// Library's cleanup (a stand-in package) runs once, head styles stay, and
-// the copied setup file is removed.
+// cleanup the second file's tests fail; with it all pass, Testing
+// Library's cleanup (a stand-in package) runs at the second file's start
+// and after each of its tests (globals on), head styles stay, and the
+// copied setup file is removed.
 try {
   const fixture = path.join(root, 'test/fixtures/shared-cleanup');
   const tl = path.join(fixture, 'pkg/node_modules/@testing-library/react');
@@ -280,7 +281,7 @@ try {
     return JSON.parse(fs.readFileSync(path.join(dir, 'status.json'), 'utf8')).projects['fixture-shared-cleanup'].packages[0].run?.passed;
   };
   try {
-    assert.equal(passed('shared-plain', []), 3, 'shared cleanup: without it, the second file starts dirty');
+    assert.equal(passed('shared-plain', []), 2, 'shared cleanup: without it, the second file starts dirty');
     assert.equal(passed('shared-clean', ['--project-setup', path.join(root, 'scripts/research/shared-cleanup.mjs')]), 4, 'shared cleanup: every file starts clean');
   } finally { fs.rmSync(path.join(fixture, 'pkg/node_modules'), { recursive: true, force: true }); }
   const left = fs.readdirSync(fixture, { recursive: true }).filter((f) => String(f).includes('.dom-trace.'));

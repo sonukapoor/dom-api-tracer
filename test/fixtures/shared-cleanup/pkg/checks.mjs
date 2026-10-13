@@ -25,6 +25,9 @@ export function register() {
   });
 
   test('leaves state behind', () => {
+    // From the second file on, Testing Library's cleanup also runs after
+    // each test (registered again per file): once more after 'starts clean'.
+    expect(globalThis.__testingLibraryCleanups ?? 0).toBe(shared.files === 0 ? 0 : 2);
     shared.files++;
     document.body.append(document.createElement('div'));
     document.body.className = 'modal-open';

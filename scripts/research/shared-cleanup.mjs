@@ -23,6 +23,12 @@
 //     @solidjs/testing-library that the project has installed, a guarded
 //     dynamic import; absent packages are skipped. Unmounting also removes
 //     the listeners those components added to document and window.
+//     The automatic cleanup is registered when the library's module is
+//     evaluated, and without isolation that happens in the first file
+//     only; so where it applies (afterEach global, the library's
+//     *_SKIP_AUTO_CLEANUP variable unset) this file registers
+//     afterEach(cleanup) again, as the docs show for doing it by hand, and
+//     every file gets it as it would isolated.
 //  2. vi.useRealTimers(): a file that left fake timers on (Vitest docs,
 //     "Mocking > Timers": restore real timers after using fake ones).
 //  3. vi.restoreAllMocks(), vi.unstubAllGlobals(), vi.unstubAllEnvs(): the
@@ -65,7 +71,14 @@ const state = globalThis[KEY];
 const doc = globalThis.document;
 const attrs = (el) => (el ? [...el.attributes].map((a) => [a.name, a.value]) : []);
 
-const TESTING_LIBRARIES = ['@testing-library/react', '@testing-library/preact', '@testing-library/vue', '@testing-library/svelte', '@solidjs/testing-library'];
+// Each library and the variable that turns its automatic cleanup off.
+const TESTING_LIBRARIES = {
+  '@testing-library/react': 'RTL_SKIP_AUTO_CLEANUP',
+  '@testing-library/preact': 'PTL_SKIP_AUTO_CLEANUP',
+  '@testing-library/vue': 'VTL_SKIP_AUTO_CLEANUP',
+  '@testing-library/svelte': 'STL_SKIP_AUTO_CLEANUP',
+  '@solidjs/testing-library': 'STL_SKIP_AUTO_CLEANUP',
+};
 // Installed: a node_modules/<name> directory from this file's directory up.
 function installed(name) {
   let dir;
@@ -85,14 +98,19 @@ if (!state) {
     title: doc?.title,
     html: attrs(doc?.documentElement),
     body: attrs(doc?.body),
-    libraries: TESTING_LIBRARIES.filter(installed),
+    libraries: Object.keys(TESTING_LIBRARIES).filter(installed),
   };
 } else {
-  // 1. Testing Library.
+  // 1. Testing Library: the previous file's components, and the automatic
+  // cleanup after each test of this file.
   for (const name of state.libraries) {
     await step(async () => {
       const lib = await import(/* @vite-ignore */ name);
-      if (typeof lib.cleanup === 'function') await lib.cleanup();
+      if (typeof lib.cleanup !== 'function') return;
+      await lib.cleanup();
+      if (typeof globalThis.afterEach === 'function' && !process.env[TESTING_LIBRARIES[name]]) {
+        globalThis.afterEach(async () => { await lib.cleanup(); });
+      }
     });
   }
   // 2 and 3. Vitest's per-file runtime state.
