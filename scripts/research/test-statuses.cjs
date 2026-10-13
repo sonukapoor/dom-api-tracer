@@ -47,6 +47,21 @@ assert.equal(c.differs, 1);
 assert.equal(c.filesDiffer, 1);
 // Leaky: failing shared, not failing isolated (b), a fails both ways.
 assert.deepEqual(S.leaky(run, rerun), [`${root}/src/b.test.ts`]);
+// Isolate: failing shared (a, b), and a file whose test is missing or
+// changed without isolation although the file passes (c).
+const iso3 = S.fromResults([{ slug: 'pkg', report: report([
+  ['src/a.test.ts', 'failed', [['menu opens', 'passed'], ['menu opens', 'failed'], ['menu closes', 'passed']]],
+  ['src/b.test.ts', 'passed', [['b works', 'passed']]],
+  ['src/c.test.ts', 'passed', [['c1', 'passed'], ['c2', 'skipped']]],
+  ['src/d.test.ts', 'passed', [['d1', 'passed']]],
+]) }], root);
+const shared3 = S.fromResults([{ slug: 'pkg', report: report([
+  ['src/a.test.ts', 'failed', [['menu opens', 'passed'], ['menu opens', 'failed'], ['menu closes', 'passed']]],
+  ['src/b.test.ts', 'failed', []],
+  ['src/c.test.ts', 'passed', [['c1', 'passed']]],
+  ['src/d.test.ts', 'passed', [['d1', 'passed']]],
+]) }], root);
+assert.deepEqual(S.isolate(shared3, iso3).sort(), ['a', 'b', 'c'].map((f) => `${root}/src/${f}.test.ts`));
 // Direction: passed in the learned run but not isolated is a false pass.
 assert.deepEqual(S.direction(base, run), { falsePass: 2, falseFail: 0 });
 

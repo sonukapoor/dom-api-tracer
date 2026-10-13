@@ -26,6 +26,10 @@
 //   statuses.cjs leaky <shared.json> <isolated.json>
 //       files failing in shared that do not fail isolated (warpdom's
 //       newlyLeaky: "fails without isolation, passes isolated")
+//   statuses.cjs isolate <shared.json> <isolated.json>
+//       files to run isolated: failing in shared, or a test or file whose
+//       status differs from isolated or is missing (warpdom's learning,
+//       state version 2)
 //   statuses.cjs merge <out.json> <first.json> [<rerun.json>...]
 //       first, with every file present in a rerun replaced by its rerun result
 //   statuses.cjs count <map.json>          prints "tests files"
@@ -132,6 +136,18 @@ function leaky(shared, isolated) {
   return failing(shared).filter((f) => ran.has(f) && !isoFailed.has(f));
 }
 
+// Files to run isolated (warpdom's learning since its state version 2):
+// a test (or the file) whose status in shared differs from isolated, a
+// test or file missing from shared (a hang, a crash, a timeout), or a file
+// failing in shared.
+function isolate(shared, isolated) {
+  const out = new Set(failing(shared));
+  for (const [k, v] of Object.entries(isolated.tests)) if (shared.tests[k]?.s !== v.s) out.add(v.file);
+  for (const [k, v] of Object.entries(shared.tests)) if (!isolated.tests[k]) out.add(v.file);
+  for (const [k, v] of Object.entries(isolated.files)) if (shared.files[k]?.s !== v.s) out.add(v.file);
+  return [...out];
+}
+
 function merge(first, ...reruns) {
   const replaced = new Set(reruns.flatMap((r) => Object.values(r.files).map((v) => v.file)));
   const keep = (o) => Object.fromEntries(Object.entries(o).filter(([, v]) => !replaced.has(v.file)));
@@ -140,7 +156,7 @@ function merge(first, ...reruns) {
   return out;
 }
 
-module.exports = { relativeFile, firstLine, fromResults, loadDir, read, differingKeys, flaky, compare, direction, failing, leaky, merge };
+module.exports = { relativeFile, firstLine, fromResults, loadDir, read, differingKeys, flaky, compare, direction, failing, leaky, isolate, merge };
 
 if (require.main === module) {
   const [cmd, ...args] = process.argv.slice(2);
@@ -162,6 +178,8 @@ if (require.main === module) {
     console.log(failing(read(args[0])).join(' '));
   } else if (cmd === 'leaky') {
     console.log(leaky(read(args[0]), read(args[1])).join(' '));
+  } else if (cmd === 'isolate') {
+    console.log(isolate(read(args[0]), read(args[1])).join(' '));
   } else if (cmd === 'merge') {
     const [out, first, ...reruns] = args;
     write(out, merge(read(first), ...reruns.map(read)));
@@ -169,7 +187,7 @@ if (require.main === module) {
     const m = read(args[0]);
     console.log(`${Object.keys(m.tests).length} ${Object.keys(m.files).length}`);
   } else {
-    process.stderr.write('usage: statuses.cjs map|compare|failing|leaky|merge|count ... (see the header)\n');
+    process.stderr.write('usage: statuses.cjs map|compare|failing|leaky|isolate|merge|count ... (see the header)\n');
     process.exit(2);
   }
 }

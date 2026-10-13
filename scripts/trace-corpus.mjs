@@ -535,6 +535,13 @@ function runEnvironment({ pkg, projectDir, logDir, tmpDir, profileDir, opts }) {
   }
   const pinned = opts.environment === 'warpdom' ? PINNED_WARPDOM : opts.environment;
   if (opts.fastCli) return runFastCli({ pkg, pkgDir, bin, config, environment, created, env, pinned, slug, logDir, tmpDir, result, opts });
+  // Files sharing a worker (--no-isolate, the vm pools) get warpdom's
+  // environment as a /@fs/ id, as warpdom's fast mode gives it (its
+  // vitest-fast.js fsId): Vitest 3 caches the environment's loader with the
+  // first file's RPC channel, and for a path outside the Vite root (e.g.
+  // floating-ui's packages/react, root test/unit) the next file waits
+  // forever for that channel to resolve it.
+  if (opts.environment === 'warpdom' && runner === 'vitest' && sharesWorkers([...(pkg.args ?? []), ...(opts.extraArgs ?? [])])) environment = fsId(environment);
   const wrapper = writeWrapper(runner, config, { trace: false, environment, execArgv: runner === 'vitest' ? execArgv : [], firstSetup: opts.firstSetup ?? null, pinned });
   const resultsFile = path.join(tmpDir, `${slug}.${opts.environment}.json`);
   let res;
@@ -554,6 +561,10 @@ function runEnvironment({ pkg, projectDir, logDir, tmpDir, profileDir, opts }) {
   if (fs.existsSync(pinnedLog)) result.pinnedSwitched = new Set(fs.readFileSync(pinnedLog, 'utf8').split('\n').filter(Boolean)).size;
   return { ...result, status: 'ran', run: { ...results, ms: res.ms, exitCode: res.code } };
 }
+
+export const sharesWorkers = (args) => args.some((a) => a === '--no-isolate' || a === '--isolate=false' || /^--pool[= ](vmThreads|vmForks)$/.test(a))
+  || args.some((a, i) => a === '--pool' && /^vm/.test(args[i + 1] ?? ''));
+export const fsId = (p) => (p.startsWith('/@fs/') || !path.isAbsolute(p) ? p : `/@fs${p.startsWith('/') ? '' : '/'}${p.replace(/\\/g, '/')}`);
 
 // --- warpdom's fast mode, as shipped ------------------------------------------
 
@@ -597,7 +608,10 @@ function runFastCli({ pkg, pkgDir, bin, config, environment, created, env, pinne
     fast: { module: path.join(copy, 'src', 'vitest-fast.js'), project: projects[0] },
   });
   const entry = path.join(copy, 'fast-cli.mjs');
-  fs.writeFileSync(entry, "import { main } from './src/vitest-fast-cli.js';\nprocess.exit(main(process.argv.slice(2)));\n");
+  // main resolves to the exit code, or null when Vitest runs in the CLI's
+  // process and exits it (warpdom >= the learned-isolation fix; older
+  // versions return the code synchronously).
+  fs.writeFileSync(entry, "import { main } from './src/vitest-fast-cli.js';\nconst code = await main(process.argv.slice(2));\nif (code !== null) process.exit(code);\n");
   const cacheDir = path.join(pkgDir, '.warpdom');
   const cacheFile = path.join(cacheDir, 'fast-mode.json');
   const ownDir = !fs.existsSync(cacheDir);
