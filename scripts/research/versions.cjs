@@ -147,7 +147,14 @@ const FILES = ['package.json', 'pnpm-workspace.yaml', 'pnpm-lock.yaml', 'package
 const files = (dir) => FILES.filter((f) => fs.existsSync(path.join(dir, f)));
 
 function versionFrom(fromFile, name) {
-  try { return readJson(createRequire(fromFile).resolve(`${name}/package.json`)).version; } catch { return null; }
+  try { return readJson(createRequire(fromFile).resolve(`${name}/package.json`)).version; } catch {}
+  // A package whose exports leave out ./package.json (parse5 7): Node's
+  // lookup by hand, node_modules/<name> from the file's directory up.
+  for (let dir = path.dirname(fromFile); ; dir = path.dirname(dir)) {
+    const pj = path.join(dir, 'node_modules', name, 'package.json');
+    if (fs.existsSync(pj)) return readJson(pj).version;
+    if (dir === path.dirname(dir)) return null;
+  }
 }
 
 // The dependencies of jsdom whose version decides its behavior in tests
