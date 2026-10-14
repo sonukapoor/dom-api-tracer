@@ -527,7 +527,7 @@ try {
 // Research scripts: per-test status keys and counting (statuses.cjs),
 // timing configurations and per-package times (configs.sh), the timing
 // report's A/A and per-package tables, the jsdom version experiment.
-for (const [name, file] of [['statuses', 'test-statuses.cjs'], ['configs', 'test-configs.cjs'], ['versions', 'test-versions.cjs'], ['learned', 'test-learned.cjs'], ['ablation', 'test-ablation.cjs'], ['timing', 'test-timing.cjs'], ['g2', 'test-g2.cjs']]) {
+for (const [name, file] of [['statuses', 'test-statuses.cjs'], ['configs', 'test-configs.cjs'], ['versions', 'test-versions.cjs'], ['learned', 'test-learned.cjs'], ['ablation', 'test-ablation.cjs'], ['timing', 'test-timing.cjs'], ['g2', 'test-g2.cjs'], ['checkout', 'test-checkout.cjs']]) {
   try {
     execFileSync(process.execPath, [path.join(root, 'scripts/research', file)], { stdio: 'pipe' });
     console.log(`• research ${name.padEnd(14)} ok`);

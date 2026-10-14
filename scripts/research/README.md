@@ -83,7 +83,10 @@ artifact, with each runner's environment JSON.
   (the commits of the local checkouts the published numbers were measured
   on); re-run it when the corpus checkouts move.
 - `checkout-pinned.mjs` clones a project at its pinned commit where the
-  harness looks for it.
+  harness looks for it; with `--unpinned` (the workflow's `unpinned`
+  input) at the head of its default branch instead, to measure today's
+  code. The environment JSON records each project's commit, its pin and
+  `atPin`.
 - The workflow checks warpdom out from its public repository at the
   `warpdom_ref` input. Until 2026-10-14 warpdom was private and the
   workflow read it with a read-only deploy key; runs before that date name
