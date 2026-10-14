@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 // Records the environment of a corpus run as JSON, so timings and surveys
 // can be compared and reproduced: the git commit (and whether the checkout
-// has uncommitted changes) of every corpus project found locally, of
+// has uncommitted changes) of every corpus project found locally, with
+// its pinned commit and whether the checkout is at it (atPin is false for
+// runs on a project's current default branch), of
 // warpdom and of this repository; Node version; OS; CPU model and core
 // count; total memory; load average when the run started.
 //
@@ -44,11 +46,18 @@ function git(dir) {
 
 const corpus = JSON.parse(fs.readFileSync(opts.corpus, 'utf8'));
 const corpusDir = path.dirname(path.resolve(opts.corpus));
+// Pins as in checkout-pinned.mjs: pins.json for corpus.json, else <name>-pins.json.
+const corpusPath = path.resolve(opts.corpus);
+const pinsFile = corpusPath.endsWith('/corpus.json') ? path.join(corpusDir, 'pins.json') : corpusPath.replace(/\.json$/, '-pins.json');
+const pins = fs.existsSync(pinsFile) ? JSON.parse(fs.readFileSync(pinsFile, 'utf8')) : {};
 const projects = {};
 for (const project of corpus.projects) {
   // Same checkout location as scripts/trace-corpus.mjs.
   const dir = project.path ? path.resolve(corpusDir, expandHome(project.path)) : path.join(path.resolve(expandHome(opts.reposDir)), project.name);
-  projects[project.name] = fs.existsSync(dir) ? { dir, ...git(dir) } : { dir, missing: true };
+  const pin = pins[project.name]?.commit ?? null;
+  const record = fs.existsSync(dir) ? { dir, ...git(dir) } : { dir, missing: true };
+  if (record.commit) Object.assign(record, { pin, atPin: record.commit === pin });
+  projects[project.name] = record;
 }
 
 const cpus = os.cpus();

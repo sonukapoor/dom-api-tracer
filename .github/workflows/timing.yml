@@ -1,5 +1,6 @@
 # Suite timings on GitHub-hosted runners: each corpus project in its own
-# job, at its pinned commit (corpus/pins.json), with jsdom, warpdom and
+# job, at its pinned commit (corpus/pins.json) or, with the unpinned input,
+# at the head of its default branch, with jsdom, warpdom and
 # happy-dom alternating in Vitest's or Jest's default pool, 2 workers, as
 # scripts/research/timing-rounds.sh does locally. A final job combines the
 # results into one table (median seconds and speedup per project) on the
@@ -33,6 +34,10 @@ on:
         type: choice
         options: [timing, fastmode, ablation-isolation, versions, g2-shuffle]
         default: timing
+      unpinned:
+        description: Measure each project at the head of its default branch instead of its pinned commit (the environment record names the commit, its pin and atPin)
+        type: boolean
+        default: false
       perfile:
         description: Also record per-file phase timings (Vitest projects)
         type: boolean
@@ -94,8 +99,10 @@ jobs:
       - name: warpdom dependencies (parse5, jsdom as the reference)
         run: npm ci
         working-directory: warpdom
-      - name: Check out ${{ matrix.project }} at its pinned commit
-        run: node scripts/research/checkout-pinned.mjs --repos-dir "$REPOS_DIR" --corpus "$CORPUS" "${{ matrix.project }}"
+      - name: Check out ${{ matrix.project }} at its ${{ inputs.unpinned && 'default branch head' || 'pinned commit' }}
+        run: |
+          node scripts/research/checkout-pinned.mjs --repos-dir "$REPOS_DIR" --corpus "$CORPUS" ${{ inputs.unpinned && '--unpinned' || '' }} "${{ matrix.project }}"
+          echo "${{ matrix.project }}: $(git -C "$REPOS_DIR/${{ matrix.project }}" rev-parse HEAD)${{ inputs.unpinned && ' (default branch head)' || ' (pinned)' }}" >> "$GITHUB_STEP_SUMMARY"
       - name: Time ${{ matrix.project }}
         run: |
           if [ "${{ inputs.mode }}" = timing ] && [ -z "$CONFIGS" ]; then export CONFIGS="jsdom-default warpdom-default happy-dom-default"; fi
