@@ -1,5 +1,7 @@
 # dom-api-tracer
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23378609.svg)](https://doi.org/10.5281/zenodo.23378609)
+
 Measure which DOM APIs real test suites actually use.
 
 `dom-api-tracer` plugs into Vitest or Jest, instruments whatever DOM
