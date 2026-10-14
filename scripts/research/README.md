@@ -84,9 +84,11 @@ artifact, with each runner's environment JSON.
   on); re-run it when the corpus checkouts move.
 - `checkout-pinned.mjs` clones a project at its pinned commit where the
   harness looks for it.
-- The workflow reads the private warpdom repository with a read-only deploy
-  key: the public half is a deploy key of sonukapoor/warpdom, the private
-  half the repository secret `WARPDOM_DEPLOY_KEY` (set up 2026-10-12).
+- The workflow checks warpdom out from its public repository at the
+  `warpdom_ref` input. Until 2026-10-14 warpdom was private and the
+  workflow read it with a read-only deploy key; runs before that date name
+  warpdom commits by their pre-publication hashes, which warpdom's
+  `docs/research/data/COMMIT-MAP.md` maps to the published history.
 - Hosted runners are shared virtual machines: absolute times vary more than
   on a quiet dedicated machine. jsdom and warpdom alternate on the same
   runner, so the ratio per project is the number to compare.

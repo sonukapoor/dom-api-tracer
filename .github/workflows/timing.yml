@@ -5,8 +5,7 @@
 # results into one table (median seconds and speedup per project) on the
 # run's summary page and as an artifact.
 #
-# Needs a repository secret WARPDOM_DEPLOY_KEY: the private half of a
-# read-only deploy key of the private warpdom repository.
+# warpdom is checked out from its public repository at the warpdom_ref input.
 name: timing
 
 on:
@@ -81,7 +80,6 @@ jobs:
         with:
           repository: sonukapoor/warpdom
           ref: ${{ inputs.warpdom_ref }}
-          ssh-key: ${{ secrets.WARPDOM_DEPLOY_KEY }}
           path: warpdom
       - uses: actions/setup-node@v4
         with:
