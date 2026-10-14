@@ -513,6 +513,26 @@ try {
   assert.deepEqual(resolves(nameCfg), [wd.environmentId], 'wrapper: the name resolves to the /@fs/ id');
   assert.deepEqual(resolves(nameCfg.test.projects[0]), [wd.environmentId], 'wrapper: in the inline project too');
   assert.equal(nameCfg.plugins[0].resolveId('vitest-environment-jsdom'), null, 'wrapper: other ids left alone');
+  // Fast mode (withFastMode, a stand-in here): extra setup files go to the
+  // root only when a project inherits them (extends: true); with a glob of
+  // config files and none inheriting (vueuse), withFastMode refuses root
+  // setup files, so only the inline project gets them.
+  const fastStub = path.join(dir, 'fast-stub.mjs');
+  fs.writeFileSync(fastStub, 'export const withFastMode = (config) => config;\n');
+  for (const [name, inherit] of [['fast-glob', false], ['fast-inherit', true]]) {
+    const fastBase = path.join(dir, `${name}.config.mjs`);
+    const unit = inherit ? { extends: true, test: { name: 'unit', environment: 'jsdom' } } : { extends: './base.ts', test: { name: 'unit', environment: 'jsdom' } };
+    fs.writeFileSync(fastBase, `export default ${JSON.stringify({ test: { projects: ['packages/*/vitest.config.ts', unit] } })};`);
+    fs.writeFileSync(path.join(dir, `${name}.dom-trace.mjs`), vitestWrapper(fastBase, { trace: false, firstSetup: ['/order.mjs'], fast: { module: fastStub, project: 'unit' } }));
+    const cfg = await (await import(path.join(dir, `${name}.dom-trace.mjs`))).default({ mode: 'test' });
+    if (inherit) {
+      assert.deepEqual(cfg.test.setupFiles, ['/order.mjs'], 'fast wrapper: root setup files when a project inherits them');
+      assert.equal(cfg.test.projects[1].test.setupFiles, undefined, 'fast wrapper: and not again in that project');
+    } else {
+      assert.equal(cfg.test.setupFiles, undefined, 'fast wrapper: no root setup files when no project inherits them');
+      assert.deepEqual(cfg.test.projects[1].test.setupFiles, ['/order.mjs'], 'fast wrapper: the inline project gets them');
+    }
+  }
   const { supportsFastCli } = await import(path.join(root, 'scripts/trace-corpus.mjs'));
   assert.deepEqual(['2.1.9', '3.1.4', '3.2.0', '4.1.7', '5.0.0'].map(supportsFastCli), [false, false, true, true, true], 'fast-cli: Vitest >= 3.2');
   const { slugFor } = await import(path.join(root, 'scripts/trace-corpus.mjs'));
