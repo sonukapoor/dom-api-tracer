@@ -192,6 +192,7 @@ import fs from 'node:fs';
 import base from './${path.basename(base)}';
 ${fast ? `import { withFastMode } from ${JSON.stringify(pathToFileURL(fast.module).href)};\n` : ''}
 const TRACER = ${JSON.stringify(TRACER.vitest)};
+const FAST = ${Boolean(fast)};
 const ENVIRONMENT = ${JSON.stringify(environment)};
 // Setup files that must run before the project's own: the tracer, and an
 // optional extra ones (--first-setup, --project-setup).
@@ -268,7 +269,13 @@ const config = async (env) => {
     if (process.env.DOM_TRACE_CORPUS_META) fs.writeFileSync(process.env.DOM_TRACE_CORPUS_META, JSON.stringify({ browser }));
     throw new Error(${JSON.stringify(META_MARKER)});
   }
-  Object.assign(test, withExecArgv(switchDom(addTracer(test))));
+  // Under warpdom's fast mode (withFastMode), root setup files are refused
+  // when a project is not an inline object (vueuse: a glob of config
+  // files); they only matter to projects with \`extends: true\`, so the
+  // root gets the extra setup files only when one inherits them (or there
+  // are no projects).
+  const rootSetup = !FAST || !projects || projects.some((p) => isObject(p) && p.extends === true);
+  Object.assign(test, withExecArgv(switchDom(rootSetup ? addTracer(test) : test)));
   // Inline projects only inherit the root setupFiles with \`extends: true\`;
   // adding the tracer to those too would register it twice.
   if (projects) {
