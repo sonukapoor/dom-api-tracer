@@ -295,6 +295,43 @@ try {
   console.log('• shared cleanup          FAILED\n' + (String(err.stdout || '') + String(err.stderr || '')).slice(-1500) + err.message);
 }
 
+// --environment warpdom with files sharing workers: Vitest groups test files
+// by environment name and gives each group its own workers. The config and
+// the files pinned to jsdom with a comment get one name, as on jsdom, so the
+// four files share the one worker (two names made two groups, two workers).
+// warpdom is a stand-in checkout whose environment only marks the global.
+try {
+  const fixture = path.join(root, 'test/fixtures/env-group');
+  const standIn = path.join(out, 'warpdom-standin');
+  fs.mkdirSync(path.join(standIn, 'src'), { recursive: true });
+  fs.writeFileSync(path.join(standIn, 'package.json'), '{ "name": "warpdom", "type": "module" }');
+  fs.writeFileSync(path.join(standIn, 'src', 'vitest.js'), "export default { name: 'warpdom', viteEnvironment: 'client', "
+    + 'setup() { globalThis.__envGroupStandIn = true; return { teardown() { delete globalThis.__envGroupStandIn; } }; } };\n');
+  for (const dep of ['parse5', 'entities']) {
+    fs.mkdirSync(path.join(standIn, 'node_modules', dep), { recursive: true });
+    fs.writeFileSync(path.join(standIn, 'node_modules', dep, 'package.json'), `{ "name": "${dep}" }`);
+  }
+  const groupLog = path.join(out, 'env-group.log');
+  fs.rmSync(groupLog, { force: true });
+  const dir = path.join(out, 'env-group');
+  execFileSync(process.execPath, [path.join(root, 'scripts/trace-corpus.mjs'), path.join(fixture, 'corpus.json'),
+    '--out', dir, '--environment', 'warpdom', '--warpdom', standIn, '--max-workers', '1', '--extra-args', '--no-isolate'],
+  { cwd: root, stdio: 'pipe', env: { ...process.env, FIXTURE_GROUP_LOG: groupLog } });
+  const pkg = JSON.parse(fs.readFileSync(path.join(dir, 'status.json'), 'utf8')).projects['fixture-env-group'].packages[0];
+  assert.equal(pkg.run?.passed, 4, `env group: all files ran on warpdom (${pkg.error ?? ''})`);
+  assert.equal(pkg.pinnedSwitched, 2, 'env group: both pinned files switched');
+  const lines = fs.readFileSync(groupLog, 'utf8').trim().split('\n');
+  assert.deepEqual(lines.map((l) => l.split(' ')[0]).sort(), ['a', 'b', 'c', 'd'], 'env group: every file logged');
+  assert.equal(new Set(lines.map((l) => l.split(' ')[1])).size, 1, `env group: one environment group, one worker (${lines.join(', ')})`);
+  const left = fs.readdirSync(fixture, { recursive: true }).filter((f) => /\.dom-trace\.|vitest-environment-/.test(String(f)));
+  assert.deepEqual(left, [], 'env group: wrapper, warpdom copy and environment package removed');
+  console.log('• environment group       ok');
+} catch (err) {
+  failures++;
+  console.log('• environment group       FAILED\n' + (String(err.stdout || '') + String(err.stderr || '')).slice(-1500) + err.message);
+}
+fs.rmSync(path.join(root, 'test/fixtures/env-group/pkg/node_modules'), { recursive: true, force: true });
+
 // setup-cost: Vitest's duration breakdown in both formats, and a run on the
 // fixture corpus with and without isolation.
 try {
@@ -428,6 +465,29 @@ try {
   const fastCfg = await (await import(path.join(dir, 'fast.dom-trace.mjs'))).default({ mode: 'test' });
   assert.deepEqual(fastCfg.fastOptions, { project: 'unit' }, 'fast wrapper: withFastMode with the project');
   assert.equal(fastCfg.test.environment, '/x/vitest.js', 'fast wrapper: environment switched before withFastMode');
+  // warpdom: the config, its inline projects and pinned files get one
+  // environment name (Vitest groups files sharing workers by it), resolved
+  // in the workers to warpdom's path as a /@fs/ id by a plugin.
+  const { warpdomEnvironment, PINNED_WARPDOM } = await import(path.join(root, 'scripts/trace-corpus.mjs'));
+  const wd = warpdomEnvironment('warpdom', '/p/node_modules/warpdom.dom-trace.copy/src/vitest.js');
+  assert.deepEqual(wd, { environment: PINNED_WARPDOM, environmentId: '/@fs/p/node_modules/warpdom.dom-trace.copy/src/vitest.js' }, 'wrapper: warpdom by its pinned name');
+  assert.deepEqual(warpdomEnvironment('happy-dom', 'happy-dom'), { environment: 'happy-dom' }, 'wrapper: other DOMs by name, no plugin');
+  const nameBase = path.join(dir, 'name.config.mjs');
+  fs.writeFileSync(nameBase, `export default ${JSON.stringify({ test: { environment: 'jsdom', projects: [{ test: { name: 'u', environment: 'jsdom' } }] } })};`);
+  fs.writeFileSync(path.join(dir, 'name.dom-trace.mjs'), vitestWrapper(nameBase, { trace: false, ...wd, pinned: PINNED_WARPDOM }));
+  const readFile = fs.promises.readFile;
+  let nameCfg, pinnedText;
+  try {
+    nameCfg = await (await import(path.join(dir, 'name.dom-trace.mjs'))).default({ mode: 'test' });
+    fs.writeFileSync(path.join(dir, 'pinned.test.mjs'), '/** @vitest-environment jsdom */\n');
+    pinnedText = await fs.promises.readFile(path.join(dir, 'pinned.test.mjs'), 'utf8');
+  } finally { fs.promises.readFile = readFile; }
+  const resolves = (c) => c.plugins.filter((p) => p.name === 'dom-trace:environment').map((p) => p.resolveId(`vitest-environment-${PINNED_WARPDOM}`));
+  assert.equal(pinnedText.match(/@vitest-environment (\S+)/)[1], nameCfg.test.environment, 'wrapper: pinned file and config share one environment name');
+  assert.equal(nameCfg.test.projects[0].test.environment, PINNED_WARPDOM, 'wrapper: inline project by the same name');
+  assert.deepEqual(resolves(nameCfg), [wd.environmentId], 'wrapper: the name resolves to the /@fs/ id');
+  assert.deepEqual(resolves(nameCfg.test.projects[0]), [wd.environmentId], 'wrapper: in the inline project too');
+  assert.equal(nameCfg.plugins[0].resolveId('vitest-environment-jsdom'), null, 'wrapper: other ids left alone');
   const { supportsFastCli } = await import(path.join(root, 'scripts/trace-corpus.mjs'));
   assert.deepEqual(['2.1.9', '3.1.4', '3.2.0', '4.1.7', '5.0.0'].map(supportsFastCli), [false, false, true, true, true], 'fast-cli: Vitest >= 3.2');
   const { slugFor } = await import(path.join(root, 'scripts/trace-corpus.mjs'));

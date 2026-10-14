@@ -1,0 +1,10 @@
+{
+  "projects": [
+    {
+      "name": "fixture-env-group",
+      "path": ".",
+      "install": false,
+      "packages": [{ "dir": "pkg", "runner": "vitest" }]
+    }
+  ]
+}
