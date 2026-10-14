@@ -1,0 +1,34 @@
+{
+  "upload_type": "software",
+  "title": "dom-api-tracer: measure which DOM APIs real test suites use",
+  "version": "0.1.0",
+  "description": "<p>dom-api-tracer plugs into Vitest or Jest, instruments the DOM implementation the tests run on (jsdom or happy-dom), and records every DOM method call, property read and property write per test file, which a CLI aggregates into a usage report across files and projects. It also contains the research harness used to evaluate warpdom: a pinned corpus of open-source projects, scripts that run each project's own test suite traced and untraced under different DOM environments, and the timing, correctness and profiling workflows.</p>",
+  "creators": [
+    {
+      "name": "Kapoor, Sonu",
+      "affiliation": "Independent Researcher",
+      "orcid": "0009-0009-6074-6238"
+    }
+  ],
+  "license": "MIT",
+  "keywords": [
+    "DOM",
+    "jsdom",
+    "happy-dom",
+    "testing",
+    "Vitest",
+    "Jest",
+    "instrumentation",
+    "API usage",
+    "benchmarking"
+  ],
+  "related_identifiers": [
+    {
+      "identifier": "https://github.com/sonukapoor/warpdom",
+      "relation": "isSupplementTo",
+      "resource_type": "software",
+      "scheme": "url"
+    }
+  ],
+  "access_right": "open"
+}
