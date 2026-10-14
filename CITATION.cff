@@ -1,8 +1,6 @@
 cff-version: 1.2.0
 message: >-
-  If you use dom-api-tracer, please cite it using the metadata below. When
-  the journal article on warpdom is published, please cite the article
-  (preferred-citation).
+  If you use dom-api-tracer, please cite it using the metadata below.
 type: software
 title: "dom-api-tracer: measure which DOM APIs real test suites use"
 version: 0.1.0
@@ -47,15 +45,7 @@ references:
     notes: >-
       The DOM implementation that dom-api-tracer's measurements informed and
       evaluated.
-preferred-citation:
-  type: article
-  title: "TITLE OF THE JOURNAL ARTICLE (placeholder)"
-  authors:
-    - family-names: Kapoor
-      given-names: Sonu
-      affiliation: "Independent Researcher"
-      orcid: "https://orcid.org/0009-0009-6074-6238"
-  journal: "Journal of Web Engineering"
-  year: 2026
-  # volume, issue, start, end and doi: fill in at publication.
-  # doi: "10.XXXX/XXXXX"
+# preferred-citation: add the accompanying article on warpdom (type:
+# article, title, authors, journal, year, volume, issue, start, end, doi)
+# when it is published. Until then GitHub's "Cite this repository" cites
+# the software.
