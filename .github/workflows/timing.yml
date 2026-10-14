@@ -30,9 +30,9 @@ on:
         description: 'Configurations; empty = the mode''s default (timing: jsdom-default warpdom-default happy-dom-default, see timing-rounds.sh; ablation-isolation: all eleven, see ablation-isolation.sh; jsdom-sharedclean is jsdom without isolation plus shared-cleanup.mjs (also in timing), jsdom-learned learned isolation''s policy on jsdom; fastmode: jsdom-default warpdom-default warpdom-learned)'
         default: ''
       mode:
-        description: 'timing (configs above), fastmode (learned.sh), ablation-isolation (ablation-isolation.sh; these two Vitest only) or versions (versions.sh: jsdom only, own jsdom twice and other versions by overrides; rounds and configs unused)'
+        description: 'timing (configs above), fastmode (learned.sh), ablation-isolation (ablation-isolation.sh; these two Vitest only), versions (versions.sh: jsdom only, own jsdom twice and other versions by overrides; rounds and configs unused) or g2-shuffle (g2-shuffle.sh, Vitest only: rounds = shuffle seeds 1..rounds, 3 isolated references, configs unused)'
         type: choice
-        options: [timing, fastmode, ablation-isolation, versions]
+        options: [timing, fastmode, ablation-isolation, versions, g2-shuffle]
         default: timing
       perfile:
         description: Also record per-file phase timings (Vitest projects)
@@ -105,6 +105,8 @@ jobs:
             bash scripts/research/learned.sh ".corpus-env/timing-ci-${{ matrix.project }}.csv" "${{ inputs.rounds }}" "${{ matrix.project }}"
           elif [ "${{ inputs.mode }}" = versions ]; then
             bash scripts/research/versions.sh .corpus-env/versions "${{ matrix.project }}"
+          elif [ "${{ inputs.mode }}" = g2-shuffle ]; then
+            SEEDS="$(seq -s ' ' 1 '${{ inputs.rounds }}')" bash scripts/research/g2-shuffle.sh .corpus-env/g2 "${{ matrix.project }}"
           elif [ "${{ inputs.mode }}" = ablation-isolation ]; then
             bash scripts/research/ablation-isolation.sh ".corpus-env/timing-ci-${{ matrix.project }}.csv" "${{ inputs.rounds }}" "${{ matrix.project }}"
           else
@@ -136,6 +138,9 @@ jobs:
             .corpus-env/timing-ci-*.notes.txt
             .corpus-env/timing-ci-*.flaky.json
             .corpus-env/versions/
+            .corpus-env/g2/
+            .corpus-env/g2-run/logs/
+            .corpus-env/research-tmp/g2.log
             .corpus-env/versions-*/logs/
             .corpus-env/pertest/
             .corpus-env/ab-*/logs/
@@ -179,6 +184,15 @@ jobs:
             { echo '## jsdom version dependence'; echo; cat results/report.md; } >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
+          if [ "${{ inputs.mode }}" = g2-shuffle ]; then
+            # g2-shuffle.sh output: <project>/runs.csv under results (the
+            # artifact root depends on which paths matched).
+            runs=$(find results -name runs.csv | head -1)
+            if [ -z "$runs" ]; then echo 'No g2-shuffle results (see the time jobs).' | tee -a "$GITHUB_STEP_SUMMARY"; exit 1; fi
+            node scripts/research/g2-report.cjs "$(dirname "$(dirname "$runs")")" --json results/g2.json | tee results/report.md
+            cat results/report.md >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
           for f in results/timing-ci-*.csv; do case $f in *.warmup.csv|*.packages.csv) ;; *) files+=("$f");; esac; done
           if [ ${#files[@]} -eq 0 ]; then
             echo 'No timing results: every project failed (see the time jobs and their logs artifacts).' | tee -a "$GITHUB_STEP_SUMMARY"
@@ -217,6 +231,7 @@ jobs:
             results/packages.csv
             results/versions.csv
             results/versions-groups.json
+            results/g2.json
             results/learning.jsonl
             results/report.md
             results/perfile.md

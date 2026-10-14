@@ -8,6 +8,8 @@
 #   LEARN_ENV    the DOM (default warpdom)
 #   LEARN_FIRST  setup arguments for shared runs (default $first: warpdom's
 #                reset as the first setup file; empty for jsdom)
+#   LEARN_SHARED_ARGS  extra runner arguments for the shared part of learned
+#                runs only (g2-shuffle.sh: a shuffled file order)
 #
 # Missing results count as failures: a test or file without a result in a
 # shared run (a hang, a crash, a stopped run) makes its file one to
@@ -109,7 +111,7 @@ learned_run() {
     return
   fi
   started=$(now)
-  t1=$(run ab-run --environment $LENV --timeout $(dl_min $ti 1.5 30) --extra-args "--no-isolate $(excludes $iso)" $LFIRST)
+  t1=$(run ab-run --environment $LENV --timeout $(dl_min $ti 1.5 30) --extra-args "--no-isolate $(excludes $iso)${LEARN_SHARED_ARGS:+ $LEARN_SHARED_ARGS}" $LFIRST)
   if [ -z "$t1" ]; then
     # Stopped at its deadline (or failed): an isolated run instead, and
     # isolated from now on. The time includes the stopped run's.

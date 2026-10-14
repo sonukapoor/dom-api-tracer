@@ -295,6 +295,31 @@ try {
   console.log('• shared cleanup          FAILED\n' + (String(err.stdout || '') + String(err.stderr || '')).slice(-1500) + err.message);
 }
 
+// File order (scripts/research/order-setup.mjs, g2-shuffle.sh): the
+// shared-cleanup fixture's two files without isolation and shuffled, one
+// worker: one row per file, in one worker, isolate false, positions 1 and 2.
+// --first-setup is repeatable.
+try {
+  const fixture = path.join(root, 'test/fixtures/shared-cleanup');
+  const orderFile = path.join(out, 'order.jsonl');
+  fs.rmSync(orderFile, { force: true });
+  const setup = path.join(root, 'scripts/research/order-setup.mjs');
+  execFileSync(process.execPath, [path.join(root, 'scripts/trace-corpus.mjs'), path.join(fixture, 'corpus.json'),
+    '--out', path.join(out, 'order'), '--environment', 'jsdom', '--max-workers', '1',
+    '--extra-args', '--no-isolate --sequence.shuffle.files --sequence.seed=7', '--first-setup', setup],
+  { cwd: root, stdio: 'pipe', env: { ...process.env, FILE_ORDER_OUT: orderFile } });
+  const rows = fs.readFileSync(orderFile, 'utf8').trim().split('\n').map((l) => JSON.parse(l));
+  assert.deepEqual(rows.map((r) => path.basename(r.file)).sort(), ['a.test.mjs', 'b.test.mjs'], 'order: one row per test file');
+  assert.equal(new Set(rows.map((r) => r.worker)).size, 1, 'order: one shared worker');
+  assert.deepEqual(rows.map((r) => [r.isolate, r.seq]), [[false, 1], [false, 2]], 'order: isolate false, positions in the worker');
+  const { parseArgs } = await import(path.join(root, 'scripts/trace-corpus.mjs'));
+  assert.deepEqual(parseArgs(['--first-setup', '/a.mjs', '--first-setup', '/b.mjs']).firstSetup, ['/a.mjs', '/b.mjs'], 'harness: --first-setup repeatable');
+  console.log('• file order              ok');
+} catch (err) {
+  failures++;
+  console.log('• file order              FAILED\n' + (String(err.stdout || '') + String(err.stderr || '')).slice(-1500) + err.message);
+}
+
 // --environment warpdom with files sharing workers: Vitest groups test files
 // by environment name and gives each group its own workers. The config and
 // the files pinned to jsdom with a comment get one name, as on jsdom, so the
@@ -502,7 +527,7 @@ try {
 // Research scripts: per-test status keys and counting (statuses.cjs),
 // timing configurations and per-package times (configs.sh), the timing
 // report's A/A and per-package tables, the jsdom version experiment.
-for (const [name, file] of [['statuses', 'test-statuses.cjs'], ['configs', 'test-configs.cjs'], ['versions', 'test-versions.cjs'], ['learned', 'test-learned.cjs'], ['ablation', 'test-ablation.cjs'], ['timing', 'test-timing.cjs']]) {
+for (const [name, file] of [['statuses', 'test-statuses.cjs'], ['configs', 'test-configs.cjs'], ['versions', 'test-versions.cjs'], ['learned', 'test-learned.cjs'], ['ablation', 'test-ablation.cjs'], ['timing', 'test-timing.cjs'], ['g2', 'test-g2.cjs']]) {
   try {
     execFileSync(process.execPath, [path.join(root, 'scripts/research', file)], { stdio: 'pipe' });
     console.log(`• research ${name.padEnd(14)} ok`);

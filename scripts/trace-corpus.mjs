@@ -38,6 +38,7 @@ Options:
   --warpdom <dir>    warpdom checkout for --environment warpdom (default: ../warpdom)
   --extra-args <s>   extra runner arguments, space-separated (e.g. a test file filter)
   --first-setup <f>  a Vitest setup file to run before the project's own
+                     (repeatable: several run in the order given)
   --project-setup <f>  as --first-setup (after it), but copied next to the
                      package's Vitest config for the run, so its imports
                      ('vitest', the project's packages) resolve as the
@@ -62,7 +63,7 @@ Corpus file:
                       "env": { "OPTIONAL": "environment for both runs" } } ] } ] }
 `;
 
-function parseArgs(argv) {
+export function parseArgs(argv) {
   const args = { corpus: path.join(root, 'corpus/corpus.json'), out: '.corpus', baseline: true, build: true, timeout: 30, maxWorkers: 2 };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -78,7 +79,7 @@ function parseArgs(argv) {
     else if (a === '--profile') args.profile = true;
     else if (a === '--warpdom') args.warpdom = argv[++i];
     else if (a === '--extra-args') args.extraArgs = argv[++i].split(' ').filter(Boolean);
-    else if (a === '--first-setup') args.firstSetup = path.resolve(argv[++i]);
+    else if (a === '--first-setup') args.firstSetup = [...(args.firstSetup ?? []), path.resolve(argv[++i])];
     else if (a === '--project-setup') args.projectSetup = path.resolve(argv[++i]);
     else if (a === '--fast-cli') args.fastCli = argv[++i];
     else if (a === '--fast-state') args.fastState = argv[++i];
