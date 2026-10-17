@@ -13,9 +13,9 @@ on:
   workflow_dispatch:
     inputs:
       corpus:
-        description: 'Corpus file: corpus.json (the tuning corpus), held-out.json (projects warpdom was never tuned on) or apps.json (web application suites); list the projects below'
+        description: 'Corpus file: corpus.json (the tuning corpus), held-out.json (projects warpdom was never tuned on) apps.json (web application suites) or candidates.json (candidate projects not yet in a corpus); list the projects below'
         type: choice
-        options: [corpus.json, held-out.json, apps.json]
+        options: [corpus.json, held-out.json, apps.json, candidates.json]
         default: corpus.json
       projects:
         description: Corpus projects, comma separated

@@ -1,0 +1,20 @@
+{
+  "ant-design": {
+    "repo": "https://github.com/ant-design/ant-design",
+    "commit": "3fb9b07514199fcbf78c37fb574351bcc493c970",
+    "date": "2026-10-17T20:18:47+08:00",
+    "pinnedAt": "2026-10-17T12:59:39Z"
+  },
+  "chakra-ui": {
+    "repo": "https://github.com/chakra-ui/chakra-ui",
+    "commit": "fa9696f328ea5a0df8685c6d8460edbd779b63b9",
+    "date": "2026-10-12T07:31:45+01:00",
+    "pinnedAt": "2026-10-17T12:59:39Z"
+  },
+  "storybook": {
+    "repo": "https://github.com/storybookjs/storybook",
+    "commit": "7cbbd9ff5e13c70200c155a15076799bbf838105",
+    "date": "2026-10-16T17:33:55+02:00",
+    "pinnedAt": "2026-10-17T12:59:39Z"
+  }
+}
