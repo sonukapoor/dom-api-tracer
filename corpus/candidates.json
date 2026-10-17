@@ -1,0 +1,193 @@
+{
+  "projects": [
+    {
+      "name": "ant-design",
+      "repo": "https://github.com/ant-design/ant-design",
+      "frameworks": [
+        "React"
+      ],
+      "kind": "component library (design system)",
+      "notes": "Candidate project. Ant Design, the main Jest suite as the repo runs it (npm test: jest --config .jest.js --no-cache), Jest 30.5.2 with jest-environment-jsdom 30.5.2 (the root also depends on jsdom ^30.1.1), testEnvironment jsdom, setupFiles tests/setup.ts and jest-canvas-mock, the @ant-design/tools babel preprocessor. 583 test files (components/**/__tests__, including the demo, demo-extend and demo-semantic snapshot suites), 7899 tests (102 skipped). --no-cache as in the repo scripts: with a warm Jest cache from another checkout, every suite failed with genStyleUtils is not a function. The build step is the repo pretest (npm run version: writes components/version/version.ts). Excluded as the repo config does: node, dekko and image tests (.jest.node.js, .jest.image.js with Puppeteer). The partial Vitest gate (vitest.config.ts, 169 files) is not used. No lockfile (.npmrc package-lock=false, legacy-peer-deps=true): npm install resolves current versions, so installs are not exactly reproducible; PUPPETEER_SKIP_DOWNLOAD=1 skips the Chrome download (Puppeteer is only for the image tests). The repo CI uses Node 24 and utoo; install and tests run on Node 22.23.3. Local check (M-series laptop under other load, 2 workers): jsdom 7745/7899 passed in 847 s, warpdom 7730 in 164 s, 15 tests / 12 files differ; the 52 jsdom failures are date/calendar snapshot and demo tests that fail on jsdom too.",
+      "install": "PUPPETEER_SKIP_DOWNLOAD=1 npm install --no-audit --no-fund",
+      "build": "npm run version",
+      "packages": [
+        {
+          "dir": ".",
+          "runner": "jest",
+          "config": ".jest.js",
+          "args": [
+            "--no-cache"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "chakra-ui",
+      "repo": "https://github.com/chakra-ui/chakra-ui",
+      "frameworks": [
+        "React"
+      ],
+      "kind": "component library (design system)",
+      "notes": "Candidate project. One root Vitest run (vite.config.ts: environment jsdom, setupFiles vitest.setup.ts, include **/*test.{ts,tsx}), as the repo's CI runs pnpm test: packages/react plus the cli and codemod tests (their own vitest.config.ts files use the node environment, but the root run includes them on jsdom). Vitest 4.1.8, jsdom 26.1.0. pnpm 11.10.0 (pnpm-lock.yaml), no build step (aliases point at sources). Local check (M-series laptop, 2 workers): 89 files, 1065/1065 passed on jsdom in 29 s and on warpdom in 23 s.",
+      "packages": [
+        {
+          "dir": ".",
+          "runner": "vitest"
+        }
+      ]
+    },
+    {
+      "name": "storybook",
+      "repo": "https://github.com/storybookjs/storybook",
+      "frameworks": [
+        "React",
+        "Vue",
+        "Angular",
+        "Svelte",
+        "Preact",
+        "Web components",
+        "HTML"
+      ],
+      "kind": "UI development tool (manager UI, preview runtime, renderers, addons)",
+      "notes": "Candidate project. Only Storybook's DOM unit tests: Vitest 5.0.3, with environment node by default (code/vitest.shared.ts) and happy-dom 17.6.3 where a DOM is used, so the harness switches them (jsdom is not a dependency and is linked from dom-api-tracer). Package .: the root config (string project globs) restricted to the 14 projects that hold the 93 test files pinned with a @vitest-environment happy-dom (one: jsdom) comment, and to those files by name; the harness switches the pinned comments. Package code/renderers/svelte: the Svelte renderer's own config sets environment happy-dom for all 39 of its files, so it runs separately (the root config's string projects are not switched). Excluded: about 870 node-environment test files, agent-eval, and the storybook-ui project (Vitest browser mode, Playwright). --typecheck.enabled=false: core and angular enable type tests. The build step is the repo CI's compile task (tests import dist output, e.g. @storybook/svelte/dist). yarn 4.18.0 (yarn.lock, nodeLinker node-modules), .nvmrc Node 22.22.3; runs on Node 22.23.3. The suite is written for happy-dom, so some files fail on jsdom. Local check (M-series laptop, 2 workers): root 1187 tests (6 skipped), jsdom 1166 passed in 41 s, warpdom 1173 in 30 s; svelte 207/207 on jsdom (transform.test.ts fails to load: TextEncoder Uint8Array realm invariant) in 13 s, 209/209 on warpdom in 10 s; 9 tests / 2 files differ in all.",
+      "build": "NX_NO_CLOUD=true yarn task --task compile --start-from=compile --no-link",
+      "packages": [
+        {
+          "dir": ".",
+          "runner": "vitest",
+          "args": [
+            "--typecheck.enabled=false",
+            "--project",
+            "core",
+            "--project",
+            "@storybook/addon-a11y",
+            "--project",
+            "@storybook/addon-docs",
+            "--project",
+            "@storybook/addon-links",
+            "--project",
+            "@storybook/angular",
+            "--project",
+            "@storybook/angular-vite",
+            "--project",
+            "@storybook/angular-compodoc",
+            "--project",
+            "@storybook/docgen-harness",
+            "--project",
+            "@storybook/html",
+            "--project",
+            "@storybook/preact",
+            "--project",
+            "@storybook/react",
+            "--project",
+            "@storybook/tanstack-react",
+            "--project",
+            "@storybook/vue3",
+            "--project",
+            "@storybook/web-components",
+            "code/addons/a11y/src/a11yRunnerUtils.test.ts",
+            "code/addons/a11y/src/components/A11yContext.test.tsx",
+            "code/addons/a11y/src/components/A11YPanel.test.tsx",
+            "code/addons/a11y/src/manager.test.tsx",
+            "code/addons/a11y/src/preview.test.tsx",
+            "code/addons/docs/src/blocks/blocks/ArgTypes.test.tsx",
+            "code/addons/docs/src/blocks/blocks/DocsPage.test.ts",
+            "code/addons/docs/src/blocks/blocks/usePrimaryStory.test.tsx",
+            "code/addons/docs/src/blocks/components/ArgsTable/ArgsTable.lang.test.tsx",
+            "code/addons/docs/src/blocks/components/DocsPage.test.tsx",
+            "code/addons/docs/src/blocks/controls/Date.test.ts",
+            "code/addons/docs/src/manager.test.ts",
+            "code/addons/links/src/react/components/link.test.tsx",
+            "code/addons/links/src/utils.test.ts",
+            "code/core/src/channels/postmessage/index.test.ts",
+            "code/core/src/component-testing/components/Panel.test.ts",
+            "code/core/src/components/components/typography/DocumentWrapper.test.tsx",
+            "code/core/src/components/components/typography/elements/A.test.tsx",
+            "code/core/src/components/components/typography/link/link.test.tsx",
+            "code/core/src/csf/csf-factories.test.ts",
+            "code/core/src/instrumenter/instrumenter.test.ts",
+            "code/core/src/manager-api/lib/addons.test.ts",
+            "code/core/src/manager-api/tests/root.test.tsx",
+            "code/core/src/manager-api/tests/shortcut.test.js",
+            "code/core/src/manager-api/tests/shortcuts.test.js",
+            "code/core/src/manager/__tests__/index.test.ts",
+            "code/core/src/manager/components/review/review-actions.test.ts",
+            "code/core/src/manager/components/review/review-mode.test.ts",
+            "code/core/src/manager/components/review/review-notification.test.ts",
+            "code/core/src/manager/components/sidebar/__tests__/Sidebar.test.tsx",
+            "code/core/src/manager/components/sidebar/TreeStickyRows.test.ts",
+            "code/core/src/manager/components/sidebar/useExpanded.test.tsx",
+            "code/core/src/manager/utils/status.test.ts",
+            "code/core/src/manager/utils/tree.test.js",
+            "code/core/src/measure/withMeasure.test.ts",
+            "code/core/src/outline/withOutline.test.ts",
+            "code/core/src/preview-api/modules/preview-web/PreviewWeb.integration.test.ts",
+            "code/core/src/preview-api/modules/preview-web/PreviewWeb.test.ts",
+            "code/core/src/preview-api/modules/preview-web/render/animation-utils.test.ts",
+            "code/core/src/preview-api/modules/preview-web/render/StoryRender.test.ts",
+            "code/core/src/preview-api/modules/preview-web/setupContentResizeBroadcast.test.ts",
+            "code/core/src/preview-api/modules/preview-web/setupStoryFreezer.test.ts",
+            "code/core/src/preview-api/modules/preview-web/simulate-pageload.test.ts",
+            "code/core/src/preview-api/modules/preview-web/WebView.test.ts",
+            "code/core/src/preview-api/modules/store/csf/portable-stories.browser.test.ts",
+            "code/core/src/shared/open-service/use-service-command.test.tsx",
+            "code/core/src/shared/open-service/use-service-query.test.tsx",
+            "code/core/src/shared/status-store/index.test.ts",
+            "code/core/src/shared/test-provider-store/index.test.ts",
+            "code/core/src/shared/universal-store/use-universal-store-manager.test.ts",
+            "code/core/src/shared/utils/toHaveLiveRegion.test.ts",
+            "code/core/src/test/index.test.ts",
+            "code/core/src/test/preview.test.ts",
+            "code/core/src/theming/tests/util.test.js",
+            "code/frameworks/angular-vite/src/client/decorators.test.ts",
+            "code/frameworks/angular-vite/src/client/renderer/RendererFactory.test.ts",
+            "code/frameworks/angular-vite/src/client/renderer/StorybookModule.test.ts",
+            "code/frameworks/angular-vite/src/client/renderer/utils/BootstrapQueue.test.ts",
+            "code/frameworks/angular-vite/src/client/renderer/utils/NgComponentAnalyzer.test.ts",
+            "code/frameworks/angular/src/client/angular-beta/RendererFactory.test.ts",
+            "code/frameworks/angular/src/client/angular-beta/StorybookModule.test.ts",
+            "code/frameworks/angular/src/client/angular-beta/utils/BootstrapQueue.test.ts",
+            "code/frameworks/angular/src/client/angular-beta/utils/NgComponentAnalyzer.test.ts",
+            "code/frameworks/angular/src/client/decorators.test.ts",
+            "code/frameworks/tanstack-react/src/csf-factories.test.tsx",
+            "code/frameworks/tanstack-react/src/export-mocks/react-router-link.test.tsx",
+            "code/lib/angular-compodoc/src/html-to-text.test.ts",
+            "code/lib/docgen-harness/src/angular/angular-baselines.test.ts",
+            "code/lib/docgen-harness/src/angular/angular-render.test.ts",
+            "code/lib/docgen-harness/src/svelte/svelte-baselines.test.ts",
+            "code/lib/docgen-harness/src/svelte/svelte-render.test.ts",
+            "code/lib/docgen-harness/src/vue3/vue3-render.test.ts",
+            "code/lib/docgen-harness/src/web-components/web-components-baselines.test.ts",
+            "code/lib/docgen-harness/src/web-components/web-components-legacy-gaps.test.ts",
+            "code/lib/docgen-harness/src/web-components/web-components-render.test.ts",
+            "code/renderers/html/src/docs/sourceDecorator.test.ts",
+            "code/renderers/preact/src/public-types.test.tsx",
+            "code/renderers/react/src/__test__/portable-stories-factory.test.tsx",
+            "code/renderers/react/src/__test__/portable-stories-legacy.test.tsx",
+            "code/renderers/react/src/__test__/portable-stories.test.tsx",
+            "code/renderers/react/src/csf-factories.test.tsx",
+            "code/renderers/react/src/docs/jsxDecorator.test.tsx",
+            "code/renderers/react/src/public-types.test.tsx",
+            "code/renderers/react/src/renderToCanvas.test.tsx",
+            "code/renderers/vue3/src/__tests__/composeStories/portable-stories.test.ts",
+            "code/renderers/web-components/src/bind-args.test.ts",
+            "code/renderers/web-components/src/docgen/story-docs/template-print.lit.test.ts",
+            "code/renderers/web-components/src/docs/custom-elements.test.ts",
+            "code/renderers/web-components/src/docs/sourceDecorator.test.ts",
+            "code/renderers/web-components/src/docs/web-components-properties.test.ts",
+            "code/renderers/web-components/src/entry-preview-argtypes.test.ts",
+            "code/renderers/web-components/src/framework-api.test.ts",
+            "code/renderers/web-components/src/render.test.ts"
+          ]
+        },
+        {
+          "dir": "code/renderers/svelte",
+          "runner": "vitest",
+          "args": [
+            "--typecheck.enabled=false"
+          ]
+        }
+      ]
+    }
+  ]
+}
