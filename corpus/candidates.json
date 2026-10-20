@@ -188,6 +188,25 @@
           ]
         }
       ]
+    },
+    {
+      "name": "mantine",
+      "repo": "https://github.com/mantinedev/mantine",
+      "frameworks": [
+        "React"
+      ],
+      "kind": "component library (components, hooks, forms, dates, charts)",
+      "notes": "Candidate project. Mantine 9.7.3, the Jest suite as the repo CI runs it (the last step of npm test, which first runs format, syncpack, typecheck, lint and docs:links; only Jest is measured): jest with the root jest.config.ts, Jest 30.5.2 with jest-environment-jsdom 30.5.2 (jsdom 26.1.0), the esbuild-jest 0.5.0 transform, setupFilesAfterEnv jsdom.mocks.ts (jest-dom, matchMedia/ResizeObserver/IntersectionObserver stubs, any console.error or console.warn fails the test) and jest.react.ts, moduleNameMapper to the packages sources, testTimeout 30 s, workerIdleMemoryLimit 512MB, React 19.3.0, @testing-library/react 16.3.3. 749 test files (packages/@mantine/* with core 353, schedule 101, form 74, dates 70, hooks 68, charts 37; plus @docs/styles-api and scripts), 18030 tests (16 skipped). Nothing excluded but the .claude directory, as the config does. TZ=UTC (package env) as on the GitHub runner: the @mantine/schedule tests assume UTC; in America/Toronto 62 tests in 6 files failed and four MonthView/YearView files ran 5 to 11 minutes each. No build step: the tests import sources, not build output (the CI setup and build all steps are for the docs and the ESM entry check; a run without them passes everything). yarn 4.18.0 (yarn.lock, nodeLinker node-modules), the default yarn install --immutable. The repo CI uses Node 26.3.0 (.nvmrc; engines >=22); runs on Node 22.23.3. Nothing patched. Local check (M-series laptop, 2 workers): jsdom 18014/18030 passed, 0 failed, in 102 s; warpdom 0.1.6 17974 passed in 82 s, 40 tests / 1 file differ: schedule MoreEvents.test.tsx (popoverProps opened: true) gets an act() warning from a floating-ui position update (@floating-ui/react-dom flushSync setState after the test), which jsdom.mocks.ts turns into a failure of the following test, 40 in all; the same on a second run of that file alone, which passes on jsdom.",
+      "packages": [
+        {
+          "dir": ".",
+          "runner": "jest",
+          "config": "jest.config.ts",
+          "env": {
+            "TZ": "UTC"
+          }
+        }
+      ]
     }
   ]
 }

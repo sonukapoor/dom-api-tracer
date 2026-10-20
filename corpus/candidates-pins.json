@@ -16,5 +16,11 @@
     "commit": "7cbbd9ff5e13c70200c155a15076799bbf838105",
     "date": "2026-10-16T17:33:55+02:00",
     "pinnedAt": "2026-10-17T12:59:39Z"
+  },
+  "mantine": {
+    "repo": "https://github.com/mantinedev/mantine",
+    "commit": "e47e45af06427b3b2497100c2b849935c23af30d",
+    "date": "2026-10-18T11:46:06+03:00",
+    "pinnedAt": "2026-10-20T01:00:16Z"
   }
 }
