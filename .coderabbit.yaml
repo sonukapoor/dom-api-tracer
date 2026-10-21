@@ -1,0 +1,52 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+language: en-US
+reviews:
+  profile: chill
+  # Never approve or request changes; comments only.
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  sequence_diagrams: false
+  in_progress_fortune: false
+  auto_review:
+    enabled: true
+    drafts: false
+  pre_merge_checks:
+    docstrings:
+      mode: "off"
+  path_filters:
+    - "!.corpus/**"
+    - "!.corpus-env/**"
+    - "!.dom-trace/**"
+    - "!dom-trace-report/**"
+    - "!docs/data/**"
+    - "!**/package-lock.json"
+    - "!**/pnpm-lock.yaml"
+    - "!**/yarn.lock"
+  path_instructions:
+    - path: "src/**"
+      instructions: |
+        - The core is CommonJS (src/tracer.cjs, src/jest-setup.cjs) so both Jest and
+          Vitest can load it; it must keep working on Node >= 18.
+        - No runtime dependencies: flag anything added to "dependencies".
+        - Every behavior change needs a fixture and an exact-count assertion in
+          test/verify.mjs.
+        - Counting is "outermost" by default: DOM calls made by the DOM
+          implementation itself must not be counted; counting re-opens only while
+          user code runs (event listeners, on* handlers, custom element lifecycle
+          callbacks). Mocks assigned by tests must never be wrapped.
+    - path: "package.json"
+      instructions: |
+        - No runtime dependencies; development tools belong in devDependencies.
+    - path: "test/**"
+      instructions: |
+        - test/verify.mjs asserts exact counts across Vitest+jsdom, Vitest+jsdom
+          --no-isolate, Vitest+happy-dom and Jest+jsdom; a behavior change needs a
+          fixture and an assertion there.
+    - path: "{scripts,corpus,.github}/**"
+      instructions: |
+        - Corpus and timing scripts must be reproducible: pinned commits and
+          versions, the project's own runner binary, and traced runs compared with
+          an untraced baseline.
+chat:
+  auto_reply: true
