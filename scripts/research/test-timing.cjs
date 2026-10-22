@@ -40,6 +40,6 @@ assert.match(out, /m: jsdom round 2 of 4 broken .*left out/);
 // With --pertest: t3 is flaky (the warm-up), so 2 raw, 1 without flaky.
 out = report('--pertest', path.join(dir, 'pt'));
 assert.match(row(out), /^\| m \| 3 \|.*\| 2 \(1\) \/ — \/ — \|$/);
-assert.match(out, /without the flaky tests .*: m 1\./);
+assert.match(out, /Flaky tests per suite \(status changes between the suite's jsdom-default runs\), not differences: m 1\./);
 fs.rmSync(dir, { recursive: true, force: true });
 console.log('timing: ok');
