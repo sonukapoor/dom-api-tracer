@@ -224,7 +224,7 @@ npm install
 npm test   # runs the fixtures under Vitest+jsdom, Vitest+jsdom (no isolation),
            # Vitest+happy-dom and Jest+jsdom, and asserts exact counts
 npm run format   # Prettier (CI runs npm run format:check)
-npm run lint     # ESLint readability rules, such as no nested ternaries
+npm run lint     # ESLint readability rules, such as no nested ternaries (Node 22.13+)
 ```
 
 Existing nested ternaries are listed in `eslint-suppressions.json` until
