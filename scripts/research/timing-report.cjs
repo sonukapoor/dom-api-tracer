@@ -101,7 +101,9 @@ for (const [project, p] of data) {
 }
 
 if (warnings.length) console.log('\n**Check:** ' + warnings.join('; ') + '.');
-if (flakyCount.size) console.log(`\nDiffer: the most tests differing from the same round's jsdom-default run in any round; in parentheses without the flaky tests (status changes between the suite's jsdom-default runs): ${[...flakyCount].map(([k, v]) => `${k} ${v}`).join(', ')}.`);
+// The differ column holds the counts; this line only explains it and lists
+// the flaky tests per suite (once read as the counts themselves).
+if (flakyCount.size) console.log(`\nThe differ column is the most tests differing from the same round's jsdom-default run in any round; in parentheses without the flaky tests. Flaky tests per suite (status changes between the suite's jsdom-default runs), not differences: ${[...flakyCount].map(([k, v]) => `${k} ${v}`).join(', ')}.`);
 
 // Three-way (happy-dom-* present): speed of all three DOMs and how many
 // tests differ from jsdom on each, plus medians over the suites whose
