@@ -47,7 +47,9 @@ export function parseDuration(text) {
   }
   const percent = Object.values(phases).some((p) => p.unit === '%');
   const total = Object.values(phases).reduce((a, p) => a + (percent ? p.value : toMs(p.value, p.unit)), 0);
-  const shares = Object.fromEntries(Object.entries(phases).map(([k, p]) => [k, total ? (percent ? p.value : toMs(p.value, p.unit)) / total : 0]));
+  const shares = Object.fromEntries(
+    Object.entries(phases).map(([k, p]) => [k, total ? (percent ? p.value : toMs(p.value, p.unit)) / total : 0]),
+  );
   return { wallMs: wall ? toMs(wall, wallUnit) : null, shares };
 }
 
@@ -61,48 +63,71 @@ function findBin(fromDir) {
 
 function runOnce(pkgDir, bin, pkg, isolate, resultsFile) {
   const started = Date.now();
-  const res = spawnSync(bin, ['run', '--reporter=default', '--reporter=json', `--outputFile.json=${resultsFile}`,
-    `--maxWorkers=${args.maxWorkers}`, ...(isolate ? [] : ['--no-isolate']), ...(pkg.args ?? [])], {
-    cwd: pkgDir, encoding: 'utf8', maxBuffer: 256 * 1024 * 1024, timeout: 30 * 60_000,
-    env: { ...process.env, CI: '1', FORCE_COLOR: '0', NO_COLOR: '1', ...pkg.env },
-  });
+  const res = spawnSync(
+    bin,
+    [
+      'run',
+      '--reporter=default',
+      '--reporter=json',
+      `--outputFile.json=${resultsFile}`,
+      `--maxWorkers=${args.maxWorkers}`,
+      ...(isolate ? [] : ['--no-isolate']),
+      ...(pkg.args ?? []),
+    ],
+    {
+      cwd: pkgDir,
+      encoding: 'utf8',
+      maxBuffer: 256 * 1024 * 1024,
+      timeout: 30 * 60_000,
+      env: { ...process.env, CI: '1', FORCE_COLOR: '0', NO_COLOR: '1', ...pkg.env },
+    },
+  );
   const output = `${res.stdout || ''}${res.stderr || ''}`.replace(/\x1b\[[0-9;]*m/g, '');
   let r = null;
-  try { r = JSON.parse(fs.readFileSync(resultsFile, 'utf8')); } catch {}
+  try {
+    r = JSON.parse(fs.readFileSync(resultsFile, 'utf8'));
+  } catch {}
   return {
     ms: Date.now() - started,
     breakdown: parseDuration(output),
-    tests: r?.numTotalTests ?? null, passed: r?.numPassedTests ?? null, failed: r?.numFailedTests ?? null,
+    tests: r?.numTotalTests ?? null,
+    passed: r?.numPassedTests ?? null,
+    failed: r?.numFailedTests ?? null,
     exitCode: res.status,
   };
 }
 
 function main() {
-const corpusFile = path.resolve(args.corpus);
-const corpus = JSON.parse(fs.readFileSync(corpusFile, 'utf8')).projects;
-const out = path.resolve(args.out);
-fs.mkdirSync(out, { recursive: true });
-const results = {};
-for (const project of corpus.filter((p) => !args.only || args.only.includes(p.name))) {
-  const projectDir = project.path
-    ? path.resolve(path.dirname(corpusFile), expandHome(project.path))
-    : path.join(path.resolve(expandHome(args.reposDir || '.')), project.name);
-  for (const pkg of project.packages.filter((p) => p.runner === 'vitest')) {
-    const pkgDir = path.resolve(projectDir, pkg.dir);
-    const bin = findBin(pkgDir);
-    const key = `${project.name}/${pkg.dir}`;
-    if (!bin) { results[key] = { error: 'vitest not installed' }; continue; }
-    const slug = `${project.name}-${pkg.dir}`.replace(/[^\w.-]+/g, '_');
-    const isolated = runOnce(pkgDir, bin, pkg, true, path.join(out, `${slug}.isolated.json`));
-    const shared = runOnce(pkgDir, bin, pkg, false, path.join(out, `${slug}.shared.json`));
-    results[key] = { isolated, shared };
-    const share = (b, k) => `${((b?.shares?.[k] || 0) * 100).toFixed(0)}%`;
-    console.log(`${key}: isolated ${(isolated.ms / 1000).toFixed(1)}s ${isolated.passed}/${isolated.tests}` +
-      ` [env ${share(isolated.breakdown, 'environment')}, import ${share(isolated.breakdown, 'import')}, tests ${share(isolated.breakdown, 'tests')}]` +
-      ` | no-isolate ${(shared.ms / 1000).toFixed(1)}s ${shared.passed}/${shared.tests}`);
-    fs.writeFileSync(path.join(out, 'results.json'), JSON.stringify(results, null, 2));
+  const corpusFile = path.resolve(args.corpus);
+  const corpus = JSON.parse(fs.readFileSync(corpusFile, 'utf8')).projects;
+  const out = path.resolve(args.out);
+  fs.mkdirSync(out, { recursive: true });
+  const results = {};
+  for (const project of corpus.filter((p) => !args.only || args.only.includes(p.name))) {
+    const projectDir = project.path
+      ? path.resolve(path.dirname(corpusFile), expandHome(project.path))
+      : path.join(path.resolve(expandHome(args.reposDir || '.')), project.name);
+    for (const pkg of project.packages.filter((p) => p.runner === 'vitest')) {
+      const pkgDir = path.resolve(projectDir, pkg.dir);
+      const bin = findBin(pkgDir);
+      const key = `${project.name}/${pkg.dir}`;
+      if (!bin) {
+        results[key] = { error: 'vitest not installed' };
+        continue;
+      }
+      const slug = `${project.name}-${pkg.dir}`.replace(/[^\w.-]+/g, '_');
+      const isolated = runOnce(pkgDir, bin, pkg, true, path.join(out, `${slug}.isolated.json`));
+      const shared = runOnce(pkgDir, bin, pkg, false, path.join(out, `${slug}.shared.json`));
+      results[key] = { isolated, shared };
+      const share = (b, k) => `${((b?.shares?.[k] || 0) * 100).toFixed(0)}%`;
+      console.log(
+        `${key}: isolated ${(isolated.ms / 1000).toFixed(1)}s ${isolated.passed}/${isolated.tests}` +
+          ` [env ${share(isolated.breakdown, 'environment')}, import ${share(isolated.breakdown, 'import')}, tests ${share(isolated.breakdown, 'tests')}]` +
+          ` | no-isolate ${(shared.ms / 1000).toFixed(1)}s ${shared.passed}/${shared.tests}`,
+      );
+      fs.writeFileSync(path.join(out, 'results.json'), JSON.stringify(results, null, 2));
+    }
   }
-}
 }
 
 if (isMain) main();

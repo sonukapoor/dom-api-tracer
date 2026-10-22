@@ -35,10 +35,18 @@ function testStatuses(envDir, project) {
 function profileShares(envDir) {
   const dir = path.join(envDir, 'profiles');
   if (!fs.existsSync(dir)) return {};
-  return JSON.parse(String(execFileSync(process.execPath, [path.join(root, 'scripts/profile-share.mjs'), dir, '--json'], { maxBuffer: 64 * 1024 * 1024 })));
+  return JSON.parse(
+    String(
+      execFileSync(process.execPath, [path.join(root, 'scripts/profile-share.mjs'), dir, '--json'], {
+        maxBuffer: 64 * 1024 * 1024,
+      }),
+    ),
+  );
 }
 
-const timing = Object.fromEntries(ENVS.map((e) => [e, readJson(path.join(base, `${e}-time`, 'status.json'))?.projects ?? {}]));
+const timing = Object.fromEntries(
+  ENVS.map((e) => [e, readJson(path.join(base, `${e}-time`, 'status.json'))?.projects ?? {}]),
+);
 const shares = Object.fromEntries(ENVS.map((e) => [e, profileShares(path.join(base, `${e}-profile`))]));
 const projects = [...new Set(ENVS.flatMap((e) => Object.keys(timing[e])))].sort();
 
@@ -53,8 +61,12 @@ const rows = projects.map((name) => {
       passed: pk.reduce((a, p) => a + p.run.passed, 0),
       failed: pk.reduce((a, p) => a + p.run.failed, 0),
       providedFrom: pk.some((p) => p.providedFrom) ? 'dom-api-tracer' : null,
-      notRun: (timing[env][name]?.packages ?? []).filter((p) => p.status !== 'ran').map((p) => `${p.dir}: ${p.error || p.reason}`),
-      profile: shares[env][name] ? { cpuSeconds: shares[env][name].cpuSeconds, categories: shares[env][name].categories } : null,
+      notRun: (timing[env][name]?.packages ?? [])
+        .filter((p) => p.status !== 'ran')
+        .map((p) => `${p.dir}: ${p.error || p.reason}`),
+      profile: shares[env][name]
+        ? { cpuSeconds: shares[env][name].cpuSeconds, categories: shares[env][name].categories }
+        : null,
     };
   }
   // Correctness gap: tests passing on one DOM but not on the other.
@@ -65,7 +77,8 @@ const rows = projects.map((name) => {
   row.passOnlyOnJsdom = onlyJsdom.length;
   row.passOnlyOnHappyDom = onlyHappy.length;
   row.examplesOnlyJsdom = onlyJsdom.slice(0, 5);
-  const j = row.jsdom.seconds, h = row['happy-dom'].seconds;
+  const j = row.jsdom.seconds,
+    h = row['happy-dom'].seconds;
   row.speedup = j && h ? +(j / h).toFixed(2) : null;
   return row;
 });
@@ -74,10 +87,15 @@ if (args.includes('--json')) {
   process.stdout.write(JSON.stringify(rows, null, 2));
 } else {
   const pct = (x) => (x == null ? '-' : `${(x * 100).toFixed(0)}%`);
-  console.log('| Project | jsdom s | happy-dom s | jsdom / happy-dom | Pass only on jsdom | Pass only on happy-dom | DOM share of CPU (jsdom) | (happy-dom) |');
+  console.log(
+    '| Project | jsdom s | happy-dom s | jsdom / happy-dom | Pass only on jsdom | Pass only on happy-dom | DOM share of CPU (jsdom) | (happy-dom) |',
+  );
   console.log('| --- | --- | --- | --- | --- | --- | --- | --- |');
   for (const r of rows) {
-    console.log(`| ${r.project} | ${r.jsdom.seconds} | ${r['happy-dom'].seconds} | ${r.speedup ?? '-'}x | ${r.passOnlyOnJsdom} of ${r.jsdom.tests} | ${r.passOnlyOnHappyDom} | ${pct(r.jsdom.profile?.categories.dom)} | ${pct(r['happy-dom'].profile?.categories.dom)} |`);
+    console.log(
+      `| ${r.project} | ${r.jsdom.seconds} | ${r['happy-dom'].seconds} | ${r.speedup ?? '-'}x | ${r.passOnlyOnJsdom} of ${r.jsdom.tests} | ${r.passOnlyOnHappyDom} | ${pct(r.jsdom.profile?.categories.dom)} | ${pct(r['happy-dom'].profile?.categories.dom)} |`,
+    );
   }
-  for (const r of rows) for (const env of ENVS) for (const n of r[env].notRun) console.log(`- ${r.project} on ${env} not run: ${n}`);
+  for (const r of rows)
+    for (const env of ENVS) for (const n of r[env].notRun) console.log(`- ${r.project} on ${env} not run: ${n}`);
 }

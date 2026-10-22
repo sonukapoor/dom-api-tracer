@@ -18,9 +18,50 @@ const { JSDOM } = loadJsdom(process.argv[3] ?? 'jsdom');
 const { isValidValue } = await import(pathToFileURL(path.join(wdDir, 'src', 'css-values.js')).href);
 const { properties } = warpdomRequire('@webref/css/css.json');
 const w = new JSDOM('').window;
-const GENERIC = ['0', '10px', '-10px', '50%', '1', '1.5', '-1', '2.5', 'auto', 'none', 'normal', 'red', '#fff', 'url(x.png)', '"str"', 'foo', '1s', '200ms', '45deg',
-  'calc(1px + 2px)', '1px 2px', '1px 2px 3px 4px 5px', 'a, b', '10px solid red', 'rgb(1, 2, 3)', 'rgba(0,0,0,.5)', 'linear-gradient(red, blue)', 'translateX(10px)', '1fr',
-  'repeat(2, 1fr)', 'span 2', '2 / 3', 'italic bold 12px/30px Georgia, serif', 'center', 'left top', 'bold', 'hidden', 'pointer', 'block', 'flex', 'ease-in-out', '0 0 2px red'];
+const GENERIC = [
+  '0',
+  '10px',
+  '-10px',
+  '50%',
+  '1',
+  '1.5',
+  '-1',
+  '2.5',
+  'auto',
+  'none',
+  'normal',
+  'red',
+  '#fff',
+  'url(x.png)',
+  '"str"',
+  'foo',
+  '1s',
+  '200ms',
+  '45deg',
+  'calc(1px + 2px)',
+  '1px 2px',
+  '1px 2px 3px 4px 5px',
+  'a, b',
+  '10px solid red',
+  'rgb(1, 2, 3)',
+  'rgba(0,0,0,.5)',
+  'linear-gradient(red, blue)',
+  'translateX(10px)',
+  '1fr',
+  'repeat(2, 1fr)',
+  'span 2',
+  '2 / 3',
+  'italic bold 12px/30px Georgia, serif',
+  'center',
+  'left top',
+  'bold',
+  'hidden',
+  'pointer',
+  'block',
+  'flex',
+  'ease-in-out',
+  '0 0 2px red',
+];
 const ONLY = process.env.ONLY ? new Set(process.env.ONLY.split(',')) : null;
 const disagree = { wdRejects: [], wdAccepts: [] };
 let total = 0;
@@ -35,11 +76,23 @@ for (const p of properties) {
     s.setProperty(p.name, value);
     const jsdomOk = s.getPropertyValue(p.name) !== '';
     let ours;
-    try { ours = isValidValue(p.name, value); } catch (e) { ours = 'THROW ' + e.message; }
+    try {
+      ours = isValidValue(p.name, value);
+    } catch (e) {
+      ours = 'THROW ' + e.message;
+    }
     total++;
     if (ours === true && !jsdomOk) disagree.wdAccepts.push(`${p.name}: ${value}`);
-    else if (ours !== true && jsdomOk) disagree.wdRejects.push(`${p.name}: ${value}${ours === false ? '' : ' (' + ours + ')'}`);
+    else if (ours !== true && jsdomOk)
+      disagree.wdRejects.push(`${p.name}: ${value}${ours === false ? '' : ' (' + ours + ')'}`);
   }
 }
-console.log('checked', total, '| warpdom rejects, jsdom accepts:', disagree.wdRejects.length, '| warpdom accepts, jsdom rejects:', disagree.wdAccepts.length);
+console.log(
+  'checked',
+  total,
+  '| warpdom rejects, jsdom accepts:',
+  disagree.wdRejects.length,
+  '| warpdom accepts, jsdom rejects:',
+  disagree.wdAccepts.length,
+);
 if (process.argv[4]) fs.writeFileSync(process.argv[4], JSON.stringify(disagree, null, 1));

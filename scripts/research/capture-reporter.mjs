@@ -8,14 +8,24 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-const StatusMap = { fail: 'failed', only: 'pending', pass: 'passed', run: 'pending', skip: 'skipped', todo: 'todo', queued: 'pending' };
+const StatusMap = {
+  fail: 'failed',
+  only: 'pending',
+  pass: 'passed',
+  run: 'pending',
+  skip: 'skipped',
+  todo: 'todo',
+  queued: 'pending',
+};
 
 function tests(task) {
   return task.type === 'test' ? [task] : (task.tasks ?? []).flatMap(tests);
 }
 
 export default class CaptureReporter {
-  onInit() { this.start = Date.now(); }
+  onInit() {
+    this.start = Date.now();
+  }
 
   onTestRunEnd(testModules) {
     const dir = process.env.FAST_CAPTURE_DIR;
@@ -27,7 +37,10 @@ export default class CaptureReporter {
         const ancestors = [];
         for (let s = t.suite; s; s = s.suite) ancestors.push(s.name);
         ancestors.reverse();
-        return { fullName: t.name ? [...ancestors, t.name].join(' ') : ancestors.join(' '), status: StatusMap[t.result?.state || t.mode] || 'skipped' };
+        return {
+          fullName: t.name ? [...ancestors, t.name].join(' ') : ancestors.join(' '),
+          status: StatusMap[t.result?.state || t.mode] || 'skipped',
+        };
       });
       const failed = file.result?.state === 'fail' || ts.some((t) => t.result?.state === 'fail');
       return { name: file.filepath, status: failed ? 'failed' : 'passed', assertionResults };
@@ -37,7 +50,9 @@ export default class CaptureReporter {
       mode: process.env.WARPDOM_FAST_MODE ?? null,
       rerun: process.env.WARPDOM_FAST_RERUN === '1',
       isolate: process.env.WARPDOM_FAST_ISOLATE ?? null,
-      started: this.start, ended: Date.now(), testResults,
+      started: this.start,
+      ended: Date.now(),
+      testResults,
     };
     fs.writeFileSync(path.join(dir, `${Date.now()}-${process.pid}.json`), JSON.stringify(run));
   }

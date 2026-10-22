@@ -24,5 +24,10 @@ if (process.argv[2] === 'warpdom') {
   style = () => w.document.createElement('div').style;
 }
 const out = {};
-for (const p of PROPS) out[p] = VALUES.map((v) => { const s = style(); s.setProperty(p, v); return s.getPropertyValue(p); }).join(' | ');
+for (const p of PROPS)
+  out[p] = VALUES.map((v) => {
+    const s = style();
+    s.setProperty(p, v);
+    return s.getPropertyValue(p);
+  }).join(' | ');
 console.log(JSON.stringify(out));

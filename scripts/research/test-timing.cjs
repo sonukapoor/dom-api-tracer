@@ -11,8 +11,10 @@ const { execFileSync } = require('child_process');
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'timing-'));
 const map = (failed = []) => {
-  const tests = {}, files = { 'p::a.test.ts': { s: failed.length ? 'failed' : 'passed', file: '/a.test.ts' } };
-  for (let i = 0; i < 10; i++) tests[`p::a.test.ts::t${i}`] = { s: failed.includes(i) ? 'failed' : 'passed', file: '/a.test.ts' };
+  const tests = {},
+    files = { 'p::a.test.ts': { s: failed.length ? 'failed' : 'passed', file: '/a.test.ts' } };
+  for (let i = 0; i < 10; i++)
+    tests[`p::a.test.ts::t${i}`] = { s: failed.includes(i) ? 'failed' : 'passed', file: '/a.test.ts' };
   return { tests, files };
 };
 const put = (round, cfg, m) => {
@@ -30,7 +32,10 @@ for (let r = 1; r <= 4; r++) {
   csv.push(`${r},m,jsdom-default,${r === 2 ? 'NA' : 100},1,1,baseline`, `${r},m,warpdom-default,50,2,1,round`);
 }
 fs.writeFileSync(path.join(dir, 't.csv'), csv.join('\n') + '\n');
-const report = (...a) => execFileSync(process.execPath, [path.join(__dirname, 'timing-report.cjs'), path.join(dir, 't.csv'), ...a], { encoding: 'utf8' });
+const report = (...a) =>
+  execFileSync(process.execPath, [path.join(__dirname, 'timing-report.cjs'), path.join(dir, 't.csv'), ...a], {
+    encoding: 'utf8',
+  });
 const row = (text) => text.split('\n').find((l) => l.startsWith('| m'));
 
 // Without --pertest: round 2 left out, the suite kept (3 rounds).

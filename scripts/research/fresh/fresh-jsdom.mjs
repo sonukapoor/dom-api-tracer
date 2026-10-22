@@ -6,7 +6,10 @@ import { populateGlobal } from 'vitest/environments';
 const g = globalThis;
 if (g.__freshWindowRestore) g.__freshWindowRestore();
 const dom = new JSDOM('<!DOCTYPE html>', {
-  pretendToBeVisual: true, runScripts: 'dangerously', url: 'http://localhost:3000', resources: 'usable',
+  pretendToBeVisual: true,
+  runScripts: 'dangerously',
+  url: 'http://localhost:3000',
+  resources: 'usable',
 });
 const { keys, originals } = populateGlobal(g, dom.window, { bindFunctions: true });
 g.jsdom = dom;

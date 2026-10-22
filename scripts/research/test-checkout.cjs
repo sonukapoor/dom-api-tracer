@@ -11,7 +11,11 @@ const { execFileSync } = require('child_process');
 
 const here = __dirname;
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'checkout-'));
-const git = (cwd, ...a) => execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', '-c', 'init.defaultBranch=main', ...a], { cwd, encoding: 'utf8' }).trim();
+const git = (cwd, ...a) =>
+  execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', '-c', 'init.defaultBranch=main', ...a], {
+    cwd,
+    encoding: 'utf8',
+  }).trim();
 const node = (...a) => execFileSync(process.execPath, a, { encoding: 'utf8' });
 
 try {
@@ -28,9 +32,14 @@ try {
 
   const corpus = path.join(dir, 'set.json');
   fs.writeFileSync(corpus, JSON.stringify({ projects: [{ name: 'p', packages: [] }] }));
-  fs.writeFileSync(path.join(dir, 'set-pins.json'), JSON.stringify({ p: { repo: `file://${origin}`, commit: pinned } }));
+  fs.writeFileSync(
+    path.join(dir, 'set-pins.json'),
+    JSON.stringify({ p: { repo: `file://${origin}`, commit: pinned } }),
+  );
 
-  const env = (repos) => JSON.parse(node(path.join(here, 'record-env.mjs'), '--corpus', corpus, '--repos-dir', repos, '--warpdom', dir)).projects.p;
+  const env = (repos) =>
+    JSON.parse(node(path.join(here, 'record-env.mjs'), '--corpus', corpus, '--repos-dir', repos, '--warpdom', dir))
+      .projects.p;
 
   const a = path.join(dir, 'pinned');
   node(path.join(here, 'checkout-pinned.mjs'), '--repos-dir', a, '--corpus', corpus, 'p');
