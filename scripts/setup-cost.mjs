@@ -31,7 +31,7 @@ for (let i = 0; i < argv.length; i++) {
 const expandHome = (p) => p.replace(/^~(?=$|\/)/, os.homedir());
 
 const PHASES = ['environment', 'transform', 'setup', 'import', 'collect', 'tests', 'prepare', 'worker'];
-const MS_PER_UNIT = { s: 1000, m: 60000 };
+const MS_PER_UNIT = { __proto__: null, s: 1000, m: 60000 };
 const toMs = (v, unit) => Number(v) * (MS_PER_UNIT[unit] ?? 1);
 
 // "Duration 4.08s (transform 1.26s, setup 3.09s, collect 8.04s, tests 7.96s, environment 8.50s, prepare 1.91s)"

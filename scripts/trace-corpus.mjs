@@ -449,14 +449,6 @@ function findBin(fromDir, name) {
 // Vitest before 4 rejects a maxWorkers below its default minWorkers, and later
 // versions removed --minWorkers. Ask the binary whether it has the flag.
 const minWorkersFlag = new Map();
-// The runner's worker arguments: none without a limit, with --minWorkers=1
-// where the runner needs it next to --maxWorkers.
-function workerArgs(maxWorkers, withMin) {
-  if (!maxWorkers) return [];
-  if (withMin) return ['--minWorkers=1', `--maxWorkers=${maxWorkers}`];
-  return [`--maxWorkers=${maxWorkers}`];
-}
-
 function hasMinWorkers(bin) {
   if (!minWorkersFlag.has(bin)) {
     const help = spawnSync(bin, ['--help'], { encoding: 'utf8' });
@@ -465,8 +457,17 @@ function hasMinWorkers(bin) {
   return minWorkersFlag.get(bin);
 }
 
+// The runner's worker arguments: none without a limit, with --minWorkers=1
+// where the runner needs it next to --maxWorkers. needsMin is only called
+// with a limit (it may start the runner to read its --help).
+function workerArgs(maxWorkers, needsMin) {
+  if (!maxWorkers) return [];
+  if (needsMin()) return ['--minWorkers=1', `--maxWorkers=${maxWorkers}`];
+  return [`--maxWorkers=${maxWorkers}`];
+}
+
 function runnerArgs(runner, bin, config, resultsFile, maxWorkers, extra = []) {
-  const workers = workerArgs(maxWorkers, runner === 'vitest' && hasMinWorkers(bin));
+  const workers = workerArgs(maxWorkers, () => runner === 'vitest' && hasMinWorkers(bin));
   return runner === 'vitest'
     ? [
         'run',
@@ -819,7 +820,7 @@ function runFastCli({
   else fs.rmSync(cacheFile, { force: true });
   const captureDir = path.join(tmpDir, `${slug}.capture`);
   fs.rmSync(captureDir, { recursive: true, force: true });
-  const workers = workerArgs(opts.maxWorkers, hasMinWorkers(bin));
+  const workers = workerArgs(opts.maxWorkers, () => hasMinWorkers(bin));
   const cliArgs = [
     entry,
     'run',
