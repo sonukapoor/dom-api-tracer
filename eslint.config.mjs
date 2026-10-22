@@ -1,6 +1,4 @@
 // Readability rules only; formatting is Prettier's job (npm run format).
-// Existing violations are listed in eslint-suppressions.json and get fixed
-// over time; new code must pass.
 export default [
   { ignores: ['test/fixtures/', '.corpus/', '.corpus-env/', 'dom-trace-report/'] },
   {

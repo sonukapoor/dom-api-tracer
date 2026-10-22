@@ -19,7 +19,9 @@ if (args.length !== 2) {
 const median = (a) => {
   const s = [...a].sort((x, y) => x - y);
   const n = s.length;
-  return n ? (n % 2 ? s[n >> 1] : (s[n / 2 - 1] + s[n / 2]) / 2) : NaN;
+  if (!n) return NaN;
+  if (n % 2) return s[n >> 1];
+  return (s[n / 2 - 1] + s[n / 2]) / 2;
 };
 
 // label -> Map(file -> { phase: median ms })

@@ -175,12 +175,11 @@ function listenerFor(registry, listener) {
 // on* handlers back to the originals on the way out (el.onclick === handler).
 function argsFor(registry, member, kind, args, outermost) {
   if (kind === 'call' && LISTENER_MEMBERS.has(member) && args.length > 1) {
-    const listener =
-      member === 'addEventListener'
-        ? outermost
-          ? listenerFor(registry, args[1])
-          : args[1]
-        : registry.listeners.get(args[1]) || args[1];
+    // addEventListener registers the wrapper (outside DOM internals);
+    // removeEventListener passes the wrapper registered for the listener.
+    let listener = args[1];
+    if (member !== 'addEventListener') listener = registry.listeners.get(args[1]) || args[1];
+    else if (outermost) listener = listenerFor(registry, args[1]);
     if (listener !== args[1]) return [args[0], listener, ...Array.prototype.slice.call(args, 2)];
   }
   if (kind === 'set' && outermost && HANDLER_PROPERTY.test(member) && typeof args[0] === 'function') {
