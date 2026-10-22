@@ -1,0 +1,42 @@
+# Dependency scan with CVE Lite CLI on pushes and pull requests to main, and
+# weekly for advisories published in between. The tracer has no runtime
+# dependencies, so this is a full scan (dev dependencies included) in report
+# only mode; results go to GitHub Code Scanning as SARIF.
+name: security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '29 6 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  dependencies:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # Tag-pinned on purpose: CVE Lite CLI is the maintainer's own action, so
+      # its minor and patch releases are taken without an edit here.
+      - name: Scan all dependencies (report only)
+        uses: OWASP/cve-lite-cli@v1
+        with:
+          sarif: 'true'
+          output: cve-lite
+      # Fork pull requests get a read-only token and cannot upload.
+      - name: Upload SARIF to Code Scanning
+        if: always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
+        with:
+          sarif_file: cve-lite
+          category: cve-lite
