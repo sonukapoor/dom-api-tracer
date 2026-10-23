@@ -19,13 +19,43 @@ const ES_GLOBALS = new Set(vm.runInNewContext('Object.getOwnPropertyNames(global
 
 // Host (Node / test-runner) globals that may leak onto the window object.
 const HOST_GLOBALS = new Set([
-  'global', 'globalThis', 'process', 'Buffer', 'require', 'module', 'exports',
-  '__filename', '__dirname', 'setImmediate', 'clearImmediate', 'console',
-  'jsdom', 'happyDOM', 'expect', 'jest', 'vi', 'vitest',
+  'global',
+  'globalThis',
+  'process',
+  'Buffer',
+  'require',
+  'module',
+  'exports',
+  '__filename',
+  '__dirname',
+  'setImmediate',
+  'clearImmediate',
+  'console',
+  'jsdom',
+  'happyDOM',
+  'expect',
+  'jest',
+  'vi',
+  'vitest',
   // Test framework globals. Jest installs them on the jsdom window itself.
-  'describe', 'fdescribe', 'xdescribe', 'it', 'fit', 'xit', 'test', 'xtest',
-  'beforeAll', 'afterAll', 'beforeEach', 'afterEach', 'suite', 'context',
-  'pending', 'fail', 'spyOn', 'jasmine',
+  'describe',
+  'fdescribe',
+  'xdescribe',
+  'it',
+  'fit',
+  'xit',
+  'test',
+  'xtest',
+  'beforeAll',
+  'afterAll',
+  'beforeEach',
+  'afterEach',
+  'suite',
+  'context',
+  'pending',
+  'fail',
+  'spyOn',
+  'jasmine',
 ]);
 
 const FUNCTION_OWN_KEYS = new Set(['length', 'name', 'prototype', 'arguments', 'caller']);
@@ -33,7 +63,11 @@ const FUNCTION_OWN_KEYS = new Set(['length', 'name', 'prototype', 'arguments', '
 // DOM functions never carry extra own properties. Functions that do (it.each,
 // expect.extend, ...) belong to someone else, and a wrapper would hide them.
 function hasExtraOwnProps(fn) {
-  try { return Reflect.ownKeys(fn).some((k) => !FUNCTION_OWN_KEYS.has(k)); } catch { return true; }
+  try {
+    return Reflect.ownKeys(fn).some((k) => !FUNCTION_OWN_KEYS.has(k));
+  } catch {
+    return true;
+  }
 }
 
 // Properties we never wrap because wrapping them adds noise or risk.
@@ -45,13 +79,13 @@ function keyName(key) {
 
 function createRegistry() {
   return {
-    counters: new Map(),      // memberId -> { call, get, set }
-    catalog: new Set(),       // every memberId we instrumented
-    skipped: [],              // { id, reason }
+    counters: new Map(), // memberId -> { call, get, set }
+    catalog: new Set(), // every memberId we instrumented
+    skipped: [], // { id, reason }
     instrumentedPrototypes: new WeakSet(),
     environment: 'unknown',
     state: { depth: 0, outermostOnly: false },
-    windows: new WeakSet(),   // windows already instrumented
+    windows: new WeakSet(), // windows already instrumented
     listeners: new WeakMap(), // user listener -> counting wrapper
     originals: new WeakMap(), // counting wrapper -> user listener
   };
@@ -67,8 +101,12 @@ function counterFor(registry, id) {
 }
 
 function copyFnMeta(wrapper, original) {
-  try { Object.defineProperty(wrapper, 'name', { value: original.name, configurable: true }); } catch {}
-  try { Object.defineProperty(wrapper, 'length', { value: original.length, configurable: true }); } catch {}
+  try {
+    Object.defineProperty(wrapper, 'name', { value: original.name, configurable: true });
+  } catch {}
+  try {
+    Object.defineProperty(wrapper, 'length', { value: original.length, configurable: true });
+  } catch {}
   wrapper[WRAPPED] = original;
   return wrapper;
 }
@@ -83,9 +121,15 @@ const HANDLER_PROPERTY = /^on[a-z]+$/;
 // Custom element reactions are user code the implementation calls from inside
 // DOM operations (appendChild, setAttribute, remove, ...).
 const CUSTOM_ELEMENT_CALLBACKS = [
-  'connectedCallback', 'disconnectedCallback', 'adoptedCallback', 'attributeChangedCallback',
-  'connectedMoveCallback', 'formAssociatedCallback', 'formResetCallback',
-  'formDisabledCallback', 'formStateRestoreCallback',
+  'connectedCallback',
+  'disconnectedCallback',
+  'adoptedCallback',
+  'attributeChangedCallback',
+  'connectedMoveCallback',
+  'formAssociatedCallback',
+  'formResetCallback',
+  'formDisabledCallback',
+  'formStateRestoreCallback',
 ];
 
 function memberOf(id) {
@@ -106,7 +150,9 @@ function listenerFor(registry, listener) {
         return typeof listener === 'function'
           ? Reflect.apply(listener, this, arguments)
           : listener.handleEvent(...arguments);
-      } finally { state.depth = savedDepth; }
+      } finally {
+        state.depth = savedDepth;
+      }
     };
     // Code that inspects registered listeners must see the original: zone.js
     // stores what addEventListener receives, and Angular's DebugElement finds
@@ -114,7 +160,9 @@ function listenerFor(registry, listener) {
     if (typeof listener === 'function') {
       copyFnMeta(wrapped, listener);
       Object.defineProperty(wrapped, 'toString', {
-        value: () => Function.prototype.toString.call(listener), configurable: true, writable: true,
+        value: () => Function.prototype.toString.call(listener),
+        configurable: true,
+        writable: true,
       });
     }
     registry.listeners.set(listener, wrapped);
@@ -127,9 +175,12 @@ function listenerFor(registry, listener) {
 // on* handlers back to the originals on the way out (el.onclick === handler).
 function argsFor(registry, member, kind, args, outermost) {
   if (kind === 'call' && LISTENER_MEMBERS.has(member) && args.length > 1) {
-    const listener = member === 'addEventListener'
-      ? (outermost ? listenerFor(registry, args[1]) : args[1])
-      : (registry.listeners.get(args[1]) || args[1]);
+    const listener =
+      member === 'addEventListener'
+        ? outermost
+          ? listenerFor(registry, args[1])
+          : args[1]
+        : registry.listeners.get(args[1]) || args[1];
     if (listener !== args[1]) return [args[0], listener, ...Array.prototype.slice.call(args, 2)];
   }
   if (kind === 'set' && outermost && HANDLER_PROPERTY.test(member) && typeof args[0] === 'function') {
@@ -159,7 +210,10 @@ function makeWrapper(registry, id, original, kind) {
     try {
       const result = Reflect.apply(original, this, args);
       return handlerGetter && registry.originals.has(result) ? registry.originals.get(result) : result;
-    } finally { c.active = false; state.depth = savedDepth; }
+    } finally {
+      c.active = false;
+      state.depth = savedDepth;
+    }
   };
   return copyFnMeta(wrapper, original);
 }
@@ -170,8 +224,11 @@ function wrapUserCode(registry, original) {
   const wrapper = function () {
     const savedDepth = state.depth;
     state.depth = 0;
-    try { return Reflect.apply(original, this, arguments); }
-    finally { state.depth = savedDepth; }
+    try {
+      return Reflect.apply(original, this, arguments);
+    } finally {
+      state.depth = savedDepth;
+    }
   };
   return copyFnMeta(wrapper, original);
 }
@@ -184,7 +241,11 @@ function wrapUserCode(registry, original) {
  */
 function instrumentCustomElements(registry, win) {
   let proto;
-  try { proto = win.customElements && Object.getPrototypeOf(win.customElements); } catch { return; }
+  try {
+    proto = win.customElements && Object.getPrototypeOf(win.customElements);
+  } catch {
+    return;
+  }
   for (; proto && proto !== Object.prototype; proto = Object.getPrototypeOf(proto)) {
     const desc = Object.getOwnPropertyDescriptor(proto, 'define');
     if (!desc || typeof desc.value !== 'function' || !desc.configurable) continue;
@@ -197,7 +258,9 @@ function instrumentCustomElements(registry, win) {
           if (!owner) continue;
           const cbDesc = Object.getOwnPropertyDescriptor(owner, cb);
           if (typeof cbDesc.value !== 'function' || cbDesc.value[WRAPPED] || !cbDesc.configurable) continue;
-          try { Object.defineProperty(owner, cb, { ...cbDesc, value: wrapUserCode(registry, cbDesc.value) }); } catch {}
+          try {
+            Object.defineProperty(owner, cb, { ...cbDesc, value: wrapUserCode(registry, cbDesc.value) });
+          } catch {}
         }
       }
       return Reflect.apply(define, this, arguments);
@@ -206,14 +269,22 @@ function instrumentCustomElements(registry, win) {
     // Keep the original reachable for code that unwraps; `define` itself is
     // the counting wrapper installed by instrumentObject.
     wrapper[WRAPPED] = define[WRAPPED] || define;
-    try { Object.defineProperty(proto, 'define', { ...desc, value: wrapper }); } catch {}
+    try {
+      Object.defineProperty(proto, 'define', { ...desc, value: wrapper });
+    } catch {}
     return;
   }
 }
 
-function wrapMethod(registry, id, original) { return makeWrapper(registry, id, original, 'call'); }
-function wrapGetter(registry, id, original) { return makeWrapper(registry, id, original, 'get'); }
-function wrapSetter(registry, id, original) { return makeWrapper(registry, id, original, 'set'); }
+function wrapMethod(registry, id, original) {
+  return makeWrapper(registry, id, original, 'call');
+}
+function wrapGetter(registry, id, original) {
+  return makeWrapper(registry, id, original, 'get');
+}
+function wrapSetter(registry, id, original) {
+  return makeWrapper(registry, id, original, 'set');
+}
 
 /**
  * Wrap every own member of `obj`, labelling members as `${label}#${member}`.
@@ -226,7 +297,11 @@ function instrumentObject(registry, obj, label) {
     if (typeof key === 'string' && SKIP_MEMBERS.has(key)) continue;
     const id = `${label}#${keyName(key)}`;
     let desc;
-    try { desc = Object.getOwnPropertyDescriptor(obj, key); } catch { continue; }
+    try {
+      desc = Object.getOwnPropertyDescriptor(obj, key);
+    } catch {
+      continue;
+    }
     if (!desc) continue;
 
     const isMethod = typeof desc.value === 'function';
@@ -252,25 +327,25 @@ function instrumentObject(registry, obj, label) {
       }
       registry.catalog.add(id);
     } catch (err) {
-      registry.skipped.push({ id, reason: String(err && err.message || err) });
+      registry.skipped.push({ id, reason: String((err && err.message) || err) });
     }
   }
 }
 
 function isInterfaceConstructor(key, value) {
-  return typeof value === 'function'
-    && /^[A-Z]/.test(key)
-    && value.prototype
-    && typeof value.prototype === 'object';
+  return typeof value === 'function' && /^[A-Z]/.test(key) && value.prototype && typeof value.prototype === 'object';
 }
 
 // Node's own classes (e.g. MessagePort from worker_threads) can appear on the
 // window. They carry Node-internal symbols such as nodejs.util.inspect.custom.
 function isNodeHostClass(value) {
   try {
-    return Object.getOwnPropertySymbols(value.prototype)
-      .some((sym) => String(sym.description || '').startsWith('nodejs.'));
-  } catch { return false; }
+    return Object.getOwnPropertySymbols(value.prototype).some((sym) =>
+      String(sym.description || '').startsWith('nodejs.'),
+    );
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -279,18 +354,26 @@ function isNodeHostClass(value) {
  */
 function resolveWindow(globalObj) {
   const candidates = [];
-  try { candidates.push(globalObj.jsdom && globalObj.jsdom.window); } catch {}
-  try { candidates.push(globalObj.document && globalObj.document.defaultView); } catch {}
-  try { candidates.push(globalObj.window); } catch {}
+  try {
+    candidates.push(globalObj.jsdom && globalObj.jsdom.window);
+  } catch {}
+  try {
+    candidates.push(globalObj.document && globalObj.document.defaultView);
+  } catch {}
+  try {
+    candidates.push(globalObj.window);
+  } catch {}
   for (const c of candidates) {
-    try { if (c && c.document) return c; } catch {}
+    try {
+      if (c && c.document) return c;
+    } catch {}
   }
   return null;
 }
 
 function detectEnvironment(win) {
   try {
-    const ua = String(win.navigator && win.navigator.userAgent || '');
+    const ua = String((win.navigator && win.navigator.userAgent) || '');
     if (/jsdom/i.test(ua)) return 'jsdom';
     if (/happydom/i.test(ua.replace(/[-\s]/g, ''))) return 'happy-dom';
     if (win.happyDOM) return 'happy-dom';
@@ -314,13 +397,45 @@ function instrumentChain(registry, obj) {
   }
 }
 
-const SAMPLE_TAGS = ['div', 'span', 'p', 'a', 'button', 'input', 'textarea', 'select', 'option',
-  'form', 'label', 'ul', 'ol', 'li', 'img', 'table', 'tr', 'td', 'template', 'dialog',
-  'iframe', 'canvas', 'video', 'style', 'script', 'h1', 'section', 'details'];
+const SAMPLE_TAGS = [
+  'div',
+  'span',
+  'p',
+  'a',
+  'button',
+  'input',
+  'textarea',
+  'select',
+  'option',
+  'form',
+  'label',
+  'ul',
+  'ol',
+  'li',
+  'img',
+  'table',
+  'tr',
+  'td',
+  'template',
+  'dialog',
+  'iframe',
+  'canvas',
+  'video',
+  'style',
+  'script',
+  'h1',
+  'section',
+  'details',
+];
 
 function sampleNodes(doc) {
   const out = [doc];
-  const attempt = (fn) => { try { const n = fn(); if (n) out.push(n); } catch {} };
+  const attempt = (fn) => {
+    try {
+      const n = fn();
+      if (n) out.push(n);
+    } catch {}
+  };
   attempt(() => doc.documentElement);
   attempt(() => doc.head);
   attempt(() => doc.body);
@@ -348,7 +463,7 @@ function sampleNodes(doc) {
  */
 function mirrorOnGlobal(registry, globalObj, key, id, original, wrapped) {
   const gdesc = Object.getOwnPropertyDescriptor(globalObj, key);
-  if (!gdesc || !gdesc.configurable && !gdesc.writable) return;
+  if (!gdesc || (!gdesc.configurable && !gdesc.writable)) return;
   try {
     if ('value' in gdesc) {
       if (gdesc.value === original) Object.defineProperty(globalObj, key, { ...gdesc, value: wrapped });
@@ -375,7 +490,9 @@ function mirrorOnGlobal(registry, globalObj, key, id, original, wrapped) {
 function install(globalObj = globalThis) {
   const win = resolveWindow(globalObj);
   if (!win) {
-    throw new Error('[dom-api-tracer] No DOM found on the global object. Run tests with a jsdom or happy-dom environment.');
+    throw new Error(
+      '[dom-api-tracer] No DOM found on the global object. Run tests with a jsdom or happy-dom environment.',
+    );
   }
 
   let registry = globalObj[REGISTRY];
@@ -406,7 +523,11 @@ function instrumentWindow(registry, globalObj, win) {
   for (const key of Object.getOwnPropertyNames(win)) {
     if (ES_GLOBALS.has(key) || HOST_GLOBALS.has(key)) continue;
     let value;
-    try { value = win[key]; } catch { continue; }
+    try {
+      value = win[key];
+    } catch {
+      continue;
+    }
     if (isInterfaceConstructor(key, value)) {
       if (isNodeHostClass(value)) continue;
       instrumentObject(registry, value.prototype, key);
@@ -427,7 +548,11 @@ function instrumentWindow(registry, globalObj, win) {
     if (/^[A-Z]/.test(key)) continue; // constructors handled above
     const id = `window#${key}`;
     let desc;
-    try { desc = Object.getOwnPropertyDescriptor(win, key); } catch { continue; }
+    try {
+      desc = Object.getOwnPropertyDescriptor(win, key);
+    } catch {
+      continue;
+    }
     if (!desc) continue;
 
     if (typeof desc.value === 'function' && !desc.value[WRAPPED]) {
@@ -443,7 +568,7 @@ function instrumentWindow(registry, globalObj, win) {
         else win[key] = wrapped;
         registry.catalog.add(id);
       } catch (err) {
-        registry.skipped.push({ id, reason: String(err && err.message || err) });
+        registry.skipped.push({ id, reason: String((err && err.message) || err) });
         continue;
       }
       if (globalObj !== win) mirrorOnGlobal(registry, globalObj, key, id, original, wrapped);
@@ -455,7 +580,9 @@ function instrumentWindow(registry, globalObj, win) {
       // An accessor that hands out a function (e.g. a bound getComputedStyle)
       // is really a method: count calls, keep identity stable, leave mocks alone.
       let initial;
-      try { initial = desc.get ? desc.get.call(win) : undefined; } catch {}
+      try {
+        initial = desc.get ? desc.get.call(win) : undefined;
+      } catch {}
       if (typeof initial === 'function' && !initial[WRAPPED] && !hasExtraOwnProps(initial)) {
         const origGet = desc.get;
         const wrappedInitial = wrapMethod(registry, id, initial);
@@ -468,7 +595,7 @@ function instrumentWindow(registry, globalObj, win) {
           Object.defineProperty(win, key, { ...desc, get });
           registry.catalog.add(id);
         } catch (err) {
-          registry.skipped.push({ id, reason: String(err && err.message || err) });
+          registry.skipped.push({ id, reason: String((err && err.message) || err) });
         }
         continue;
       }
@@ -480,7 +607,7 @@ function instrumentWindow(registry, globalObj, win) {
         });
         registry.catalog.add(id);
       } catch (err) {
-        registry.skipped.push({ id, reason: String(err && err.message || err) });
+        registry.skipped.push({ id, reason: String((err && err.message) || err) });
       }
     }
   }
@@ -509,7 +636,11 @@ function snapshot(registry, { reset = false } = {}) {
       if (c.set) entry.set = c.set;
       usage[id] = entry;
     }
-    if (reset) { c.call = 0; c.get = 0; c.set = 0; }
+    if (reset) {
+      c.call = 0;
+      c.get = 0;
+      c.set = 0;
+    }
   }
   return usage;
 }

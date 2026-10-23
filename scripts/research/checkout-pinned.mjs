@@ -24,7 +24,9 @@ const c = args.indexOf('--corpus');
 const corpusFile = resolve(c >= 0 ? args.splice(c, 2)[1].replace(/^~/, homedir()) : join(root, 'corpus/corpus.json'));
 const u = args.indexOf('--unpinned');
 const unpinned = u >= 0 && Boolean(args.splice(u, 1));
-const pinsFile = corpusFile.endsWith('/corpus.json') ? join(dirname(corpusFile), 'pins.json') : corpusFile.replace(/\.json$/, '-pins.json');
+const pinsFile = corpusFile.endsWith('/corpus.json')
+  ? join(dirname(corpusFile), 'pins.json')
+  : corpusFile.replace(/\.json$/, '-pins.json');
 const { projects } = JSON.parse(readFileSync(corpusFile, 'utf8'));
 const pins = JSON.parse(readFileSync(pinsFile, 'utf8'));
 const git = (cwd, ...a) => execFileSync('git', a, { cwd, stdio: ['ignore', 'inherit', 'inherit'] });
@@ -33,7 +35,10 @@ for (const name of args) {
   const pin = pins[name];
   if (!project || !pin) throw new Error(`${name}: not in ${corpusFile} or ${pinsFile}`);
   const dir = project.path ? resolve(dirname(corpusFile), project.path.replace(/^~/, homedir())) : join(reposDir, name);
-  if (existsSync(dir)) { console.log(`${name}: ${dir} exists, left as is`); continue; }
+  if (existsSync(dir)) {
+    console.log(`${name}: ${dir} exists, left as is`);
+    continue;
+  }
   mkdirSync(dir, { recursive: true });
   // A shallow fetch of exactly the pinned commit (or the remote's HEAD:
   // its default branch).
@@ -42,5 +47,7 @@ for (const name of args) {
   git(dir, 'fetch', '-q', '--depth', '1', 'origin', unpinned ? 'HEAD' : pin.commit);
   git(dir, 'checkout', '-q', 'FETCH_HEAD');
   const commit = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: dir, encoding: 'utf8' }).trim();
-  console.log(`${name}: ${commit.slice(0, 10)} in ${dir}${unpinned ? ` (default branch head; pin ${pin.commit.slice(0, 10)})` : ''}`);
+  console.log(
+    `${name}: ${commit.slice(0, 10)} in ${dir}${unpinned ? ` (default branch head; pin ${pin.commit.slice(0, 10)})` : ''}`,
+  );
 }

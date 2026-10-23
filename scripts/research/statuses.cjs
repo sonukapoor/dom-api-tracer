@@ -44,7 +44,13 @@
 const fs = require('fs');
 const path = require('path');
 
-const realpath = (p) => { try { return fs.realpathSync(p); } catch { return path.resolve(p); } };
+const realpath = (p) => {
+  try {
+    return fs.realpathSync(p);
+  } catch {
+    return path.resolve(p);
+  }
+};
 
 // The part of a test file path that is the same on every machine.
 function relativeFile(name, root) {
@@ -64,7 +70,14 @@ function relativeFile(name, root) {
 
 // First line of a failure message: colors removed, numbers kept.
 function firstLine(msg) {
-  return String(msg ?? '').replace(/\x1b\[[0-9;]*m/g, '').split('\n').map((l) => l.trim()).find(Boolean)?.slice(0, 200) ?? '';
+  return (
+    String(msg ?? '')
+      .replace(/\x1b\[[0-9;]*m/g, '')
+      .split('\n')
+      .map((l) => l.trim())
+      .find(Boolean)
+      ?.slice(0, 200) ?? ''
+  );
 }
 
 // results: parsed runner JSON reports, each with its package slug.
@@ -93,9 +106,16 @@ function fromResults(results, root, { messages = false } = {}) {
 function loadDir(dir, env, root, options) {
   const results = [];
   if (fs.existsSync(dir)) {
-    for (const f of fs.readdirSync(dir).filter((n) => n.endsWith(`.${env}.json`)).sort()) {
+    for (const f of fs
+      .readdirSync(dir)
+      .filter((n) => n.endsWith(`.${env}.json`))
+      .sort()) {
       let report;
-      try { report = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')); } catch { continue; }
+      try {
+        report = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8'));
+      } catch {
+        continue;
+      }
       results.push({ slug: f.slice(0, -`.${env}.json`.length), report });
     }
   }
@@ -115,14 +135,19 @@ const differing = (a, b, exclude) => differingKeys(a, b).filter((k) => !exclude?
 
 // The flaky tests and files: those whose status differs between two runs
 // of the same configuration ({ tests: Set, files: Set }).
-const flaky = (a, b) => ({ tests: new Set(differingKeys(a.tests, b.tests)), files: new Set(differingKeys(a.files, b.files)) });
+const flaky = (a, b) => ({
+  tests: new Set(differingKeys(a.tests, b.tests)),
+  files: new Set(differingKeys(a.files, b.files)),
+});
 
 // false_pass: passed in run, not passed (failed, skipped, missing) in ref;
 // false_fail: passed in ref, not passed in run.
 function direction(run, ref) {
-  let falsePass = 0, falseFail = 0;
+  let falsePass = 0,
+    falseFail = 0;
   for (const k of new Set([...Object.keys(run.tests), ...Object.keys(ref.tests)])) {
-    const r = run.tests[k]?.s === 'passed', i = ref.tests[k]?.s === 'passed';
+    const r = run.tests[k]?.s === 'passed',
+      i = ref.tests[k]?.s === 'passed';
     if (r && !i) falsePass++;
     if (i && !r) falseFail++;
   }
@@ -131,14 +156,29 @@ function direction(run, ref) {
 
 // exclude: { tests: Set, files: Set } left out of differs/filesDiffer (flaky).
 function compare(base, run, ref, exclude) {
-  const out = { differs: differing(base.tests, run.tests, exclude?.tests), filesDiffer: differing(base.files, run.files, exclude?.files) };
+  const out = {
+    differs: differing(base.tests, run.tests, exclude?.tests),
+    filesDiffer: differing(base.files, run.files, exclude?.files),
+  };
   if (ref) Object.assign(out, direction(run, ref));
   return out;
 }
 
-const failing = (map) => [...new Set(Object.values(map.files).filter((v) => v.s === 'failed').map((v) => v.file))];
+const failing = (map) => [
+  ...new Set(
+    Object.values(map.files)
+      .filter((v) => v.s === 'failed')
+      .map((v) => v.file),
+  ),
+];
 // Files of reference with no result at all in map (a crash, a hang).
-const missing = (map, reference) => [...new Set(Object.entries(reference.files).filter(([k]) => !map.files[k]).map(([, v]) => v.file))];
+const missing = (map, reference) => [
+  ...new Set(
+    Object.entries(reference.files)
+      .filter(([k]) => !map.files[k])
+      .map(([, v]) => v.file),
+  ),
+];
 
 function leaky(shared, isolated) {
   const isoFailed = new Set(failing(isolated));
@@ -162,7 +202,10 @@ function merge(first, ...reruns) {
   const replaced = new Set(reruns.flatMap((r) => Object.values(r.files).map((v) => v.file)));
   const keep = (o) => Object.fromEntries(Object.entries(o).filter(([, v]) => !replaced.has(v.file)));
   const out = { tests: keep(first.tests), files: keep(first.files) };
-  for (const r of reruns) { Object.assign(out.tests, r.tests); Object.assign(out.files, r.files); }
+  for (const r of reruns) {
+    Object.assign(out.tests, r.tests);
+    Object.assign(out.files, r.files);
+  }
   return out;
 }
 
@@ -174,24 +217,56 @@ function merge(first, ...reruns) {
 // included) is not the same in every run that is not broken.
 function jsdomRounds(entries, limit = 5) {
   const timed = entries.filter((e) => !Number.isNaN(e.secs));
-  const median = (a) => { const v = [...a].sort((x, y) => x - y); const n = v.length; return n % 2 ? v[n >> 1] : (v[n / 2 - 1] + v[n / 2]) / 2; };
-  const broken = entries.filter((e) => {
-    if (Number.isNaN(e.secs)) return true;
-    const others = timed.filter((o) => o !== e);
-    return others.length >= 2 && median(others.map((o) => differing(e.map.tests, o.map.tests))) > limit;
-  }).map((e) => e.round);
+  const median = (a) => {
+    const v = [...a].sort((x, y) => x - y);
+    const n = v.length;
+    return n % 2 ? v[n >> 1] : (v[n / 2 - 1] + v[n / 2]) / 2;
+  };
+  const broken = entries
+    .filter((e) => {
+      if (Number.isNaN(e.secs)) return true;
+      const others = timed.filter((o) => o !== e);
+      return others.length >= 2 && median(others.map((o) => differing(e.map.tests, o.map.tests))) > limit;
+    })
+    .map((e) => e.round);
   const ok = entries.filter((e) => !broken.includes(e.round));
-  const varying = (kind) => new Set([...new Set(ok.flatMap((e) => Object.keys(e.map[kind])))]
-    .filter((k) => new Set(ok.map((e) => e.map[kind][k]?.s)).size > 1));
+  const varying = (kind) =>
+    new Set(
+      [...new Set(ok.flatMap((e) => Object.keys(e.map[kind])))].filter(
+        (k) => new Set(ok.map((e) => e.map[kind][k]?.s)).size > 1,
+      ),
+    );
   return { broken, flaky: { tests: varying('tests'), files: varying('files') } };
 }
 
-module.exports = { jsdomRounds, relativeFile, firstLine, fromResults, loadDir, read, differingKeys, flaky, compare, direction, failing, missing, leaky, isolate, merge };
+module.exports = {
+  jsdomRounds,
+  relativeFile,
+  firstLine,
+  fromResults,
+  loadDir,
+  read,
+  differingKeys,
+  flaky,
+  compare,
+  direction,
+  failing,
+  missing,
+  leaky,
+  isolate,
+  merge,
+};
 
 if (require.main === module) {
   const [cmd, ...args] = process.argv.slice(2);
-  const opt = (name) => { const i = args.indexOf(name); return i >= 0 ? args.splice(i, 2)[1] : undefined; };
-  const write = (file, m) => { fs.mkdirSync(path.dirname(path.resolve(file)), { recursive: true }); fs.writeFileSync(file, JSON.stringify(m)); };
+  const opt = (name) => {
+    const i = args.indexOf(name);
+    return i >= 0 ? args.splice(i, 2)[1] : undefined;
+  };
+  const write = (file, m) => {
+    fs.mkdirSync(path.dirname(path.resolve(file)), { recursive: true });
+    fs.writeFileSync(file, JSON.stringify(m));
+  };
   if (cmd === 'map') {
     const root = opt('--root');
     const mi = args.indexOf('--messages');
@@ -202,7 +277,10 @@ if (require.main === module) {
     const ei = args.indexOf('--exclude');
     let exclude = ei >= 0 ? (([x, y]) => flaky(read(x), read(y)))(args.splice(ei, 3).slice(1)) : null;
     const fl = opt('--flaky');
-    if (fl) { const f = JSON.parse(fs.readFileSync(fl, 'utf8')).flaky; exclude = { tests: new Set(f.tests), files: new Set(f.files) }; }
+    if (fl) {
+      const f = JSON.parse(fs.readFileSync(fl, 'utf8')).flaky;
+      exclude = { tests: new Set(f.tests), files: new Set(f.files) };
+    }
     const [b, r, ref] = args;
     const c = compare(read(b), read(r), ref ? read(ref) : null, exclude);
     console.log([c.differs, c.filesDiffer, ...(ref ? [c.falsePass, c.falseFail] : [])].join(' '));
@@ -221,15 +299,25 @@ if (require.main === module) {
     const [out, ...specs] = args;
     const entries = specs.map((spec) => {
       const [round, secs, ...file] = spec.split(':');
-      return { round, secs: secs === '-' ? null : secs === 'NA' || secs === '' ? NaN : +secs, map: read(file.join(':')) };
+      return {
+        round,
+        secs: secs === '-' ? null : secs === 'NA' || secs === '' ? NaN : +secs,
+        map: read(file.join(':')),
+      };
     });
     const r = jsdomRounds(entries);
-    write(out, { rounds: entries.map((e) => e.round), broken: r.broken, flaky: { tests: [...r.flaky.tests].sort(), files: [...r.flaky.files].sort() } });
+    write(out, {
+      rounds: entries.map((e) => e.round),
+      broken: r.broken,
+      flaky: { tests: [...r.flaky.tests].sort(), files: [...r.flaky.files].sort() },
+    });
   } else if (cmd === 'count') {
     const m = read(args[0]);
     console.log(`${Object.keys(m.tests).length} ${Object.keys(m.files).length}`);
   } else {
-    process.stderr.write('usage: statuses.cjs map|compare|failing|missing|leaky|isolate|merge|count|jsdom-rounds ... (see the header)\n');
+    process.stderr.write(
+      'usage: statuses.cjs map|compare|failing|missing|leaky|isolate|merge|count|jsdom-rounds ... (see the header)\n',
+    );
     process.exit(2);
   }
 }

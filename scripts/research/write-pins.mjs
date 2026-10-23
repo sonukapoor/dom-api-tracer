@@ -12,10 +12,15 @@ import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
-const opt = (name, fallback) => { const i = process.argv.indexOf(name); return i > 0 ? process.argv[i + 1].replace(/^~/, homedir()) : fallback; };
+const opt = (name, fallback) => {
+  const i = process.argv.indexOf(name);
+  return i > 0 ? process.argv[i + 1].replace(/^~/, homedir()) : fallback;
+};
 const reposDir = resolve(opt('--repos-dir', join(homedir(), 'Projects')));
 const corpusFile = resolve(opt('--corpus', join(root, 'corpus/corpus.json')));
-const pinsFile = corpusFile.endsWith('/corpus.json') ? join(dirname(corpusFile), 'pins.json') : corpusFile.replace(/\.json$/, '-pins.json');
+const pinsFile = corpusFile.endsWith('/corpus.json')
+  ? join(dirname(corpusFile), 'pins.json')
+  : corpusFile.replace(/\.json$/, '-pins.json');
 const { projects } = JSON.parse(readFileSync(corpusFile, 'utf8'));
 const git = (dir, ...args) => execFileSync('git', ['-C', dir, ...args], { encoding: 'utf8' }).trim();
 const pins = {};

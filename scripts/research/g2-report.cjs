@@ -38,7 +38,17 @@ const KINDS = ['shared', 'learned'];
 
 function readJsonl(file) {
   if (!fs.existsSync(file)) return [];
-  return fs.readFileSync(file, 'utf8').split('\n').filter(Boolean).flatMap((l) => { try { return [JSON.parse(l)]; } catch { return []; } });
+  return fs
+    .readFileSync(file, 'utf8')
+    .split('\n')
+    .filter(Boolean)
+    .flatMap((l) => {
+      try {
+        return [JSON.parse(l)];
+      } catch {
+        return [];
+      }
+    });
 }
 
 function readRuns(dir) {
@@ -52,10 +62,24 @@ function readRuns(dir) {
 // One project directory: its runs, maps and orders.
 function loadProject(dir) {
   const runs = readRuns(dir);
-  const label = (re) => fs.readdirSync(dir).map((f) => f.match(re)).filter(Boolean)
-    .sort((a, b) => Number(a[1]) - Number(b[1]));
-  const maps = (re) => label(re).map((m) => ({ label: m[0].replace(/\.json$/, ''), n: Number(m[1]), map: read(path.join(dir, m[0])) }));
-  const shuffled = Object.fromEntries(KINDS.map((k) => [k, maps(new RegExp(`^${k}-s(\\d+)\\.json$`)).map((r) => ({ ...r, seed: r.n, order: readJsonl(path.join(dir, `${r.label}.order.jsonl`)) }))]));
+  const label = (re) =>
+    fs
+      .readdirSync(dir)
+      .map((f) => f.match(re))
+      .filter(Boolean)
+      .sort((a, b) => Number(a[1]) - Number(b[1]));
+  const maps = (re) =>
+    label(re).map((m) => ({ label: m[0].replace(/\.json$/, ''), n: Number(m[1]), map: read(path.join(dir, m[0])) }));
+  const shuffled = Object.fromEntries(
+    KINDS.map((k) => [
+      k,
+      maps(new RegExp(`^${k}-s(\\d+)\\.json$`)).map((r) => ({
+        ...r,
+        seed: r.n,
+        order: readJsonl(path.join(dir, `${r.label}.order.jsonl`)),
+      })),
+    ]),
+  );
   return {
     name: path.basename(dir),
     runs,
@@ -89,7 +113,8 @@ function candidates(iso, runs) {
 // perSeed: [{ isolated }], whether the passing result came from an isolated run.
 function classify(c, runs, confirm, perSeed = []) {
   const withResult = confirm.filter((m) => m.map.tests[c.key] || m.map.files[fileKeyOf(c.key)]);
-  if (confirm.some((m) => passed(m.map, c.key)) || perSeed.some((p) => p.isolated)) return { class: 'nondeterministic' };
+  if (confirm.some((m) => passed(m.map, c.key)) || perSeed.some((p) => p.isolated))
+    return { class: 'nondeterministic' };
   if (!withResult.length) return { class: 'unconfirmed' };
   const had = runs.filter((r) => r.map.tests[c.key]);
   return { class: 'leak-induced', orders: c.seeds.length === had.length ? 'every order' : 'some orders' };
@@ -102,7 +127,8 @@ function orderBefore(rows, file, root) {
   const rel = (f) => (root && f?.startsWith(root + '/') ? f.slice(root.length + 1) : f);
   const own = rows.find((r) => r.file === file && r.isolate === false);
   if (!own) return null;
-  const worker = rows.filter((r) => r.worker === own.worker && r.main === own.main && r.isolate === false)
+  const worker = rows
+    .filter((r) => r.worker === own.worker && r.main === own.main && r.isolate === false)
     .sort((a, b) => (a.seq ?? 0) - (b.seq ?? 0) || a.t - b.t);
   return { worker: own.worker, files: worker.slice(0, worker.indexOf(own) + 1).map((r) => rel(r.file)) };
 }
@@ -165,33 +191,65 @@ function analyse(project) {
       byClass: cands.reduce((o, c) => ({ ...o, [c.class]: (o[c.class] ?? 0) + 1 }), {}),
     };
   }
-  return { name: project.name, method: project.method, root, isoRuns: project.iso.length, confirmRuns: project.confirm.length, tests: tests.size, kinds };
+  return {
+    name: project.name,
+    method: project.method,
+    root,
+    isoRuns: project.iso.length,
+    confirmRuns: project.confirm.length,
+    tests: tests.size,
+    kinds,
+  };
 }
 
 function markdown(results) {
   const out = [];
   const classes = (b) => ['leak-induced', 'nondeterministic', 'unconfirmed'].map((c) => b[c] ?? 0).join(' / ');
-  out.push('## G2 under shuffled file orders', '',
-    'Candidate: passes in a shuffled run, does not pass in any isolated reference run. Classes: leak-induced (never passes isolated, confirm runs included) / nondeterministic (passes in a confirm run) / unconfirmed (no confirm result). Orders: distinct per-worker file orders among the seeds\' shared workers.', '',
+  out.push(
+    '## G2 under shuffled file orders',
+    '',
+    "Candidate: passes in a shuffled run, does not pass in any isolated reference run. Classes: leak-induced (never passes isolated, confirm runs included) / nondeterministic (passes in a confirm run) / unconfirmed (no confirm result). Orders: distinct per-worker file orders among the seeds' shared workers.",
+    '',
     '| Suite | method | references | confirm runs | tests | shared: seeds (orders) | shared: candidate tests (test x seed) | shared: classes | learned: seeds (orders) | learned: shared files (median) | learned: candidate tests (test x seed) | learned: classes |',
-    '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |');
-  const median = (a) => { const s = [...a].sort((x, y) => x - y); return s.length ? s[(s.length - 1) >> 1] : 'NA'; };
+    '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |',
+  );
+  const median = (a) => {
+    const s = [...a].sort((x, y) => x - y);
+    return s.length ? s[(s.length - 1) >> 1] : 'NA';
+  };
   for (const r of results) {
-    const s = r.kinds.shared, l = r.kinds.learned;
-    const seeds = (k) => `${k.seeds.length}${k.failedSeeds.length ? ` (+${k.failedSeeds.length} failed)` : ''} (${k.orders})`;
-    out.push(`| ${r.name} | ${r.method ?? '-'} | ${r.isoRuns} | ${r.confirmRuns} | ${r.tests} | ${seeds(s)} | ${s.candidates.length} (${s.runCandidates}) | ${classes(s.byClass)} | ${seeds(l)} | ${median(l.sharedFiles)} | ${l.candidates.length} (${l.runCandidates}) | ${classes(l.byClass)} |`);
+    const s = r.kinds.shared,
+      l = r.kinds.learned;
+    const seeds = (k) =>
+      `${k.seeds.length}${k.failedSeeds.length ? ` (+${k.failedSeeds.length} failed)` : ''} (${k.orders})`;
+    out.push(
+      `| ${r.name} | ${r.method ?? '-'} | ${r.isoRuns} | ${r.confirmRuns} | ${r.tests} | ${seeds(s)} | ${s.candidates.length} (${s.runCandidates}) | ${classes(s.byClass)} | ${seeds(l)} | ${median(l.sharedFiles)} | ${l.candidates.length} (${l.runCandidates}) | ${classes(l.byClass)} |`,
+    );
   }
-  const all = results.flatMap((r) => KINDS.flatMap((k) => r.kinds[k].candidates.map((c) => ({ suite: r.name, kind: k, ...c }))));
+  const all = results.flatMap((r) =>
+    KINDS.flatMap((k) => r.kinds[k].candidates.map((c) => ({ suite: r.name, kind: k, ...c }))),
+  );
   out.push('', `## Candidates (${all.length})`, '');
   if (!all.length) out.push('None.');
   for (const c of all) {
-    out.push(`### ${c.suite}, ${c.kind}: ${c.key}`, '',
+    out.push(
+      `### ${c.suite}, ${c.kind}: ${c.key}`,
+      '',
       `- class: **${c.class}**${c.orders ? ` (${c.orders})` : ''}`,
-      `- passes in seeds ${c.seeds.join(', ')}; references: ${c.iso.join(', ')}; confirm runs: ${c.confirm.join(', ') || 'none'}`);
+      `- passes in seeds ${c.seeds.join(', ')}; references: ${c.iso.join(', ')}; confirm runs: ${c.confirm.join(', ') || 'none'}`,
+    );
     for (const p of c.perSeed) {
-      if (p.isolated) { out.push(`- seed ${p.seed}: the result came from an isolated run of the file`); continue; }
-      if (!p.order) { out.push(`- seed ${p.seed}: the file did not run in a shared worker`); continue; }
-      out.push(`- seed ${p.seed}, worker ${p.order.worker}, ${p.order.files.length} file(s) up to it: ${p.order.files.map((f) => `\`${f}\``).join(' -> ')}`);
+      if (p.isolated) {
+        out.push(`- seed ${p.seed}: the result came from an isolated run of the file`);
+        continue;
+      }
+      if (!p.order) {
+        out.push(`- seed ${p.seed}: the file did not run in a shared worker`);
+        continue;
+      }
+      out.push(
+        `- seed ${p.seed}, worker ${p.order.worker}, ${p.order.files.length} file(s) up to it: ${p.order.files.map((f) => `\`${f}\``).join(' -> ')}`,
+      );
     }
     out.push('');
   }
@@ -210,7 +268,9 @@ if (require.main === module) {
     const ji = args.indexOf('--json');
     const json = ji >= 0 ? args.splice(ji, 2)[1] : null;
     const dir = args[0];
-    const results = fs.readdirSync(dir).sort()
+    const results = fs
+      .readdirSync(dir)
+      .sort()
       .filter((d) => fs.existsSync(path.join(dir, d, 'runs.csv')))
       .map((d) => analyse(loadProject(path.join(dir, d))));
     if (json) fs.writeFileSync(json, JSON.stringify(results, null, 2));

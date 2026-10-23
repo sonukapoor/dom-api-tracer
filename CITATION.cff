@@ -2,18 +2,18 @@ cff-version: 1.2.0
 message: >-
   If you use dom-api-tracer, please cite it using the metadata below.
 type: software
-title: "dom-api-tracer: measure which DOM APIs real test suites use"
+title: 'dom-api-tracer: measure which DOM APIs real test suites use'
 version: 0.1.0
-doi: "10.5281/zenodo.23378610"
-date-released: "2026-10-14"
+doi: '10.5281/zenodo.23378610'
+date-released: '2026-10-14'
 license: MIT
-repository-code: "https://github.com/sonukapoor/dom-api-tracer"
-url: "https://github.com/sonukapoor/dom-api-tracer"
+repository-code: 'https://github.com/sonukapoor/dom-api-tracer'
+url: 'https://github.com/sonukapoor/dom-api-tracer'
 authors:
   - family-names: Kapoor
     given-names: Sonu
-    affiliation: "Independent Researcher"
-    orcid: "https://orcid.org/0009-0009-6074-6238"
+    affiliation: 'Independent Researcher'
+    orcid: 'https://orcid.org/0009-0009-6074-6238'
 abstract: >-
   dom-api-tracer plugs into Vitest or Jest, instruments the DOM
   implementation the tests run on (jsdom or happy-dom), and records
@@ -35,15 +35,16 @@ keywords:
   - benchmarking
 references:
   - type: software
-    title: "warpdom: a fast, jsdom-compatible DOM for unit and component tests"
+    title: 'warpdom: a fast, jsdom-compatible DOM for unit and component tests'
     authors:
       - family-names: Kapoor
         given-names: Sonu
-    repository-code: "https://github.com/sonukapoor/warpdom"
+    repository-code: 'https://github.com/sonukapoor/warpdom'
     # doi: "10.5281/zenodo.XXXXXXX"
     notes: >-
       The DOM implementation that dom-api-tracer's measurements informed and
       evaluated.
+
 # preferred-citation: add the accompanying article on warpdom (type:
 # article, title, authors, journal, year, volume, issue, start, end, doi)
 # when it is published. Until then GitHub's "Cite this repository" cites

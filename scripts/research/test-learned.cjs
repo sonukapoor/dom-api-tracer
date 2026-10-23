@@ -7,7 +7,12 @@ const assert = require('assert/strict');
 const path = require('path');
 const { execFileSync } = require('child_process');
 
-const sh = (cmd) => execFileSync('bash', ['-c', `first=""; source ${JSON.stringify(path.join(__dirname, 'learned-emulation.sh'))}; ${cmd}`], { encoding: 'utf8' }).trim();
+const sh = (cmd) =>
+  execFileSync(
+    'bash',
+    ['-c', `first=""; source ${JSON.stringify(path.join(__dirname, 'learned-emulation.sh'))}; ${cmd}`],
+    { encoding: 'utf8' },
+  ).trim();
 assert.equal(sh('beats 100 94.9'), '1', 'split beats isolated by more than 5%');
 assert.equal(sh('beats 100 95'), '0', 'a 5% gain is within the margin');
 assert.equal(sh('beats 100 100'), '0');
@@ -20,7 +25,17 @@ assert.equal(Number(sh('dl_min 100 1.5 30')), 3, 'run deadline: 1.5 x t_iso + 30
 assert.equal(sh('minus "a b c" "b"'), 'a c');
 assert.equal(sh('union "a" "c a"'), 'a c');
 assert.equal(sh('echo "$LENV|$LFIRST"'), 'warpdom|');
-assert.equal(execFileSync('bash', ['-c', `first="--first-setup x"; LEARN_ENV=jsdom LEARN_FIRST= source ${JSON.stringify(path.join(__dirname, 'learned-emulation.sh'))}; echo "$LENV|$LFIRST"`], { encoding: 'utf8' }).trim(), 'jsdom|');
+assert.equal(
+  execFileSync(
+    'bash',
+    [
+      '-c',
+      `first="--first-setup x"; LEARN_ENV=jsdom LEARN_FIRST= source ${JSON.stringify(path.join(__dirname, 'learned-emulation.sh'))}; echo "$LENV|$LFIRST"`,
+    ],
+    { encoding: 'utf8' },
+  ).trim(),
+  'jsdom|',
+);
 
 // learned_run on another DOM's state (jsdom-learned: LENV=jsdom, its own
 // state prefix): a split run where a file of the shared part reports no
@@ -31,12 +46,21 @@ assert.equal(execFileSync('bash', ['-c', `first="--first-setup x"; LEARN_ENV=jsd
   const os = require('os');
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'learned-'));
   const file = (f) => `/proj/${f}.test.ts`;
-  const map = (files) => ({ tests: Object.fromEntries(files.map((f) => [`pkg::${f}.test.ts::t`, { s: 'passed', file: file(f) }])), files: Object.fromEntries(files.map((f) => [`pkg::${f}.test.ts`, { s: 'passed', file: file(f) }])) });
+  const map = (files) => ({
+    tests: Object.fromEntries(files.map((f) => [`pkg::${f}.test.ts::t`, { s: 'passed', file: file(f) }])),
+    files: Object.fromEntries(files.map((f) => [`pkg::${f}.test.ts`, { s: 'passed', file: file(f) }])),
+  });
   fs.writeFileSync(path.join(tmp, 'map0.json'), JSON.stringify(map(['a'])));
   fs.writeFileSync(path.join(tmp, 'map1.json'), JSON.stringify(map(['b'])));
   const st = path.join(tmp, 'jstate');
   fs.writeFileSync(`${st}.reference.json`, JSON.stringify(map(['a', 'b'])));
-  for (const [k, v] of [['isolate', ''], ['leaky', ''], ['mode', 'split'], ['tiso', '100']]) fs.writeFileSync(`${st}.${k}`, `${v}\n`);
+  for (const [k, v] of [
+    ['isolate', ''],
+    ['leaky', ''],
+    ['mode', 'split'],
+    ['tiso', '100'],
+  ])
+    fs.writeFileSync(`${st}.${k}`, `${v}\n`);
   const script = `
     T=${JSON.stringify(tmp)}; S=$T; E=$T; p=proj; REPOS_DIR=/; RESEARCH_DIR=${JSON.stringify(__dirname)}; jsonl=$T/l.jsonl; first="--first-setup reset.js"
     source "$RESEARCH_DIR/learned-emulation.sh"
@@ -55,7 +79,11 @@ assert.equal(execFileSync('bash', ['-c', `first="--first-setup x"; LEARN_ENV=jsd
   assert.match(out, /secs=20/, 'shared part and the re-run of the missing file');
   const runs = fs.readFileSync(path.join(tmp, 'runs'), 'utf8').trim().split('\n');
   assert.match(runs[0], /--environment jsdom .*--extra-args --no-isolate $/, 'jsdom, no reset setup file');
-  assert.match(runs[1], /--environment jsdom --extra-args --passWithNoTests \/proj\/b\.test\.ts$/, 'the file without a result re-run isolated');
+  assert.match(
+    runs[1],
+    /--environment jsdom --extra-args --passWithNoTests \/proj\/b\.test\.ts$/,
+    'the file without a result re-run isolated',
+  );
   assert.equal(fs.readFileSync(`${st}.isolate`, 'utf8').trim(), file('b'), 'and isolated from then on');
   const rec = JSON.parse(fs.readFileSync(path.join(tmp, 'l.jsonl'), 'utf8').trim());
   assert.equal(rec.config, 'jsdom-learned');

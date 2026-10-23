@@ -48,7 +48,9 @@ function project(corpusFile, name) {
 // corpus file), else <repos dir>/<name>.
 function projectDir(corpusFile, reposDir, name) {
   const p = project(corpusFile, name);
-  return p.path ? path.resolve(path.dirname(corpusFile), expandHome(p.path)) : path.join(path.resolve(expandHome(reposDir)), name);
+  return p.path
+    ? path.resolve(path.dirname(corpusFile), expandHome(p.path))
+    : path.join(path.resolve(expandHome(reposDir)), name);
 }
 
 // trace-corpus.mjs installCommand's choice.
@@ -60,7 +62,13 @@ function packageManager(dir) {
   return 'npm';
 }
 
-const FROZEN = { pnpm: 'pnpm install --frozen-lockfile', bun: 'bun install --frozen-lockfile', 'yarn-berry': 'yarn install --immutable', yarn: 'yarn install --frozen-lockfile', npm: 'npm ci' };
+const FROZEN = {
+  pnpm: 'pnpm install --frozen-lockfile',
+  bun: 'bun install --frozen-lockfile',
+  'yarn-berry': 'yarn install --immutable',
+  yarn: 'yarn install --frozen-lockfile',
+  npm: 'npm ci',
+};
 
 // The project's install command made to update the lockfile.
 function unfrozen(cmd, pm) {
@@ -103,7 +111,8 @@ function setOverride(map, name, version) {
 // (created at the end when missing), other entries for <name> removed.
 function setYamlOverride(text, name, version) {
   const lines = text.replace(/\n*$/, '').split('\n');
-  const entry = (indent) => `${indent}${/^[\w.-]+$/.test(name) ? name : JSON.stringify(name)}: ${JSON.stringify(version)}`;
+  const entry = (indent) =>
+    `${indent}${/^[\w.-]+$/.test(name) ? name : JSON.stringify(name)}: ${JSON.stringify(version)}`;
   let i = lines.findIndex((l) => /^overrides:\s*(\{\s*\})?\s*(#.*)?$/.test(l));
   if (i < 0) return `${lines.join('\n')}\n\noverrides:\n${entry('  ')}\n`;
   lines[i] = 'overrides:';
@@ -143,11 +152,22 @@ function apply(dir, name, version) {
 }
 
 // Files to back up before apply + install, restored afterwards.
-const FILES = ['package.json', 'pnpm-workspace.yaml', 'pnpm-lock.yaml', 'package-lock.json', 'npm-shrinkwrap.json', 'yarn.lock', 'bun.lock', 'bun.lockb'];
+const FILES = [
+  'package.json',
+  'pnpm-workspace.yaml',
+  'pnpm-lock.yaml',
+  'package-lock.json',
+  'npm-shrinkwrap.json',
+  'yarn.lock',
+  'bun.lock',
+  'bun.lockb',
+];
 const files = (dir) => FILES.filter((f) => fs.existsSync(path.join(dir, f)));
 
 function versionFrom(fromFile, name) {
-  try { return readJson(createRequire(fromFile).resolve(`${name}/package.json`)).version; } catch {}
+  try {
+    return readJson(createRequire(fromFile).resolve(`${name}/package.json`)).version;
+  } catch {}
   // A package whose exports leave out ./package.json (parse5 7): Node's
   // lookup by hand, node_modules/<name> from the file's directory up.
   for (let dir = path.dirname(fromFile); ; dir = path.dirname(dir)) {
@@ -168,12 +188,22 @@ const DEPS = ['cssstyle', 'nwsapi', 'parse5', 'whatwg-url'];
 // Prereleases compare by their release only (enough for jsdom's ranges).
 function satisfies(version, range) {
   const v = String(version).replace(/^v/, '').split(/[-+]/)[0].split('.').map(Number);
-  const cmp = (a, b) => { for (let i = 0; i < 3; i++) if ((a[i] ?? 0) !== (b[i] ?? 0)) return (a[i] ?? 0) - (b[i] ?? 0); return 0; };
-  const parts = (s) => s.replace(/^[=v]+/, '').split('.').filter((x) => x !== '').map((x) => (/^[x*]$/i.test(x) ? null : Number(x.split(/[-+]/)[0])));
+  const cmp = (a, b) => {
+    for (let i = 0; i < 3; i++) if ((a[i] ?? 0) !== (b[i] ?? 0)) return (a[i] ?? 0) - (b[i] ?? 0);
+    return 0;
+  };
+  const parts = (s) =>
+    s
+      .replace(/^[=v]+/, '')
+      .split('.')
+      .filter((x) => x !== '')
+      .map((x) => (/^[x*]$/i.test(x) ? null : Number(x.split(/[-+]/)[0])));
   const comparator = (c) => {
     const m = c.match(/^(<=|>=|<|>|=|\^|~)?\s*(.*)$/);
-    const op = m[1] ?? '', p = parts(m[2] || '*');
-    const n = p.findIndex((x) => x === null || x === undefined); const known = n < 0 ? p.length : n;
+    const op = m[1] ?? '',
+      p = parts(m[2] || '*');
+    const n = p.findIndex((x) => x === null || x === undefined);
+    const known = n < 0 ? p.length : n;
     const lo = [0, 1, 2].map((i) => (i < known ? p[i] : 0));
     if (op === '^') {
       const i = lo[0] > 0 || known <= 1 ? 0 : lo[1] > 0 || known <= 2 ? 1 : 2;
@@ -191,13 +221,18 @@ function satisfies(version, range) {
     const c2 = cmp(v, lo);
     return op === '>' ? c2 > 0 : op === '>=' ? c2 >= 0 : op === '<' ? c2 < 0 : c2 <= 0;
   };
-  return String(range).split('||').some((alt) => {
-    const a = alt.trim();
-    const h = a.match(/^(\S+)\s+-\s+(\S+)$/);
-    if (h) return comparator(`>=${h[1]}`) && comparator(`<=${h[2]}`);
-    const cs = a.replace(/(<=|>=|<|>|=|\^|~)\s+/g, '$1').split(/\s+/).filter(Boolean);
-    return (cs.length ? cs : ['*']).every(comparator);
-  });
+  return String(range)
+    .split('||')
+    .some((alt) => {
+      const a = alt.trim();
+      const h = a.match(/^(\S+)\s+-\s+(\S+)$/);
+      if (h) return comparator(`>=${h[1]}`) && comparator(`<=${h[2]}`);
+      const cs = a
+        .replace(/(<=|>=|<|>|=|\^|~)\s+/g, '$1')
+        .split(/\s+/)
+        .filter(Boolean);
+      return (cs.length ? cs : ['*']).every(comparator);
+    });
 }
 
 // jsdom's own package.json and its DEPS as it loads them.
@@ -224,13 +259,23 @@ function resolved(corpusFile, dir, name) {
     } catch {}
     let jsdom = versionFrom(from, 'jsdom');
     let jsdomFile = null;
-    if (!jsdom) { jsdom = versionFrom(path.join(pkgDir, 'package.json'), 'jsdom'); }
-    try { jsdomFile = fs.realpathSync(createRequire(from).resolve('jsdom/package.json')); } catch {
-      try { jsdomFile = fs.realpathSync(req.resolve('jsdom/package.json')); } catch {}
+    if (!jsdom) {
+      jsdom = versionFrom(path.join(pkgDir, 'package.json'), 'jsdom');
+    }
+    try {
+      jsdomFile = fs.realpathSync(createRequire(from).resolve('jsdom/package.json'));
+    } catch {
+      try {
+        jsdomFile = fs.realpathSync(req.resolve('jsdom/package.json'));
+      } catch {}
     }
     // No jsdom of its own: the one the harness links in.
     if (!jsdomFile) {
-      const linked = path.join(process.env.DOM_TRACE_DOM_MODULES || path.join(__dirname, '..', '..', 'node_modules'), 'jsdom', 'package.json');
+      const linked = path.join(
+        process.env.DOM_TRACE_DOM_MODULES || path.join(__dirname, '..', '..', 'node_modules'),
+        'jsdom',
+        'package.json',
+      );
       if (fs.existsSync(linked)) jsdomFile = fs.realpathSync(linked);
     }
     out[pkg.dir] = { jsdom, ...(jsdomFile ? jsdomDeps(jsdomFile) : { cssstyle: null, ranges: {}, inconsistent: [] }) };
@@ -249,7 +294,20 @@ function check(corpusFile, dir, name, { explain = false } = {}) {
   return [...out];
 }
 
-module.exports = { projectDir, packageManager, unfrozen, installCommand, setOverride, setYamlOverride, apply, files, resolved, satisfies, check, DEPS };
+module.exports = {
+  projectDir,
+  packageManager,
+  unfrozen,
+  installCommand,
+  setOverride,
+  setYamlOverride,
+  apply,
+  files,
+  resolved,
+  satisfies,
+  check,
+  DEPS,
+};
 
 if (require.main === module) {
   const [cmd, ...a] = process.argv.slice(2);
@@ -258,6 +316,11 @@ if (require.main === module) {
   else if (cmd === 'apply') console.log(apply(a[0], a[1], a[2]).join('\n'));
   else if (cmd === 'files') console.log(files(a[0]).join('\n'));
   else if (cmd === 'resolved') console.log(JSON.stringify(resolved(path.resolve(a[0]), a[1], a[2])));
-  else if (cmd === 'check') { const c = check(path.resolve(a[0]), a[1], a[2], { explain: a.includes('--explain') }); if (c.length) console.log(c.join('\n')); }
-  else { process.stderr.write('usage: versions.cjs dir|install|apply|files|resolved|check ... (see the header)\n'); process.exit(2); }
+  else if (cmd === 'check') {
+    const c = check(path.resolve(a[0]), a[1], a[2], { explain: a.includes('--explain') });
+    if (c.length) console.log(c.join('\n'));
+  } else {
+    process.stderr.write('usage: versions.cjs dir|install|apply|files|resolved|check ... (see the header)\n');
+    process.exit(2);
+  }
 }

@@ -34,11 +34,16 @@ function parseArgs(argv) {
 
 function readJsonFiles(dir, prefix) {
   if (!fs.existsSync(dir)) return [];
-  return fs.readdirSync(dir)
+  return fs
+    .readdirSync(dir)
     .filter((f) => f.startsWith(prefix) && f.endsWith('.json'))
     .map((f) => {
-      try { return JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')); }
-      catch (err) { console.warn(`  skipping unreadable ${f}: ${err.message}`); return null; }
+      try {
+        return JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8'));
+      } catch (err) {
+        console.warn(`  skipping unreadable ${f}: ${err.message}`);
+        return null;
+      }
     })
     .filter(Boolean);
 }
@@ -82,7 +87,10 @@ function aggregate(dirs) {
     projects.add(run.project);
     environments.add(run.environment);
     let env = envStats.get(run.environment);
-    if (!env) { env = { testFiles: 0, projects: new Set(), used: new Set() }; envStats.set(run.environment, env); }
+    if (!env) {
+      env = { testFiles: 0, projects: new Set(), used: new Set() };
+      envStats.set(run.environment, env);
+    }
     env.testFiles++;
     env.projects.add(run.project);
     for (const [id, c] of Object.entries(run.usage || {})) {
@@ -93,7 +101,9 @@ function aggregate(dirs) {
         members.set(id, m);
       }
       const n = (c.call || 0) + (c.get || 0) + (c.set || 0);
-      m.call += c.call || 0; m.get += c.get || 0; m.set += c.set || 0;
+      m.call += c.call || 0;
+      m.get += c.get || 0;
+      m.set += c.set || 0;
       m.ops += n;
       m.files.set(fileKey, (m.files.get(fileKey) || 0) + n);
       m.projects.add(run.project);
@@ -105,7 +115,10 @@ function aggregate(dirs) {
   const list = [...members.values()].map((m) => ({
     id: m.id,
     interface: interfaceOf(m.id),
-    call: m.call, get: m.get, set: m.set, ops: m.ops,
+    call: m.call,
+    get: m.get,
+    set: m.set,
+    ops: m.ops,
     files: m.files.size,
     projects: m.projects.size,
     environments: [...m.environments].sort(),
@@ -117,14 +130,18 @@ function aggregate(dirs) {
   for (const set of catalogs.values()) for (const m of set) catalog.add(m);
 
   // jsdom and happy-dom expose different catalogs, so coverage is per environment.
-  const environmentCoverage = [...envStats].map(([environment, e]) => {
-    const envCatalog = catalogs.get(environment) || new Set();
-    return {
-      environment, testFiles: e.testFiles, projects: e.projects.size,
-      catalog: envCatalog.size,
-      used: [...e.used].filter((id) => envCatalog.has(id)).length,
-    };
-  }).sort((a, b) => b.testFiles - a.testFiles);
+  const environmentCoverage = [...envStats]
+    .map(([environment, e]) => {
+      const envCatalog = catalogs.get(environment) || new Set();
+      return {
+        environment,
+        testFiles: e.testFiles,
+        projects: e.projects.size,
+        catalog: envCatalog.size,
+        used: [...e.used].filter((id) => envCatalog.has(id)).length,
+      };
+    })
+    .sort((a, b) => b.testFiles - a.testFiles);
 
   return { runs, list, projects, environments, catalog, environmentCoverage };
 }
@@ -133,9 +150,13 @@ function coverageCurve(list, thresholds = [0.5, 0.8, 0.9, 0.95, 0.99, 1]) {
   const sorted = [...list].sort((a, b) => b.ops - a.ops);
   const total = sorted.reduce((s, m) => s + m.ops, 0);
   const out = [];
-  let acc = 0; let i = 0;
+  let acc = 0;
+  let i = 0;
   for (const t of thresholds) {
-    while (i < sorted.length && acc < t * total) { acc += sorted[i].ops; i++; }
+    while (i < sorted.length && acc < t * total) {
+      acc += sorted[i].ops;
+      i++;
+    }
     out.push({ threshold: t, members: i });
   }
   return { total, curve: out };
@@ -145,11 +166,18 @@ function interfaceRollup(list, catalog) {
   const byIface = new Map();
   const ensure = (name) => {
     let r = byIface.get(name);
-    if (!r) { r = { interface: name, ops: 0, used: 0, available: 0 }; byIface.set(name, r); }
+    if (!r) {
+      r = { interface: name, ops: 0, used: 0, available: 0 };
+      byIface.set(name, r);
+    }
     return r;
   };
   for (const m of catalog) ensure(interfaceOf(m)).available++;
-  for (const m of list) { const r = ensure(m.interface); r.ops += m.ops; r.used++; }
+  for (const m of list) {
+    const r = ensure(m.interface);
+    r.ops += m.ops;
+    r.used++;
+  }
   return [...byIface.values()].filter((r) => r.used > 0).sort((a, b) => b.ops - a.ops);
 }
 
@@ -163,44 +191,104 @@ function renderMarkdown({ runs, list, projects, environments, catalog, environme
   const { total, curve } = coverageCurve(list);
   const projectCount = projects.size;
   const byOps = [...list].sort((a, b) => b.ops - a.ops).slice(0, top);
-  const byBreadth = [...list].sort((a, b) => b.projects - a.projects || b.files - a.files || b.ops - a.ops).slice(0, top);
+  const byBreadth = [...list]
+    .sort((a, b) => b.projects - a.projects || b.files - a.files || b.ops - a.ops)
+    .slice(0, top);
   const core = list.filter((m) => projectCount && m.projects / projectCount >= 0.5).length;
   const common = list.filter((m) => projectCount && m.projects / projectCount >= 0.1).length;
   const ifaces = interfaceRollup(list, catalog).slice(0, top);
 
   const s = [];
   s.push('# DOM API usage report', '');
-  s.push(`Generated ${new Date().toISOString()} from **${runs.length}** test files across **${projectCount}** project(s).`);
+  s.push(
+    `Generated ${new Date().toISOString()} from **${runs.length}** test files across **${projectCount}** project(s).`,
+  );
   s.push(`Environments observed: ${[...environments].join(', ') || 'none'}.`, '');
 
   s.push('## Surface area', '');
-  s.push(table(['Metric', 'Value'], [
-    ['Instrumentable members (catalog)', catalog.size.toLocaleString()],
-    ['Members actually used', `${list.length.toLocaleString()} (${pct(list.length, catalog.size)} of catalog)`],
-    ['Used by ≥50% of projects ("core")', core.toLocaleString()],
-    ['Used by ≥10% of projects ("common")', common.toLocaleString()],
-    ['Total recorded operations', total.toLocaleString()],
-  ]), '');
+  s.push(
+    table(
+      ['Metric', 'Value'],
+      [
+        ['Instrumentable members (catalog)', catalog.size.toLocaleString()],
+        ['Members actually used', `${list.length.toLocaleString()} (${pct(list.length, catalog.size)} of catalog)`],
+        ['Used by ≥50% of projects ("core")', core.toLocaleString()],
+        ['Used by ≥10% of projects ("common")', common.toLocaleString()],
+        ['Total recorded operations', total.toLocaleString()],
+      ],
+    ),
+    '',
+  );
 
   s.push('## Coverage by environment', '');
-  s.push('Each environment has its own catalog (it also varies by version), so coverage is reported per environment.', '');
-  s.push(table(['Environment', 'Test files', 'Projects', 'Members available', 'Members used', 'Used %'],
-    environmentCoverage.map((e) => [e.environment, e.testFiles.toLocaleString(), e.projects, e.catalog.toLocaleString(), e.used.toLocaleString(), pct(e.used, e.catalog)])), '');
+  s.push(
+    'Each environment has its own catalog (it also varies by version), so coverage is reported per environment.',
+    '',
+  );
+  s.push(
+    table(
+      ['Environment', 'Test files', 'Projects', 'Members available', 'Members used', 'Used %'],
+      environmentCoverage.map((e) => [
+        e.environment,
+        e.testFiles.toLocaleString(),
+        e.projects,
+        e.catalog.toLocaleString(),
+        e.used.toLocaleString(),
+        pct(e.used, e.catalog),
+      ]),
+    ),
+    '',
+  );
 
   s.push('## Coverage curve', '');
   s.push('How many members account for a given share of all recorded operations.', '');
-  s.push(table(['Share of operations', 'Members needed'], curve.map((c) => [`${Math.round(c.threshold * 100)}%`, c.members.toLocaleString()])), '');
+  s.push(
+    table(
+      ['Share of operations', 'Members needed'],
+      curve.map((c) => [`${Math.round(c.threshold * 100)}%`, c.members.toLocaleString()]),
+    ),
+    '',
+  );
 
   s.push(`## Most widely used members (top ${byBreadth.length})`, '');
   s.push('Breadth matters more than raw counts: a member used lightly by every project is a must-have.', '');
-  s.push(table(['Member', 'Projects', 'Files', 'Ops'], byBreadth.map((m) => [`\`${m.id}\``, m.projects, m.files, m.ops.toLocaleString()])), '');
+  s.push(
+    table(
+      ['Member', 'Projects', 'Files', 'Ops'],
+      byBreadth.map((m) => [`\`${m.id}\``, m.projects, m.files, m.ops.toLocaleString()]),
+    ),
+    '',
+  );
 
   s.push(`## Hottest members by operation count (top ${byOps.length})`, '');
-  s.push('These are the paths a fast implementation must optimize first. "Top file share" is the part of a member\'s operations that comes from its single busiest test file: high values mean one heavy test, not general use.', '');
-  s.push(table(['Member', 'Calls', 'Gets', 'Sets', 'Ops', 'Files', 'Top file share'], byOps.map((m) => [`\`${m.id}\``, m.call, m.get, m.set, m.ops.toLocaleString(), m.files, pct(Math.round(m.topFileShare * 1000), 1000)])), '');
+  s.push(
+    'These are the paths a fast implementation must optimize first. "Top file share" is the part of a member\'s operations that comes from its single busiest test file: high values mean one heavy test, not general use.',
+    '',
+  );
+  s.push(
+    table(
+      ['Member', 'Calls', 'Gets', 'Sets', 'Ops', 'Files', 'Top file share'],
+      byOps.map((m) => [
+        `\`${m.id}\``,
+        m.call,
+        m.get,
+        m.set,
+        m.ops.toLocaleString(),
+        m.files,
+        pct(Math.round(m.topFileShare * 1000), 1000),
+      ]),
+    ),
+    '',
+  );
 
   s.push(`## Interfaces (top ${ifaces.length} by operations)`, '');
-  s.push(table(['Interface', 'Ops', 'Members used', 'Members available', 'Used %'], ifaces.map((r) => [r.interface, r.ops.toLocaleString(), r.used, r.available || 'n/a', pct(r.used, r.available)])), '');
+  s.push(
+    table(
+      ['Interface', 'Ops', 'Members used', 'Members available', 'Used %'],
+      ifaces.map((r) => [r.interface, r.ops.toLocaleString(), r.used, r.available || 'n/a', pct(r.used, r.available)]),
+    ),
+    '',
+  );
 
   return s.join('\n');
 }
@@ -208,7 +296,22 @@ function renderMarkdown({ runs, list, projects, environments, catalog, environme
 function renderCsv(list) {
   const rows = ['member,interface,calls,gets,sets,ops,files,projects,environments,top_file_share'];
   for (const m of [...list].sort((a, b) => b.ops - a.ops)) {
-    rows.push([m.id, m.interface, m.call, m.get, m.set, m.ops, m.files, m.projects, m.environments.join(' '), m.topFileShare.toFixed(4)].map((v) => `"${String(v).replace(/"/g, '""')}"`).join(','));
+    rows.push(
+      [
+        m.id,
+        m.interface,
+        m.call,
+        m.get,
+        m.set,
+        m.ops,
+        m.files,
+        m.projects,
+        m.environments.join(' '),
+        m.topFileShare.toFixed(4),
+      ]
+        .map((v) => `"${String(v).replace(/"/g, '""')}"`)
+        .join(','),
+    );
   }
   return rows.join('\n') + '\n';
 }
@@ -224,22 +327,34 @@ function cmdReport(args) {
   fs.mkdirSync(out, { recursive: true });
   fs.writeFileSync(path.join(out, 'summary.md'), renderMarkdown(data, args.top));
   fs.writeFileSync(path.join(out, 'usage.csv'), renderCsv(data.list));
-  fs.writeFileSync(path.join(out, 'usage.json'), JSON.stringify({
-    generatedAt: new Date().toISOString(),
-    testFiles: data.runs.length,
-    projects: [...data.projects],
-    environments: [...data.environments],
-    catalogSize: data.catalog.size,
-    environmentCoverage: data.environmentCoverage,
-    coverage: coverageCurve(data.list),
-    members: data.list.sort((a, b) => b.ops - a.ops),
-    unusedCatalogMembers: (() => { const used = new Set(data.list.map((u) => u.id)); return [...data.catalog].filter((m) => !used.has(m)).sort(); })(),
-  }, null, 2));
+  fs.writeFileSync(
+    path.join(out, 'usage.json'),
+    JSON.stringify(
+      {
+        generatedAt: new Date().toISOString(),
+        testFiles: data.runs.length,
+        projects: [...data.projects],
+        environments: [...data.environments],
+        catalogSize: data.catalog.size,
+        environmentCoverage: data.environmentCoverage,
+        coverage: coverageCurve(data.list),
+        members: data.list.sort((a, b) => b.ops - a.ops),
+        unusedCatalogMembers: (() => {
+          const used = new Set(data.list.map((u) => u.id));
+          return [...data.catalog].filter((m) => !used.has(m)).sort();
+        })(),
+      },
+      null,
+      2,
+    ),
+  );
 
   const { curve } = coverageCurve(data.list);
   const c90 = curve.find((c) => c.threshold === 0.9);
   console.log(`Analyzed ${data.runs.length} test files from ${data.projects.size} project(s).`);
-  console.log(`Used ${data.list.length} of ${data.catalog.size} instrumentable members (${pct(data.list.length, data.catalog.size)}).`);
+  console.log(
+    `Used ${data.list.length} of ${data.catalog.size} instrumentable members (${pct(data.list.length, data.catalog.size)}).`,
+  );
   console.log(`${c90.members} members cover 90% of all operations.`);
   console.log(`Wrote ${path.relative(process.cwd(), out) || '.'}/summary.md, usage.json, usage.csv`);
 }
@@ -253,7 +368,10 @@ function cmdClean(args) {
 function main() {
   const [cmd, ...rest] = process.argv.slice(2);
   const args = parseArgs(rest);
-  if (!cmd || cmd === '-h' || cmd === '--help' || args.help) { console.log(HELP); return; }
+  if (!cmd || cmd === '-h' || cmd === '--help' || args.help) {
+    console.log(HELP);
+    return;
+  }
   if (cmd === 'report') return cmdReport(args);
   if (cmd === 'clean') return cmdClean(args);
   console.error(`Unknown command: ${cmd}\n`);

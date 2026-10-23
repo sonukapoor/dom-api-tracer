@@ -20,14 +20,22 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const expandHome = (p) => p.replace(/^~(?=$|\/)/, os.homedir());
-const opts = { out: null, reposDir: path.join(os.homedir(), 'Projects'), warpdom: path.join(root, '..', 'warpdom'), corpus: path.join(root, 'corpus', 'corpus.json') };
+const opts = {
+  out: null,
+  reposDir: path.join(os.homedir(), 'Projects'),
+  warpdom: path.join(root, '..', 'warpdom'),
+  corpus: path.join(root, 'corpus', 'corpus.json'),
+};
 const argv = process.argv.slice(2);
 for (let i = 0; i < argv.length; i++) {
   if (argv[i] === '--out') opts.out = argv[++i];
   else if (argv[i] === '--repos-dir') opts.reposDir = argv[++i];
   else if (argv[i] === '--warpdom') opts.warpdom = argv[++i];
   else if (argv[i] === '--corpus') opts.corpus = argv[++i];
-  else { process.stderr.write(`unknown argument ${argv[i]}\n`); process.exit(2); }
+  else {
+    process.stderr.write(`unknown argument ${argv[i]}\n`);
+    process.exit(2);
+  }
 }
 
 function git(dir) {
@@ -48,12 +56,16 @@ const corpus = JSON.parse(fs.readFileSync(opts.corpus, 'utf8'));
 const corpusDir = path.dirname(path.resolve(opts.corpus));
 // Pins as in checkout-pinned.mjs: pins.json for corpus.json, else <name>-pins.json.
 const corpusPath = path.resolve(opts.corpus);
-const pinsFile = corpusPath.endsWith('/corpus.json') ? path.join(corpusDir, 'pins.json') : corpusPath.replace(/\.json$/, '-pins.json');
+const pinsFile = corpusPath.endsWith('/corpus.json')
+  ? path.join(corpusDir, 'pins.json')
+  : corpusPath.replace(/\.json$/, '-pins.json');
 const pins = fs.existsSync(pinsFile) ? JSON.parse(fs.readFileSync(pinsFile, 'utf8')) : {};
 const projects = {};
 for (const project of corpus.projects) {
   // Same checkout location as scripts/trace-corpus.mjs.
-  const dir = project.path ? path.resolve(corpusDir, expandHome(project.path)) : path.join(path.resolve(expandHome(opts.reposDir)), project.name);
+  const dir = project.path
+    ? path.resolve(corpusDir, expandHome(project.path))
+    : path.join(path.resolve(expandHome(opts.reposDir)), project.name);
   const pin = pins[project.name]?.commit ?? null;
   const record = fs.existsSync(dir) ? { dir, ...git(dir) } : { dir, missing: true };
   if (record.commit) Object.assign(record, { pin, atPin: record.commit === pin });

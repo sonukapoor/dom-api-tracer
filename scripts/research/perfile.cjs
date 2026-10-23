@@ -16,7 +16,11 @@ if (args.length !== 2) {
   console.error('usage: perfile.cjs <a-label>=<a.jsonl>[,...] <b-label>=<b.jsonl>[,...] [--top n]');
   process.exit(2);
 }
-const median = (a) => { const s = [...a].sort((x, y) => x - y); const n = s.length; return n ? (n % 2 ? s[n >> 1] : (s[n / 2 - 1] + s[n / 2]) / 2) : NaN; };
+const median = (a) => {
+  const s = [...a].sort((x, y) => x - y);
+  const n = s.length;
+  return n ? (n % 2 ? s[n >> 1] : (s[n / 2 - 1] + s[n / 2]) / 2) : NaN;
+};
 
 // label -> Map(file -> { phase: median ms })
 function load(spec) {
@@ -50,12 +54,16 @@ for (const p of [...PHASES, 'total']) {
   console.log(`${p.padEnd(12)}${fmt(sa)} ${fmt(sb)}  ${(sa / sb).toFixed(2)}x`);
 }
 
-const rows = common.map((f) => {
-  const [ta, tb] = [a.files.get(f), b.files.get(f)];
-  return { f, ta, tb, delta: total(tb) - total(ta) };
-}).sort((x, y) => y.delta - x.delta);
+const rows = common
+  .map((f) => {
+    const [ta, tb] = [a.files.get(f), b.files.get(f)];
+    return { f, ta, tb, delta: total(tb) - total(ta) };
+  })
+  .sort((x, y) => y.delta - x.delta);
 const slower = rows.filter((r) => r.delta > 0);
-console.log(`\n${slower.length} of ${rows.length} files slower on ${b.label}; the ${Math.min(top, slower.length)} that lose the most (ms, ${a.label} -> ${b.label}):`);
+console.log(
+  `\n${slower.length} of ${rows.length} files slower on ${b.label}; the ${Math.min(top, slower.length)} that lose the most (ms, ${a.label} -> ${b.label}):`,
+);
 const short = (f) => f.split('/').slice(-3).join('/');
 for (const { f, ta, tb, delta } of slower.slice(0, top)) {
   const phases = PHASES.map((p) => `${p} ${Math.round(ta[p])}->${Math.round(tb[p])}`).join(', ');

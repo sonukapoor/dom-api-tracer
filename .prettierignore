@@ -1,0 +1,7 @@
+# Test projects whose exact code the tracer counts (test/verify.mjs).
+test/fixtures/
+# Everything that isn't code.
+*.md
+*.json
+*.yml
+*.yaml

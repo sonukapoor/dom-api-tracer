@@ -17,20 +17,32 @@ const write = (rows) => {
 export default class PerFileReporter {
   onTestRunEnd(modules) {
     this.done = true;
-    write(modules.map((m) => {
-      const d = m.diagnostic();
-      return {
-        file: m.moduleId, environment: d.environmentSetupDuration, prepare: d.prepareDuration,
-        collect: d.collectDuration, setup: d.setupDuration, tests: d.duration,
-      };
-    }));
+    write(
+      modules.map((m) => {
+        const d = m.diagnostic();
+        return {
+          file: m.moduleId,
+          environment: d.environmentSetupDuration,
+          prepare: d.prepareDuration,
+          collect: d.collectDuration,
+          setup: d.setupDuration,
+          tests: d.duration,
+        };
+      }),
+    );
   }
 
   onFinished(files = []) {
     if (this.done) return;
-    write(files.map((f) => ({
-      file: f.filepath, environment: f.environmentLoad, prepare: f.prepareDuration,
-      collect: f.collectDuration, setup: f.setupDuration, tests: f.result?.duration,
-    })));
+    write(
+      files.map((f) => ({
+        file: f.filepath,
+        environment: f.environmentLoad,
+        prepare: f.prepareDuration,
+        collect: f.collectDuration,
+        setup: f.setupDuration,
+        tests: f.result?.duration,
+      })),
+    );
   }
 }

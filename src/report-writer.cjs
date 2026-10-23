@@ -21,7 +21,11 @@ function writeFileReport(registry, { testPath, runner }) {
 
   const rel = testPath ? path.relative(process.cwd(), testPath) : 'unknown';
   const usage = snapshot(registry, { reset: true });
-  const hash = crypto.createHash('sha1').update(`${rel}:${process.pid}:${Date.now()}:${Math.random()}`).digest('hex').slice(0, 12);
+  const hash = crypto
+    .createHash('sha1')
+    .update(`${rel}:${process.pid}:${Date.now()}:${Math.random()}`)
+    .digest('hex')
+    .slice(0, 12);
 
   const report = {
     schemaVersion: SCHEMA_VERSION,
@@ -46,7 +50,9 @@ function writeFileReport(registry, { testPath, runner }) {
       members: [...registry.catalog].sort(),
       skipped: registry.skipped,
     };
-    try { fs.writeFileSync(catalogFile, JSON.stringify(catalog), { flag: 'wx' }); } catch {}
+    try {
+      fs.writeFileSync(catalogFile, JSON.stringify(catalog), { flag: 'wx' });
+    } catch {}
   }
 }
 

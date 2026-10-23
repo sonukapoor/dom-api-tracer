@@ -7,7 +7,9 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-export const WARPDOM_DIR = path.resolve(process.env.WARPDOM_DIR ?? path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..', 'warpdom'));
+export const WARPDOM_DIR = path.resolve(
+  process.env.WARPDOM_DIR ?? path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..', 'warpdom'),
+);
 export const warpdomRequire = createRequire(path.join(WARPDOM_DIR, 'package.json'));
 export const warpdomImport = (file) => import(pathToFileURL(path.join(WARPDOM_DIR, file)).href);
 // A jsdom by package name resolved from warpdom ('jsdom', 'jsdom26'), or by

@@ -82,14 +82,22 @@ const TESTING_LIBRARIES = {
 // Installed: a node_modules/<name> directory from this file's directory up.
 function installed(name) {
   let dir;
-  try { dir = path.dirname(fileURLToPath(import.meta.url)); } catch { dir = process.cwd(); }
+  try {
+    dir = path.dirname(fileURLToPath(import.meta.url));
+  } catch {
+    dir = process.cwd();
+  }
   for (; ; dir = path.dirname(dir)) {
     if (fs.existsSync(path.join(dir, 'node_modules', name, 'package.json'))) return true;
     if (dir === path.dirname(dir)) return false;
   }
 }
 
-const step = async (fn) => { try { await fn(); } catch {} };
+const step = async (fn) => {
+  try {
+    await fn();
+  } catch {}
+};
 
 if (!state) {
   // The worker's first file: record the starting state.
@@ -109,7 +117,9 @@ if (!state) {
       if (typeof lib.cleanup !== 'function') return;
       await lib.cleanup();
       if (typeof globalThis.afterEach === 'function' && !process.env[TESTING_LIBRARIES[name]]) {
-        globalThis.afterEach(async () => { await lib.cleanup(); });
+        globalThis.afterEach(async () => {
+          await lib.cleanup();
+        });
       }
     });
   }
@@ -120,7 +130,9 @@ if (!state) {
   await step(() => vi.unstubAllEnvs?.());
   if (doc) {
     // 4. Body and the attributes of <html> and <body>.
-    await step(() => { doc.body.replaceChildren(); });
+    await step(() => {
+      doc.body.replaceChildren();
+    });
     const restore = (el, saved) => {
       if (!el) return;
       const want = new Map(saved);
@@ -135,16 +147,24 @@ if (!state) {
   await step(() => globalThis.sessionStorage?.clear());
   if (doc) {
     // 6. Title, cookies, URL.
-    await step(() => { if (doc.title !== state.title) doc.title = state.title; });
+    await step(() => {
+      if (doc.title !== state.title) doc.title = state.title;
+    });
     const expireCookies = () => {
-      const names = doc.cookie.split(';').map((c) => c.split('=')[0].trim()).filter(Boolean);
+      const names = doc.cookie
+        .split(';')
+        .map((c) => c.split('=')[0].trim())
+        .filter(Boolean);
       if (!names.length) return;
       const parts = (globalThis.location?.pathname ?? '/').split('/').filter(Boolean);
       const paths = ['/', ...parts.map((_, i) => '/' + parts.slice(0, i + 1).join('/'))];
-      for (const n of names) for (const p of paths) doc.cookie = `${n}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=${p}`;
+      for (const n of names)
+        for (const p of paths) doc.cookie = `${n}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=${p}`;
     };
     await step(expireCookies);
-    await step(() => { if (state.url && globalThis.location.href !== state.url) globalThis.history.replaceState(null, '', state.url); });
+    await step(() => {
+      if (state.url && globalThis.location.href !== state.url) globalThis.history.replaceState(null, '', state.url);
+    });
     await step(expireCookies);
   }
 }
