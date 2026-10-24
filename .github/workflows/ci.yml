@@ -1,5 +1,5 @@
-# Formatting (Prettier) and readability rules (ESLint; existing violations
-# are listed in eslint-suppressions.json) on every push and pull request.
+# Formatting (Prettier) and readability rules (ESLint) on every push and
+# pull request.
 name: ci
 
 on:

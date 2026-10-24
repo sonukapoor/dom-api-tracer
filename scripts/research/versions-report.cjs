@@ -41,7 +41,12 @@ const readJson = (f) => {
     return null;
   }
 };
-const ORDER = (v) => (v === 'own-a' ? 0 : v === 'own-b' ? 1 : 2);
+// The project's own jsdom (twice) first, then the forced versions.
+const ORDER = (v) => {
+  if (v === 'own-a') return 0;
+  if (v === 'own-b') return 1;
+  return 2;
+};
 const byVersion = (a, b) => ORDER(a) - ORDER(b) || a.localeCompare(b, 'en', { numeric: true });
 
 // What a variant forces: { name, version } from "jsdom-26.1.0".
@@ -77,7 +82,9 @@ function forced(meta, f) {
       ? r.jsdom === f.version || (r.jsdom === null && meta.linked === `jsdom@${f.version}`)
       : r.cssstyle === f.version,
   ).length;
-  return ok === pkgs.length ? 'yes' : ok === 0 ? 'no' : `${ok}/${pkgs.length} packages`;
+  if (ok === pkgs.length) return 'yes';
+  if (ok === 0) return 'no';
+  return `${ok}/${pkgs.length} packages`;
 }
 
 const fold = (m) => (m || '').replace(/\d+/g, 'N');
@@ -87,7 +94,10 @@ function groups(base, run, exclude) {
     if (exclude.tests.has(k)) continue;
     const a = base.tests[k],
       b = run.tests[k];
-    const msg = b?.m ? fold(b.m) : a?.m ? `(own) ${fold(a.m)}` : '';
+    // The run's error, else the project's own jsdom error, marked as such.
+    let msg = '';
+    if (b?.m) msg = fold(b.m);
+    else if (a?.m) msg = `(own) ${fold(a.m)}`;
     const key = `${a?.s ?? 'missing'} -> ${b?.s ?? 'missing'} | ${msg}`;
     if (!g.has(key)) g.set(key, { key, count: 0, examples: [] });
     const e = g.get(key);
@@ -185,7 +195,9 @@ if (rows.length) {
       `| ${p} | ${vs
         .map((v) => {
           const r = rows.find((x) => x.project === p && x.variant === v);
-          return r ? (r.status === 'ok' ? `${r.tests_differ} (${r.files_differ} files)` : 'NA') : '';
+          if (!r) return '';
+          if (r.status !== 'ok') return 'NA';
+          return `${r.tests_differ} (${r.files_differ} files)`;
         })
         .join(' | ')} |`,
     );
@@ -220,8 +232,12 @@ if (csvFile) {
     'seconds',
     'reason',
   ];
-  const q = (v) =>
-    v === null || v === undefined ? '' : /[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : String(v);
+  // A CSV field: empty for no value, quoted when it holds a quote, comma or newline.
+  const q = (v) => {
+    if (v === null || v === undefined) return '';
+    const text = String(v);
+    return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+  };
   fs.writeFileSync(csvFile, [cols.join(','), ...rows.map((r) => cols.map((c) => q(r[c])).join(','))].join('\n') + '\n');
 }
 if (groupsFile) fs.writeFileSync(groupsFile, JSON.stringify(allGroups, null, 2));

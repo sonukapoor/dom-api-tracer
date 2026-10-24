@@ -110,7 +110,9 @@ for (const [project, p] of data) {
 const median = (a) => {
   const s = a.filter((x) => !Number.isNaN(x)).sort((x, y) => x - y);
   const n = s.length;
-  return n ? (n % 2 ? s[n >> 1] : (s[n / 2 - 1] + s[n / 2]) / 2) : NaN;
+  if (!n) return NaN;
+  if (n % 2) return s[n >> 1];
+  return (s[n / 2 - 1] + s[n / 2]) / 2;
 };
 // Tests that differ: the most in any round (a round that differs is not hidden by a median).
 const most = (a) => {
@@ -121,7 +123,9 @@ const most = (a) => {
 const differ = (p, c) => {
   const raw = most([...p.values()].map((r) => r[c]?.differs ?? NaN));
   const stable = most([...p.values()].map((r) => r[c]?.stable ?? NaN));
-  return Number.isNaN(raw) ? '—' : Number.isNaN(stable) ? String(raw) : `${raw} (${stable})`;
+  if (Number.isNaN(raw)) return '—';
+  if (Number.isNaN(stable)) return String(raw);
+  return `${raw} (${stable})`;
 };
 const fmt = (n, unit = '') => (Number.isNaN(n) ? '—' : n.toFixed(1) + unit);
 const num = (n) => (Number.isNaN(n) ? '—' : n);
@@ -176,10 +180,7 @@ if (hasHappy) {
       `| ${project}${ok ? '' : ' (check)'} | ${fmt(m('jsdom-default'), ' s')} | ${fmt(m('warpdom-default'), ' s')} | ${fmt(m('happy-dom-default'), ' s')} | ${x(wd)} | ${x(hd)} | ${x(wh)} | ${differ(p, 'warpdom-default')} / ${differ(p, 'happy-dom-default')} |`,
     );
   }
-  const med = (a) => {
-    const v = a.filter((n) => !Number.isNaN(n)).sort((x, y) => x - y);
-    return v.length ? (v.length % 2 ? v[v.length >> 1] : (v[v.length / 2 - 1] + v[v.length / 2]) / 2) : NaN;
-  };
+  const med = median;
   console.log(
     `\nMedians over ${valid.wd.length} suites with valid jsdom rounds: warpdom vs jsdom ${med(valid.wd).toFixed(2)}x, happy-dom vs jsdom ${med(valid.hd).toFixed(2)}x, warpdom vs happy-dom ${med(valid.wh).toFixed(2)}x.`,
   );

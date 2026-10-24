@@ -297,13 +297,15 @@ if (require.main === module) {
     write(out, merge(read(first), ...reruns.map(read)));
   } else if (cmd === 'jsdom-rounds') {
     const [out, ...specs] = args;
+    // Seconds: '-' for none, 'NA' or empty for a failed run.
+    const seconds = (secs) => {
+      if (secs === '-') return null;
+      if (secs === 'NA' || secs === '') return NaN;
+      return +secs;
+    };
     const entries = specs.map((spec) => {
       const [round, secs, ...file] = spec.split(':');
-      return {
-        round,
-        secs: secs === '-' ? null : secs === 'NA' || secs === '' ? NaN : +secs,
-        map: read(file.join(':')),
-      };
+      return { round, secs: seconds(secs), map: read(file.join(':')) };
     });
     const r = jsdomRounds(entries);
     write(out, {

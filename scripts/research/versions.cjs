@@ -198,6 +198,13 @@ function satisfies(version, range) {
       .split('.')
       .filter((x) => x !== '')
       .map((x) => (/^[x*]$/i.test(x) ? null : Number(x.split(/[-+]/)[0])));
+  // The version just above lo's part i: that part plus one, later parts 0.
+  const bump = (lo, i) =>
+    lo.map((part, j) => {
+      if (j < i) return part;
+      if (j === i) return part + 1;
+      return 0;
+    });
   const comparator = (c) => {
     const m = c.match(/^(<=|>=|<|>|=|\^|~)?\s*(.*)$/);
     const op = m[1] ?? '',
@@ -206,20 +213,26 @@ function satisfies(version, range) {
     const known = n < 0 ? p.length : n;
     const lo = [0, 1, 2].map((i) => (i < known ? p[i] : 0));
     if (op === '^') {
-      const i = lo[0] > 0 || known <= 1 ? 0 : lo[1] > 0 || known <= 2 ? 1 : 2;
-      const hi = [0, 1, 2].map((j) => (j < i ? lo[j] : j === i ? lo[j] + 1 : 0));
+      // ^ allows changes after the first non-zero (or last given) part.
+      let i = 2;
+      if (lo[0] > 0 || known <= 1) i = 0;
+      else if (lo[1] > 0 || known <= 2) i = 1;
+      const hi = bump(lo, i);
       return cmp(v, lo) >= 0 && cmp(v, hi) < 0;
     }
     if (op === '~' || (op === '' && known < 3) || op === '=') {
       if (known === 0) return true;
       if (op === '=' && known === 3) return cmp(v, lo) === 0;
       const i = op === '~' ? Math.min(known, 2) - 1 : known - 1;
-      const hi = [0, 1, 2].map((j) => (j < i ? lo[j] : j === i ? lo[j] + 1 : 0));
+      const hi = bump(lo, i);
       return cmp(v, lo) >= 0 && cmp(v, hi) < 0;
     }
     if (op === '') return cmp(v, lo) === 0;
     const c2 = cmp(v, lo);
-    return op === '>' ? c2 > 0 : op === '>=' ? c2 >= 0 : op === '<' ? c2 < 0 : c2 <= 0;
+    if (op === '>') return c2 > 0;
+    if (op === '>=') return c2 >= 0;
+    if (op === '<') return c2 < 0;
+    return c2 <= 0;
   };
   return String(range)
     .split('||')

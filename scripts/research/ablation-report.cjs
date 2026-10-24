@@ -92,7 +92,16 @@ const valid = (a) => a.filter((x) => !Number.isNaN(x));
 const midMedian = (a) => {
   const v = valid(a).sort((x, y) => x - y);
   const k = v.length;
-  return k ? (k % 2 ? v[k >> 1] : (v[k / 2 - 1] + v[k / 2]) / 2) : NaN;
+  if (!k) return NaN;
+  if (k % 2) return v[k >> 1];
+  return (v[k / 2 - 1] + v[k / 2]) / 2;
+};
+// Runs until learning pays for itself: its one-time cost over the time it
+// saves per run.
+const breakEvenRuns = (cost, gain) => {
+  if (Number.isNaN(cost) || Number.isNaN(gain)) return '—';
+  if (gain <= 0) return 'never (learned not faster)';
+  return (cost / gain).toFixed(1);
 };
 const max = (a) => (valid(a).length ? Math.max(...valid(a)) : NaN);
 const total = (a) => (valid(a).length ? valid(a).reduce((s, x) => s + x, 0) : NaN);
@@ -291,12 +300,7 @@ if (learningFile && fs.existsSync(learningFile)) {
     const cost = midMedian(L.map((r) => (r.t_sh == null || r.t_split == null ? NaN : r.t_sh + r.t_split)));
     const p = data.get(project);
     const gain = p ? medTime(p, isolatedOf) - medTime(p, config) : NaN;
-    const breakEven =
-      Number.isNaN(cost) || Number.isNaN(gain)
-        ? '—'
-        : gain <= 0
-          ? 'never (learned not faster)'
-          : (cost / gain).toFixed(1);
+    const breakEven = breakEvenRuns(cost, gain);
     const sizes = L.map((r) => r.leaky.length);
     const m = (k) => fmt(midMedian(L.map((r) => (r[k] == null ? NaN : r[k]))), 1);
     console.log(

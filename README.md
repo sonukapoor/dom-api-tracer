@@ -227,9 +227,8 @@ npm run format   # Prettier (CI runs npm run format:check)
 npm run lint     # ESLint readability rules, such as no nested ternaries (Node 22.13+)
 ```
 
-Existing nested ternaries are listed in `eslint-suppressions.json` until
-they are rewritten. `git config blame.ignoreRevsFile .git-blame-ignore-revs`
-keeps the formatting commit out of `git blame`.
+`git config blame.ignoreRevsFile .git-blame-ignore-revs` keeps the
+formatting commit out of `git blame`.
 
 ## Citing
 
