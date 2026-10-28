@@ -799,6 +799,19 @@ try {
     'jest wrapper: TS config loaded with import() and its extension',
   );
   assert.match(tsWrapper, /^export default async/m, 'jest wrapper: TS wrapper is a module like the original');
+  // A loader chosen by the config's docblock is carried to the wrapper, first.
+  fs.writeFileSync(
+    path.join(dir, 'jest.loader.ts'),
+    '/**\n * Jest config.\n * @jest-config-loader esbuild-register\n * @jest-config-loader-options {"transpileOnly": true}\n */\nexport default {};\n',
+  );
+  const loaderWrapper = jestWrapper(path.join(dir, 'jest.loader.ts'));
+  assert.ok(
+    loaderWrapper.startsWith(
+      '/**\n * @jest-config-loader esbuild-register\n * @jest-config-loader-options {"transpileOnly": true}\n */\n',
+    ),
+    'jest wrapper: the config loader docblock leads the TS wrapper',
+  );
+  assert.ok(tsWrapper.startsWith('// Generated'), 'jest wrapper: no docblock when the config has no loader');
   if (process.features.typescript) {
     // Native path, in an ESM package. (CommonJS packages go through Jest's
     // ts-node fallback, which the real corpus exercises: mantine, ngx-formly.)
