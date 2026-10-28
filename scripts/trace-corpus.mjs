@@ -329,14 +329,12 @@ function jestLoaderDocblock(base) {
     return '';
   }
   const block = /^\s*(\/\*\*[\s\S]*?\*\/)/.exec(source)?.[1] ?? '';
-  const lines = block
-    .split('\n')
-    .map((line) =>
-      line
-        .replace(/^\s*\/?\*+\/?\s?/, '')
-        .replace(/\s*\*\/\s*$/, '')
-        .trim(),
-    );
+  const lines = block.split('\n').map((line) =>
+    line
+      .replace(/^\s*\/?\*+\/?\s?/, '')
+      .replace(/\s*\*\/\s*$/, '')
+      .trimStart(),
+  );
   // A pragma's value can span lines (multiline JSON options): keep each
   // loader pragma with the non-pragma lines that follow it.
   const kept = [];
