@@ -166,8 +166,17 @@ function build(project, dir, logFile) {
 
 const CONFIG_EXTS = ['ts', 'mts', 'cts', 'js', 'mjs', 'cjs'];
 
-function findConfig(pkgDir, runner, explicit) {
-  if (explicit) return path.resolve(pkgDir, explicit);
+// An explicit config that is missing falls back to the same name with another
+// config extension, so a project that renames .jest.js to .jest.ts upstream
+// runs both at its pin and at its default branch head.
+export function findConfig(pkgDir, runner, explicit) {
+  if (explicit) {
+    const file = path.resolve(pkgDir, explicit);
+    if (fs.existsSync(file)) return file;
+    const ext = path.extname(file);
+    const stem = CONFIG_EXTS.includes(ext.slice(1)) ? file.slice(0, -ext.length) : file;
+    return CONFIG_EXTS.map((e) => `${stem}.${e}`).find((f) => fs.existsSync(f)) ?? file;
+  }
   const names = runner === 'vitest' ? ['vitest.config', 'vitest.config.unit', 'vite.config'] : ['jest.config'];
   for (const name of names) {
     for (const ext of [...CONFIG_EXTS, ...(runner === 'jest' ? ['json'] : [])]) {

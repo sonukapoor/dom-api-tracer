@@ -478,7 +478,24 @@ try {
   }
   const left = fs.readdirSync(fixture, { recursive: true }).filter((f) => String(f).includes('.dom-trace.'));
   assert.deepEqual(left, [], 'shared cleanup: copied setup file and wrapper removed');
-  const { vitestWrapper } = await import(path.join(root, 'scripts/trace-corpus.mjs'));
+  const { vitestWrapper, findConfig } = await import(path.join(root, 'scripts/trace-corpus.mjs'));
+  // A pinned explicit config renamed upstream (.jest.js -> .jest.ts) resolves
+  // to the same name with the other extension.
+  fs.mkdirSync(out, { recursive: true });
+  const renamed = fs.mkdtempSync(path.join(out, 'renamed-config-'));
+  fs.writeFileSync(path.join(renamed, '.jest.ts'), 'export default {};\n');
+  assert.equal(
+    findConfig(renamed, 'jest', '.jest.js'),
+    path.join(renamed, '.jest.ts'),
+    'explicit config renamed upstream: same name, other extension',
+  );
+  fs.writeFileSync(path.join(renamed, '.jest.js'), 'module.exports = {};\n');
+  assert.equal(
+    findConfig(renamed, 'jest', '.jest.js'),
+    path.join(renamed, '.jest.js'),
+    'explicit config kept when present',
+  );
+  fs.rmSync(renamed, { recursive: true, force: true });
   assert.ok(
     vitestWrapper('/x/vitest.config.mjs', { trace: false, firstSetup: ['/a.mjs', '/b.mjs'] }).includes(
       '...["/a.mjs","/b.mjs"]',
