@@ -811,6 +811,16 @@ try {
     ),
     'jest wrapper: the config loader docblock leads the TS wrapper',
   );
+  fs.writeFileSync(
+    path.join(dir, 'jest.multiline.ts'),
+    '/**\n * @jest-config-loader ts-node\n * @jest-config-loader-options {\n *   "transpileOnly": true\n * }\n * @other x\n */\nexport default {};\n',
+  );
+  assert.ok(
+    jestWrapper(path.join(dir, 'jest.multiline.ts')).startsWith(
+      '/**\n * @jest-config-loader ts-node\n * @jest-config-loader-options {\n * "transpileOnly": true\n * }\n */\n',
+    ),
+    'jest wrapper: multiline loader options keep their continuation lines',
+  );
   assert.ok(tsWrapper.startsWith('// Generated'), 'jest wrapper: no docblock when the config has no loader');
   if (process.features.typescript) {
     // Native path, in an ESM package. (CommonJS packages go through Jest's

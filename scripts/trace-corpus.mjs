@@ -336,9 +336,17 @@ function jestLoaderDocblock(base) {
         .replace(/^\s*\/?\*+\/?\s?/, '')
         .replace(/\s*\*\/\s*$/, '')
         .trim(),
-    )
-    .filter((line) => /^@jest-config-loader(-options)?\b/.test(line));
-  return lines.length ? `/**\n${lines.map((line) => ` * ${line}`).join('\n')}\n */\n` : '';
+    );
+  // A pragma's value can span lines (multiline JSON options): keep each
+  // loader pragma with the non-pragma lines that follow it.
+  const kept = [];
+  let keep = false;
+  for (const line of lines) {
+    if (line.startsWith('@')) keep = /^@jest-config-loader(-options)?\b/.test(line);
+    else if (!line) keep = false;
+    if (keep) kept.push(line);
+  }
+  return kept.length ? `/**\n${kept.map((line) => ` * ${line}`).join('\n')}\n */\n` : '';
 }
 
 // Options as for vitestWrapper; environment is a Jest testEnvironment value.
