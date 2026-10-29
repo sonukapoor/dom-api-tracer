@@ -50,6 +50,10 @@ assert.equal(V.unfrozen('npx -y bun@1.4.2 install --frozen-lockfile', 'bun'), 'n
       '(cd app && pnpm install --no-frozen-lockfile --config.confirmModulesPurge=false)',
     ],
     ['npm ci', 'npm', 'npm install --no-audit --no-fund'],
+    // Separators inside quotes stay in their argument (#12 review).
+    ["npm ci --cache 'cache;a'", 'npm', "npm install --cache 'cache;a' --no-audit --no-fund"],
+    ['npm ci --cache="/tmp/cache;v1"', 'npm', 'npm install --cache="/tmp/cache;v1" --no-audit --no-fund'],
+    ["npm ci --cache 'a && b' && echo ok", 'npm', "npm install --cache 'a && b' --no-audit --no-fund && echo ok"],
   ];
   for (const [cmd, pm, want] of cases) {
     const got = V.unfrozen(cmd, pm);

@@ -81,8 +81,7 @@ const TOOL = { npm: 'npm', pnpm: 'pnpm', bun: 'bun', 'yarn-berry': 'yarn', yarn:
 // do, (, {) and trailing closers, so the result stays valid shell.
 function unfrozen(cmd, pm) {
   const tool = new RegExp(`(^|\\s)${TOOL[pm] ?? pm}(@\\S*)?(\\s|$)`);
-  return cmd
-    .split(/(;|&&|\|\||\n)/)
+  return splitCommands(cmd)
     .map((part, i) => {
       if (i % 2 || !tool.test(part)) return part;
       const [, lead, body, trail] = part.match(
@@ -91,6 +90,43 @@ function unfrozen(cmd, pm) {
       return lead + unfrozenSimple(body, pm) + trail;
     })
     .join('');
+}
+
+// [command, separator, command, ...] at ; && || and newlines outside
+// quotes and backslash escapes, so a quoted value (--cache 'a;b') stays whole.
+function splitCommands(cmd) {
+  const out = [];
+  let start = 0;
+  let quote = null;
+  for (let i = 0; i < cmd.length; i++) {
+    const c = cmd[i];
+    if (quote === "'") {
+      if (c === "'") quote = null;
+      continue;
+    }
+    if (c === '\\') {
+      i++;
+      continue;
+    }
+    if (quote === '"') {
+      if (c === '"') quote = null;
+      continue;
+    }
+    if (c === "'" || c === '"') {
+      quote = c;
+      continue;
+    }
+    const two = cmd.slice(i, i + 2);
+    let sep = null;
+    if (two === '&&' || two === '||') sep = two;
+    else if (c === ';' || c === '\n') sep = c;
+    if (sep === null) continue;
+    out.push(cmd.slice(start, i), sep);
+    i += sep.length - 1;
+    start = i + 1;
+  }
+  out.push(cmd.slice(start));
+  return out;
 }
 
 function unfrozenSimple(cmd, pm) {
