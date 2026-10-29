@@ -478,7 +478,24 @@ try {
   }
   const left = fs.readdirSync(fixture, { recursive: true }).filter((f) => String(f).includes('.dom-trace.'));
   assert.deepEqual(left, [], 'shared cleanup: copied setup file and wrapper removed');
-  const { vitestWrapper } = await import(path.join(root, 'scripts/trace-corpus.mjs'));
+  const { vitestWrapper, findConfig } = await import(path.join(root, 'scripts/trace-corpus.mjs'));
+  // A pinned explicit config renamed upstream (.jest.js -> .jest.ts) resolves
+  // to the same name with the other extension.
+  fs.mkdirSync(out, { recursive: true });
+  const renamed = fs.mkdtempSync(path.join(out, 'renamed-config-'));
+  fs.writeFileSync(path.join(renamed, '.jest.ts'), 'export default {};\n');
+  assert.equal(
+    findConfig(renamed, 'jest', '.jest.js'),
+    path.join(renamed, '.jest.ts'),
+    'explicit config renamed upstream: same name, other extension',
+  );
+  fs.writeFileSync(path.join(renamed, '.jest.js'), 'module.exports = {};\n');
+  assert.equal(
+    findConfig(renamed, 'jest', '.jest.js'),
+    path.join(renamed, '.jest.js'),
+    'explicit config kept when present',
+  );
+  fs.rmSync(renamed, { recursive: true, force: true });
   assert.ok(
     vitestWrapper('/x/vitest.config.mjs', { trace: false, firstSetup: ['/a.mjs', '/b.mjs'] }).includes(
       '...["/a.mjs","/b.mjs"]',
@@ -782,6 +799,29 @@ try {
     'jest wrapper: TS config loaded with import() and its extension',
   );
   assert.match(tsWrapper, /^export default async/m, 'jest wrapper: TS wrapper is a module like the original');
+  // A loader chosen by the config's docblock is carried to the wrapper, first.
+  fs.writeFileSync(
+    path.join(dir, 'jest.loader.ts'),
+    '/**\n * Jest config.\n * @jest-config-loader esbuild-register\n * @jest-config-loader-options {"transpileOnly": true}\n */\nexport default {};\n',
+  );
+  const loaderWrapper = jestWrapper(path.join(dir, 'jest.loader.ts'));
+  assert.ok(
+    loaderWrapper.startsWith(
+      '/**\n * @jest-config-loader esbuild-register\n * @jest-config-loader-options {"transpileOnly": true}\n */\n',
+    ),
+    'jest wrapper: the config loader docblock leads the TS wrapper',
+  );
+  fs.writeFileSync(
+    path.join(dir, 'jest.multiline.ts'),
+    '/**\n * @jest-config-loader ts-node\n * @jest-config-loader-options {\n *   "transpileOnly": true\n * }\n * @other x\n */\nexport default {};\n',
+  );
+  assert.ok(
+    jestWrapper(path.join(dir, 'jest.multiline.ts')).startsWith(
+      '/**\n * @jest-config-loader ts-node\n * @jest-config-loader-options {\n * "transpileOnly": true\n * }\n */\n',
+    ),
+    'jest wrapper: multiline loader options keep their continuation lines',
+  );
+  assert.ok(tsWrapper.startsWith('// Generated'), 'jest wrapper: no docblock when the config has no loader');
   if (process.features.typescript) {
     // Native path, in an ESM package. (CommonJS packages go through Jest's
     // ts-node fallback, which the real corpus exercises: mantine, ngx-formly.)
