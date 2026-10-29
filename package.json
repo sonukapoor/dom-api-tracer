@@ -4,6 +4,14 @@
   "description": "Measure which DOM APIs real test suites actually use under jsdom or happy-dom.",
   "license": "MIT",
   "author": "Sonu Kapoor",
+  "homepage": "https://github.com/sonukapoor/dom-api-tracer#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sonukapoor/dom-api-tracer.git"
+  },
+  "bugs": {
+    "url": "https://github.com/sonukapoor/dom-api-tracer/issues"
+  },
   "type": "commonjs",
   "main": "./src/tracer.cjs",
   "bin": {
@@ -31,7 +39,14 @@
     "testing",
     "vitest",
     "jest",
-    "instrumentation"
+    "instrumentation",
+    "dom-api",
+    "api-usage",
+    "tracing",
+    "test-environment",
+    "web-platform",
+    "measurement",
+    "unit-testing"
   ],
   "scripts": {
     "test": "node test/verify.mjs",
