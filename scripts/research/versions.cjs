@@ -70,8 +70,66 @@ const FROZEN = {
   npm: 'npm ci',
 };
 
-// The project's install command made to update the lockfile.
+// The tool each package manager's install runs (npm also as npx -y npm@11).
+const TOOL = { npm: 'npm', pnpm: 'pnpm', bun: 'bun', 'yarn-berry': 'yarn', yarn: 'yarn' };
+
+// The project's install command made to update the lockfile. A compound
+// command (wire-webapp's "if [ -f yarn.lock ]; then yarn install
+// --immutable; else npm ci --force; fi") is split into its simple commands
+// at ; && || and newlines; each one that runs the package manager's tool is
+// changed on its own, between any leading keywords or openers (then, else,
+// do, (, {) and trailing closers, so the result stays valid shell.
 function unfrozen(cmd, pm) {
+  const tool = new RegExp(`(^|\\s)${TOOL[pm] ?? pm}(@\\S*)?(\\s|$)`);
+  return splitCommands(cmd)
+    .map((part, i) => {
+      if (i % 2 || !tool.test(part)) return part;
+      const [, lead, body, trail] = part.match(
+        /^(\s*(?:(?:then|else|elif|do|if|while|until|!|\(|\{)\s+)*\(*)(.*?)(\s*[)}]*\s*)$/s,
+      );
+      return lead + unfrozenSimple(body, pm) + trail;
+    })
+    .join('');
+}
+
+// [command, separator, command, ...] at ; && || and newlines outside
+// quotes and backslash escapes, so a quoted value (--cache 'a;b') stays whole.
+function splitCommands(cmd) {
+  const out = [];
+  let start = 0;
+  let quote = null;
+  for (let i = 0; i < cmd.length; i++) {
+    const c = cmd[i];
+    if (quote === "'") {
+      if (c === "'") quote = null;
+      continue;
+    }
+    if (c === '\\') {
+      i++;
+      continue;
+    }
+    if (quote === '"') {
+      if (c === '"') quote = null;
+      continue;
+    }
+    if (c === "'" || c === '"') {
+      quote = c;
+      continue;
+    }
+    const two = cmd.slice(i, i + 2);
+    let sep = null;
+    if (two === '&&' || two === '||') sep = two;
+    else if (c === ';' || c === '\n') sep = c;
+    if (sep === null) continue;
+    out.push(cmd.slice(start, i), sep);
+    i += sep.length - 1;
+    start = i + 1;
+  }
+  out.push(cmd.slice(start));
+  return out;
+}
+
+function unfrozenSimple(cmd, pm) {
   let c = cmd;
   if (pm === 'npm') {
     c = c.replace(/(^|\s)ci(?=\s|$)/, '$1install');

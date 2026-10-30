@@ -29,6 +29,66 @@ assert.equal(
   'YARN_IGNORE_ENGINES=true yarn install',
 );
 assert.equal(V.unfrozen('npx -y bun@1.4.2 install --frozen-lockfile', 'bun'), 'npx -y bun@1.4.2 install');
+// Compound commands: only the package manager's own simple command changes,
+// inside the if/subshell, so the result still parses and runs.
+{
+  const wire = 'if [ -f yarn.lock ]; then yarn install --immutable; else npm ci --force; fi';
+  const cases = [
+    [
+      wire,
+      'npm',
+      'if [ -f yarn.lock ]; then yarn install --immutable; else npm install --force --no-audit --no-fund; fi',
+    ],
+    [
+      wire,
+      'yarn-berry',
+      'if [ -f yarn.lock ]; then YARN_ENABLE_IMMUTABLE_INSTALLS=false yarn install; else npm ci --force; fi',
+    ],
+    [
+      '(cd app && pnpm install --frozen-lockfile)',
+      'pnpm',
+      '(cd app && pnpm install --no-frozen-lockfile --config.confirmModulesPurge=false)',
+    ],
+    ['npm ci', 'npm', 'npm install --no-audit --no-fund'],
+    // Separators inside quotes stay in their argument (#12 review).
+    ["npm ci --cache 'cache;a'", 'npm', "npm install --cache 'cache;a' --no-audit --no-fund"],
+    ['npm ci --cache="/tmp/cache;v1"', 'npm', 'npm install --cache="/tmp/cache;v1" --no-audit --no-fund'],
+    ["npm ci --cache 'a && b' && echo ok", 'npm', "npm install --cache 'a && b' --no-audit --no-fund && echo ok"],
+  ];
+  for (const [cmd, pm, want] of cases) {
+    const got = V.unfrozen(cmd, pm);
+    assert.equal(got, want);
+    execFileSync('sh', ['-n', '-c', got]);
+  }
+  // Run the wire-webapp entry from corpus/apps.json against stub npm/yarn:
+  // each branch reaches its tool with the unfrozen arguments and env.
+  const install = JSON.parse(fs.readFileSync(path.join(__dirname, '../../corpus/apps.json'), 'utf8')).projects.find(
+    (p) => p.name === 'wire-webapp',
+  ).install;
+  assert.equal(install, wire);
+  const stubs = fs.mkdtempSync(path.join(os.tmpdir(), 'versions-stubs-'));
+  for (const t of ['npm', 'yarn'])
+    fs.writeFileSync(
+      path.join(stubs, t),
+      `#!/bin/sh\necho "${t} $* immutable=\${YARN_ENABLE_IMMUTABLE_INSTALLS-unset}"\n`,
+      { mode: 0o755 },
+    );
+  const run = (files) => {
+    const d = fs.mkdtempSync(path.join(os.tmpdir(), 'versions-wire-'));
+    for (const f of files) fs.writeFileSync(path.join(d, f), '');
+    const corpus = path.join(d, 'corpus.json');
+    fs.writeFileSync(corpus, JSON.stringify({ projects: [{ name: 'wire', install }] }));
+    const cmd = V.installCommand(corpus, d, 'wire', false);
+    const env = { ...process.env, PATH: `${stubs}:${process.env.PATH}` };
+    delete env.YARN_ENABLE_IMMUTABLE_INSTALLS;
+    const out = execFileSync('sh', ['-c', cmd], { cwd: d, env, encoding: 'utf8' }).trim();
+    fs.rmSync(d, { recursive: true, force: true });
+    return out;
+  };
+  assert.equal(run(['package-lock.json']), 'npm install --force --no-audit --no-fund immutable=unset');
+  assert.equal(run(['yarn.lock', '.yarnrc.yml']), 'yarn install immutable=false');
+  fs.rmSync(stubs, { recursive: true, force: true });
+}
 
 // Override maps: other entries for the package (versioned, nested) go.
 assert.deepEqual(
