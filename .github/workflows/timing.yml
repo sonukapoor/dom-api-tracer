@@ -46,6 +46,9 @@ on:
         description: After timing, one CPU-profiled run per DOM; uploads where the time went (not the profiles)
         type: boolean
         default: false
+      max_parallel:
+        description: 'Most project jobs this run starts at once. The account runs at most 20 jobs at a time across all its repositories: with 4, four runs started together leave runners free for CI (warpdom PR checks). Raise it for a single run on a quiet account.'
+        default: '4'
 
 permissions:
   contents: read
@@ -66,6 +69,9 @@ jobs:
     timeout-minutes: 355
     strategy:
       fail-fast: false
+      # At most this many project jobs at once (max_parallel input): every
+      # job of every run shares the account's runners with CI.
+      max-parallel: ${{ fromJSON(inputs.max_parallel) }}
       matrix:
         project: ${{ fromJSON(needs.plan.outputs.projects) }}
     env:
