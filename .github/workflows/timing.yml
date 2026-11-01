@@ -48,6 +48,8 @@ on:
         default: false
       max_parallel:
         description: 'Most project jobs this run starts at once. The account runs at most 20 jobs at a time across all its repositories: with 4, four runs started together leave runners free for CI (warpdom PR checks). Raise it for a single run on a quiet account.'
+        type: choice
+        options: ['1', '2', '4', '6', '8', '10', '14', '20']
         default: '4'
 
 permissions:
