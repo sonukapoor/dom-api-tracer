@@ -73,7 +73,7 @@ jobs:
       fail-fast: false
       # At most this many project jobs at once (max_parallel input): every
       # job of every run shares the account's runners with CI.
-      max-parallel: ${{ fromJSON(inputs.max_parallel) }}
+      max-parallel: ${{ fromJSON(inputs.max_parallel || '4') }}
       matrix:
         project: ${{ fromJSON(needs.plan.outputs.projects) }}
     env:
