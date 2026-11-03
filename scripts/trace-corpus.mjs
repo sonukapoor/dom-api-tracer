@@ -407,21 +407,57 @@ function setPending(update) {
   else fs.rmSync(pendingFile, { force: true });
 }
 
-// warpdom's source and runtime dependencies (parse5, entities), copied into
-// the package's node_modules for one run; removed with the wrappers.
-function copyWarpdom(warpdomDir, pkgDir) {
+// warpdom's source and runtime dependencies, copied into the package's
+// node_modules for one run; removed with the wrappers. The dependencies are
+// those its package.json declares and theirs (parse5 and entities;
+// @rgrove/parse-xml, which warpdom loads the first time it parses XML), as
+// installed in warpdom's node_modules.
+export function copyWarpdom(warpdomDir, pkgDir) {
   const target = path.join(pkgDir, 'node_modules', 'warpdom.dom-trace.copy');
   fs.rmSync(target, { recursive: true, force: true });
   fs.mkdirSync(target, { recursive: true });
   setPending((list) => [...list.filter((f) => f !== target), target]);
   fs.cpSync(path.join(warpdomDir, 'src'), path.join(target, 'src'), { recursive: true });
   fs.copyFileSync(path.join(warpdomDir, 'package.json'), path.join(target, 'package.json'));
-  for (const dep of ['parse5', 'entities']) {
-    fs.cpSync(fs.realpathSync(path.join(warpdomDir, 'node_modules', dep)), path.join(target, 'node_modules', dep), {
-      recursive: true,
-    });
+  for (const [name, dir] of runtimeDependencies(warpdomDir)) {
+    fs.cpSync(fs.realpathSync(dir), path.join(target, 'node_modules', name), { recursive: true });
   }
   return target;
+}
+
+// The packages a package's dependencies (and optionalDependencies) resolve
+// to in root/node_modules, transitively: name -> directory. A dependency
+// installed nested under another (node_modules/a/node_modules/b) is copied
+// with it; only its own dependencies are looked up. A missing optional
+// dependency is skipped.
+export function runtimeDependencies(root) {
+  const found = new Map();
+  const visited = new Set();
+  const visit = (dir) => {
+    if (visited.has(dir)) return;
+    visited.add(dir);
+    const pkg = JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf8'));
+    const optional = pkg.optionalDependencies ?? {};
+    for (const name of Object.keys({ ...pkg.dependencies, ...optional })) {
+      let at = null;
+      for (let d = dir; ; d = path.dirname(d)) {
+        const candidate = path.join(d, 'node_modules', name);
+        if (fs.existsSync(path.join(candidate, 'package.json'))) {
+          at = candidate;
+          break;
+        }
+        if (d === root || path.dirname(d) === d) break;
+      }
+      if (at === null) {
+        if (name in optional) continue;
+        throw new Error(`${name} (a dependency of ${pkg.name}) is not installed in ${root}`);
+      }
+      if (at === path.join(root, 'node_modules', name)) found.set(name, at);
+      visit(at);
+    }
+  };
+  visit(root);
+  return found;
 }
 
 export function removeWrappers(files) {

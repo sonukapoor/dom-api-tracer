@@ -589,10 +589,6 @@ try {
     "export default { name: 'warpdom', viteEnvironment: 'client', " +
       'setup() { globalThis.__envGroupStandIn = true; return { teardown() { delete globalThis.__envGroupStandIn; } }; } };\n',
   );
-  for (const dep of ['parse5', 'entities']) {
-    fs.mkdirSync(path.join(standIn, 'node_modules', dep), { recursive: true });
-    fs.writeFileSync(path.join(standIn, 'node_modules', dep, 'package.json'), `{ "name": "${dep}" }`);
-  }
   const groupLog = path.join(out, 'env-group.log');
   fs.rmSync(groupLog, { force: true });
   const dir = path.join(out, 'env-group');
@@ -637,6 +633,62 @@ try {
       (String(err.stdout || '') + String(err.stderr || '')).slice(-1500) +
       err.message,
   );
+}
+
+// The warpdom copy brings the dependencies warpdom's package.json declares,
+// and theirs: @rgrove/parse-xml too, which warpdom requires the first time
+// a test parses XML (Grafana's atom feed test failed with "Cannot find
+// module '@rgrove/parse-xml'" when only parse5 and entities were copied).
+// One installed nested under its dependent comes with it; a missing
+// optional one is skipped.
+try {
+  const { copyWarpdom, removeWrappers } = await import(path.join(root, 'scripts/trace-corpus.mjs'));
+  const standIn = path.join(out, 'warpdom-deps-standin');
+  fs.rmSync(standIn, { recursive: true, force: true });
+  const pkg = (dir, json) => {
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify(json));
+  };
+  pkg(standIn, {
+    name: 'warpdom',
+    dependencies: { parse5: '^8', '@rgrove/parse-xml': '^5' },
+    optionalDependencies: { 'not-installed': '1' },
+  });
+  fs.mkdirSync(path.join(standIn, 'src'));
+  fs.writeFileSync(path.join(standIn, 'src', 'node.js'), '');
+  const modules = path.join(standIn, 'node_modules');
+  pkg(path.join(modules, 'parse5'), { name: 'parse5', dependencies: { entities: '^8', tslib: '*' } });
+  pkg(path.join(modules, 'parse5', 'node_modules', 'entities'), { name: 'entities', version: '8.0.0' });
+  pkg(path.join(modules, 'entities'), { name: 'entities', version: '7.0.1' });
+  pkg(path.join(modules, 'tslib'), { name: 'tslib' });
+  pkg(path.join(modules, '@rgrove', 'parse-xml'), { name: '@rgrove/parse-xml' });
+  pkg(path.join(modules, 'unrelated'), { name: 'unrelated' });
+  const project = path.join(out, 'warpdom-deps-project');
+  fs.rmSync(project, { recursive: true, force: true });
+  fs.mkdirSync(project, { recursive: true });
+  const copy = copyWarpdom(standIn, project);
+  const listed = fs
+    .readdirSync(path.join(copy, 'node_modules'), { recursive: true })
+    .map(String)
+    .filter((f) => f.endsWith('package.json'))
+    .sort();
+  assert.deepEqual(
+    listed,
+    [
+      '@rgrove/parse-xml/package.json',
+      'parse5/node_modules/entities/package.json',
+      'parse5/package.json',
+      'tslib/package.json',
+    ],
+    'warpdom copy: its dependencies, and theirs',
+  );
+  assert.ok(fs.existsSync(path.join(copy, 'src', 'node.js')), 'warpdom copy: its source');
+  removeWrappers([copy]);
+  assert.equal(fs.existsSync(copy), false, 'warpdom copy: removed');
+  console.log('• warpdom copy deps       ok');
+} catch (err) {
+  failures++;
+  console.log('• warpdom copy deps       FAILED\n' + err.message);
 }
 fs.rmSync(path.join(root, 'test/fixtures/env-group/pkg/node_modules'), { recursive: true, force: true });
 
