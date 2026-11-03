@@ -207,6 +207,30 @@
           }
         }
       ]
+    },
+    {
+      "name": "n8n",
+      "repo": "https://github.com/n8n-io/n8n",
+      "frameworks": [
+        "Vue"
+      ],
+      "kind": "application (workflow automation editor)",
+      "notes": "Candidate project, the first application screened for adoption (warpdom PLAN.md, adoption plan A6). n8n's editor (packages/frontend/editor-ui, the Vue 3 single-page app) in a pnpm workspace: Vitest 5.0.1, jsdom 23.0.1, Vite 8, Vue 3.5, @testing-library/vue 8. vitest.config.mts merges vite.config.mts with @n8n/vitest-config/frontend (environment jsdom, globals, restoreMocks, silent, passWithNoTests, setupFiles src/__tests__/setup.ts, test.alias to element-plus's single-file bundle and a stub for node icon SVGs, server.deps.inline vitest-mock-extended and @testing-library/jest-dom); no workspace projects, no environmentMatchGlobs, default pool and isolation; one file (Canvas.test.ts) pins @vitest-environment jsdom, which the harness switches. The setup file imports @n8n/vitest-config/setup/frontend, which stubs globals on every run: TZ=UTC, an in-memory localStorage/sessionStorage only where the global is missing (Node >= 26), PointerEvent replaced by a MouseEvent subclass, hasPointerCapture/setPointerCapture, ResizeObserver if missing, IntersectionObserver, matchMedia (editor-ui overrides it to match every query), Worker, SharedWorker, DataTransfer, SpeechSynthesis, HTMLCanvasElement getContext, scrollIntoView/scrollTo, Range getBoundingClientRect/getClientRects, requestAnimationFrame on globalThis via setTimeout, XMLHttpRequest.prototype.send failing synchronously, and an unhandledRejection filter for SCSS teardown errors; editor-ui adds fake-indexeddb, a reka-ui Popover mock, and HTMLDialogElement show/showModal/close only where missing. 1501 test files (about 21000 test cases by a static count), about 90% of the frontend unit-test time: n8n's CI runs every frontend package's Vitest with --shard=k/4 in 4 jobs on Node 24.22.1 and 26.12.1 (blacksmith 4 vCPU; run 41615645500 at the pin, all green: 8 jobs of 8 to 10 minutes, editor-ui's part of shard 2/4 375 files in 365 s). Measured: shard 1/4 (--shard=1/4, about 375 files), the part of the suite one of n8n's own CI jobs runs; the whole suite with 2 workers on a 4 vCPU GitHub runner would take about 40 to 60 minutes per run, over the timing scripts' 45-minute limit per package run, and the harness keys results by package directory, so the four shards cannot be listed as four packages yet. Not measured: the other frontend packages (design-system 148 files, chat, stores, composables, the feature modules' frontends; the next candidates) and the backend (node environment). pnpm 12.4.2 (packageManager; pnpm-lock.yaml; pmOnFail warn), engines node >=24. Install with --ignore-scripts: the allowed dependency builds are backend native modules (isolated-vm 7.0.2 has prebuilt binaries for Node 24 and 26 only and would compile from source on Node 22; @confluentinc/kafka-javascript, sqlite3, @vscode/ripgrep), editor-ui's Vite config stubs isolated-vm, and no workspace package has an install script; the root preinstall (refuses npm) and prepare (lefthook, skipped under CI) are not needed. The build step builds the workspace packages editor-ui depends on (turbo build --filter n8n-editor-ui^..., 44 packages: tsc, tsdown and the design-system and chat Vite builds), as turbo's test task does (dependsOn ^build); the tests import their dist (@n8n/vitest-config's included). NODE_OPTIONS --max-old-space-size=7168 as in n8n's unit-test workflow. Runs on Node 22.23.3 (the corpus Node), below the engines field (pnpm warns; engineStrict is not set). Not run locally: the install was not run here, so install, build and the first results come from the timing workflow.",
+      "install": "pnpm install --frozen-lockfile --ignore-scripts",
+      "build": "TURBO_TELEMETRY_DISABLED=1 pnpm exec turbo run build --filter='n8n-editor-ui^...'",
+      "packages": [
+        {
+          "dir": "packages/frontend/editor-ui",
+          "runner": "vitest",
+          "config": "vitest.config.mts",
+          "args": [
+            "--shard=1/4"
+          ],
+          "env": {
+            "NODE_OPTIONS": "--max-old-space-size=7168"
+          }
+        }
+      ]
     }
   ]
 }

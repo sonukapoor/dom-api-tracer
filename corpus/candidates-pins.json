@@ -22,5 +22,11 @@
     "commit": "e47e45af06427b3b2497100c2b849935c23af30d",
     "date": "2026-10-18T11:46:06+03:00",
     "pinnedAt": "2026-10-20T01:00:16Z"
+  },
+  "n8n": {
+    "repo": "https://github.com/n8n-io/n8n",
+    "commit": "ddfafbfbeb61bf45d5b46085e0f194df87369a3c",
+    "date": "2026-11-03T09:43:58Z",
+    "pinnedAt": "2026-11-03T12:40:27Z"
   }
 }
