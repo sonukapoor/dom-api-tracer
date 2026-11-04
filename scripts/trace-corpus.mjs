@@ -407,21 +407,85 @@ function setPending(update) {
   else fs.rmSync(pendingFile, { force: true });
 }
 
-// warpdom's source and runtime dependencies (parse5, entities), copied into
-// the package's node_modules for one run; removed with the wrappers.
-function copyWarpdom(warpdomDir, pkgDir) {
+// warpdom's source and runtime dependencies, copied into the package's
+// node_modules for one run; removed with the wrappers. The dependencies are
+// those its package.json declares and theirs (parse5 and entities;
+// @rgrove/parse-xml, which warpdom loads the first time it parses XML), as
+// installed for warpdom by npm or pnpm.
+export function copyWarpdom(warpdomDir, pkgDir) {
   const target = path.join(pkgDir, 'node_modules', 'warpdom.dom-trace.copy');
   fs.rmSync(target, { recursive: true, force: true });
   fs.mkdirSync(target, { recursive: true });
   setPending((list) => [...list.filter((f) => f !== target), target]);
   fs.cpSync(path.join(warpdomDir, 'src'), path.join(target, 'src'), { recursive: true });
   fs.copyFileSync(path.join(warpdomDir, 'package.json'), path.join(target, 'package.json'));
-  for (const dep of ['parse5', 'entities']) {
-    fs.cpSync(fs.realpathSync(path.join(warpdomDir, 'node_modules', dep)), path.join(target, 'node_modules', dep), {
-      recursive: true,
-    });
+  for (const { dir, at } of runtimeDependencies(warpdomDir)) {
+    // A package's own node_modules is not copied: what it needs from there
+    // has its own entry.
+    const own = path.join(dir, 'node_modules');
+    fs.cpSync(dir, path.join(target, at), { recursive: true, filter: (src) => src !== own });
   }
   return target;
+}
+
+// The packages a package's dependencies (and optionalDependencies) resolve
+// to, transitively, as a copy layout: [{ name, dir, at }], where dir is the
+// installed package's real directory and at the directory, relative to the
+// copy of root, that it is copied to. Each dependency is resolved the way
+// Node does, from its dependent's real directory up through the node_modules
+// directories above it (as far as root), so pnpm's layout (node_modules/<name>
+// a link into .pnpm/<name>@<version>/node_modules/<name>, with its
+// dependencies beside it) resolves like npm's. In the copy, a package goes
+// to node_modules/<name> unless another version is already found from its
+// dependent's place there; then it goes under the dependent's node_modules.
+// A missing optional dependency is skipped.
+export function runtimeDependencies(root) {
+  const realRoot = fs.realpathSync(root);
+  const installed = (from, name) => {
+    for (let d = from; ; d = path.dirname(d)) {
+      if (path.basename(d) !== 'node_modules') {
+        const candidate = path.join(d, 'node_modules', name);
+        if (fs.existsSync(path.join(candidate, 'package.json'))) return fs.realpathSync(candidate);
+      }
+      if (d === realRoot || path.dirname(d) === d) return null;
+    }
+  };
+  const layout = [];
+  const placed = new Map(); // copy-relative directory -> real directory
+  // The real directory Node would load name from at a copy-relative place.
+  const seenFrom = (at, name) => {
+    for (let d = at; ; d = path.dirname(d)) {
+      if (path.basename(d) !== 'node_modules') {
+        const hit = placed.get(path.join(d, 'node_modules', name));
+        if (hit) return hit;
+      }
+      if (d === '.') return null;
+    }
+  };
+  const visit = (dir, at) => {
+    const pkg = JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf8'));
+    const optional = pkg.optionalDependencies ?? {};
+    const added = [];
+    for (const name of Object.keys({ ...pkg.dependencies, ...optional })) {
+      const real = installed(dir, name);
+      if (real === null) {
+        if (name in optional) continue;
+        throw new Error(`${name} (a dependency of ${pkg.name}) is not installed in ${root}`);
+      }
+      if (real === realRoot) continue;
+      const seen = seenFrom(at, name);
+      if (seen === real) continue;
+      const to = seen === null ? path.join('node_modules', name) : path.join(at, 'node_modules', name);
+      placed.set(to, real);
+      layout.push({ name, dir: real, at: to });
+      added.push([real, to]);
+    }
+    // A package's dependencies are placed before theirs, which may then nest
+    // under them without hiding a version they already found.
+    for (const [real, to] of added) visit(real, to);
+  };
+  visit(realRoot, '.');
+  return layout;
 }
 
 export function removeWrappers(files) {

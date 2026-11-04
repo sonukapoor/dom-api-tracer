@@ -1,6 +1,7 @@
 // End-to-end check: run the fixture suites under every supported runner and
 // environment with the tracer installed, then assert the recorded counts.
 import { execFileSync } from 'node:child_process';
+import { createRequire } from 'node:module';
 import fs from 'node:fs';
 import path from 'node:path';
 import assert from 'node:assert/strict';
@@ -589,10 +590,6 @@ try {
     "export default { name: 'warpdom', viteEnvironment: 'client', " +
       'setup() { globalThis.__envGroupStandIn = true; return { teardown() { delete globalThis.__envGroupStandIn; } }; } };\n',
   );
-  for (const dep of ['parse5', 'entities']) {
-    fs.mkdirSync(path.join(standIn, 'node_modules', dep), { recursive: true });
-    fs.writeFileSync(path.join(standIn, 'node_modules', dep, 'package.json'), `{ "name": "${dep}" }`);
-  }
   const groupLog = path.join(out, 'env-group.log');
   fs.rmSync(groupLog, { force: true });
   const dir = path.join(out, 'env-group');
@@ -637,6 +634,116 @@ try {
       (String(err.stdout || '') + String(err.stderr || '')).slice(-1500) +
       err.message,
   );
+}
+
+// The warpdom copy brings the dependencies warpdom's package.json declares,
+// and theirs: @rgrove/parse-xml too, which warpdom requires the first time
+// a test parses XML (Grafana's atom feed test failed with "Cannot find
+// module '@rgrove/parse-xml'" when only parse5 and entities were copied).
+// Each is resolved the way Node does from its dependent's real directory,
+// so pnpm's links into .pnpm/<name>@<version>/node_modules resolve too, and
+// is copied where Node finds it from its dependent's copy, a second version
+// of a name nested under its dependent. A missing optional one is skipped.
+try {
+  const { copyWarpdom, removeWrappers } = await import(path.join(root, 'scripts/trace-corpus.mjs'));
+  const standIn = path.join(out, 'warpdom-deps-standin');
+  fs.rmSync(standIn, { recursive: true, force: true });
+  const pkg = (dir, json) => {
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify(json));
+  };
+  pkg(standIn, {
+    name: 'warpdom',
+    dependencies: { parse5: '^8', '@rgrove/parse-xml': '^5' },
+    optionalDependencies: { 'not-installed': '1' },
+  });
+  fs.mkdirSync(path.join(standIn, 'src'));
+  fs.writeFileSync(path.join(standIn, 'src', 'node.js'), '');
+  const modules = path.join(standIn, 'node_modules');
+  pkg(path.join(modules, 'parse5'), { name: 'parse5', dependencies: { entities: '^8', tslib: '*' } });
+  pkg(path.join(modules, 'parse5', 'node_modules', 'entities'), { name: 'entities', version: '8.0.0' });
+  pkg(path.join(modules, 'entities'), { name: 'entities', version: '7.0.1' });
+  pkg(path.join(modules, 'tslib'), { name: 'tslib' });
+  pkg(path.join(modules, '@rgrove', 'parse-xml'), { name: '@rgrove/parse-xml' });
+  pkg(path.join(modules, 'unrelated'), { name: 'unrelated' });
+  const project = path.join(out, 'warpdom-deps-project');
+  fs.rmSync(project, { recursive: true, force: true });
+  fs.mkdirSync(project, { recursive: true });
+  const copy = copyWarpdom(standIn, project);
+  const listed = fs
+    .readdirSync(path.join(copy, 'node_modules'), { recursive: true })
+    .map(String)
+    .filter((f) => f.endsWith('package.json'))
+    .sort();
+  assert.deepEqual(
+    listed,
+    ['@rgrove/parse-xml/package.json', 'entities/package.json', 'parse5/package.json', 'tslib/package.json'],
+    'warpdom copy: its dependencies, and theirs',
+  );
+  assert.equal(
+    JSON.parse(fs.readFileSync(path.join(copy, 'node_modules', 'entities', 'package.json'), 'utf8')).version,
+    '8.0.0',
+    'warpdom copy: the version its dependent has installed',
+  );
+  assert.ok(fs.existsSync(path.join(copy, 'src', 'node.js')), 'warpdom copy: its source');
+  removeWrappers([copy]);
+  assert.equal(fs.existsSync(copy), false, 'warpdom copy: removed');
+
+  // pnpm: node_modules/<name> links to .pnpm/<name>@<version>/node_modules/<name>,
+  // whose dependencies are links beside it. warpdom needs entities 7, parse5
+  // entities 6, so parse5's goes under parse5 in the copy.
+  const pnpmStandIn = path.join(out, 'warpdom-deps-pnpm');
+  fs.rmSync(pnpmStandIn, { recursive: true, force: true });
+  pkg(pnpmStandIn, { name: 'warpdom', dependencies: { parse5: '^8', entities: '^7' } });
+  fs.mkdirSync(path.join(pnpmStandIn, 'src'));
+  fs.writeFileSync(path.join(pnpmStandIn, 'src', 'node.js'), '');
+  const store = path.join(pnpmStandIn, 'node_modules', '.pnpm');
+  const inStore = (name, version, deps = {}) => {
+    const dir = path.join(store, `${name}@${version}`, 'node_modules', name);
+    pkg(dir, { name, version, dependencies: deps });
+    const requires = Object.keys(deps).map((d) => `require(${JSON.stringify(d)})`);
+    fs.writeFileSync(
+      path.join(dir, 'index.js'),
+      `module.exports = [${JSON.stringify(version)}, ${requires.join(', ')}];`,
+    );
+    return dir;
+  };
+  const parse5 = inStore('parse5', '8.0.0', { entities: '^6' });
+  inStore('entities', '6.0.0');
+  inStore('entities', '7.0.1');
+  const link = (from, to) => fs.symlinkSync(path.relative(path.dirname(from), to), from);
+  link(path.join(path.dirname(parse5), 'entities'), path.join(store, 'entities@6.0.0', 'node_modules', 'entities'));
+  link(path.join(pnpmStandIn, 'node_modules', 'parse5'), parse5);
+  link(
+    path.join(pnpmStandIn, 'node_modules', 'entities'),
+    path.join(store, 'entities@7.0.1', 'node_modules', 'entities'),
+  );
+  const fromStandIn = createRequire(path.join(pnpmStandIn, 'src', 'node.js'));
+  assert.deepEqual(fromStandIn('parse5'), ['8.0.0', ['6.0.0']], 'warpdom copy (pnpm): stand-in loads in Node');
+  const pnpmCopy = copyWarpdom(pnpmStandIn, project);
+  const pnpmListed = fs
+    .readdirSync(path.join(pnpmCopy, 'node_modules'), { recursive: true })
+    .map(String)
+    .filter((f) => f.endsWith('package.json'))
+    .sort();
+  assert.deepEqual(
+    pnpmListed,
+    ['entities/package.json', 'parse5/node_modules/entities/package.json', 'parse5/package.json'],
+    'warpdom copy (pnpm): its dependencies, and theirs',
+  );
+  const fromCopy = createRequire(path.join(pnpmCopy, 'src', 'node.js'));
+  assert.deepEqual(fromCopy('parse5'), ['8.0.0', ['6.0.0']], 'warpdom copy (pnpm): parse5 loads its entities');
+  assert.deepEqual(fromCopy('entities'), ['7.0.1'], 'warpdom copy (pnpm): warpdom loads its entities');
+  assert.equal(
+    fs.lstatSync(path.join(pnpmCopy, 'node_modules', 'parse5')).isSymbolicLink(),
+    false,
+    'warpdom copy (pnpm): packages copied, not linked',
+  );
+  removeWrappers([pnpmCopy]);
+  console.log('• warpdom copy deps       ok');
+} catch (err) {
+  failures++;
+  console.log('• warpdom copy deps       FAILED\n' + err.message);
 }
 fs.rmSync(path.join(root, 'test/fixtures/env-group/pkg/node_modules'), { recursive: true, force: true });
 

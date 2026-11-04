@@ -28,5 +28,11 @@
     "commit": "ddfafbfbeb61bf45d5b46085e0f194df87369a3c",
     "date": "2026-11-03T09:43:58Z",
     "pinnedAt": "2026-11-03T12:40:27Z"
+  },
+  "grafana": {
+    "repo": "https://github.com/grafana/grafana",
+    "commit": "32b28a81313b48a7f0065783699dcf2c78e5a29d",
+    "date": "2026-11-03T12:25:34Z",
+    "pinnedAt": "2026-11-03T13:21:22Z"
   }
 }
