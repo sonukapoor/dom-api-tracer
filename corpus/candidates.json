@@ -250,6 +250,34 @@
           ]
         }
       ]
+    },
+    {
+      "name": "mattermost",
+      "repo": "https://github.com/mattermost/mattermost",
+      "frameworks": [
+        "React"
+      ],
+      "kind": "application (team messaging and collaboration)",
+      "notes": "Candidate project, the third application screened for adoption (warpdom PLAN.md, adoption plan A6). Mattermost's web app (webapp/channels, the React single-page app; the repository root is the Go server, with the web app an npm workspace in webapp/: channels, platform/client, components, eslint-plugin, mattermost-redux, shared and types), the channels Jest run as the repo CI runs it (Web App CI, test (channels shard k/4): npm run test-ci -- --config jest.config.channels.js --shard=k/4 in webapp/channels, which is cross-env TZ=Etc/UTC LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8 jest --ci --maxWorkers=100% --forceExit --detectOpenHandles --logHeapUsage --coverage, NODE_OPTIONS --max_old_space_size=5120). Jest 30.5.2 with jest-environment-jsdom 30.5.2 (jsdom 26.1.0), the babel-jest transform (babel.config.js: preset-env for Chrome 110 with core-js 3.50 useBuiltIns usage, which polyfills RegExp.escape on Node 22; preset-react, TypeScript, styled-components), React 19.3.1, @testing-library/react 16.3.3, @testing-library/dom 10.4.2. jest.config.channels.js spreads jest.config.js and ignores src/packages/mattermost-redux (its own job with jest.config.mattermost-redux.js): testEnvironment jsdom, testEnvironmentOptions url http://localhost:8065 (warpdom's Jest environment reads url as jest-environment-jsdom does), testTimeout 60 s, clearMocks, fakeTimers doNotFake performance, modulePaths src, moduleNameMapper to the platform packages' sources (@mattermost/components, client, types, shared; so no build of them is needed for the tests) and mocks (pdfjs-dist, images and media, CSS via identity-obj-proxy, the Compass Switch CSS module, i18n JSON), transformIgnorePatterns that transform about 20 ESM packages (react-router, pdfjs-dist, p-queue, @tiptap, marked, lowlight, ...), snapshotFormat escapeString and printBasicPrototype. Setup on every file: setupFiles jest-canvas-mock; setupFilesAfterEnv src/tests/setup_jest.ts (jest-dom, a performance mock, redux-persist, react-intl, react-router-dom and react-virtualized-auto-sizer mocks, global.window replaced by Object.create(window), globalThis.fetch from node-fetch, document.queryCommandSupported and execCommand defined for copy and insertText, documentElement font-size 12px, @mui/styled-engine mocked to the styled-components engine, ResizeObserver from resize-observer-polyfill, react-redux re-exported configurable, an arrayContainingExactly matcher). Console-failing: afterEach throws when a test called console.warn or console.error, except React deprecated-lifecycle warnings from react-bootstrap components, act() warnings and errors containing 'Not implemented:' (jsdom's message for unimplemented features); this is set up in the file itself, not by CI, so it applies in every run. No custom environment and no @jest-environment comments. 1305 test files at the pin (1063 .tsx; plus 101 mattermost-redux and 18 platform files in other jobs, not measured), 15042 tests (11 skipped): Mattermost's CI runs channels with --shard=k/4 in 4 jobs on ubuntu-24.04 (4 vCPU) on Node 24.11.1 (.nvmrc); --detectOpenHandles makes Jest run in band, so each CI shard runs in one process with coverage (Web App CI run 41799583654 at the pin, all green: shard 1/4 327 files, 3439 tests, 307 snapshots, Jest time 442 s; shards 2 to 4 326 files each, 548 to 610 s). Measured: shard 1/4 (--shard=1/4, the 327 files Mattermost's CI job 1/4 runs at the pin: Jest shards by the SHA-1 of each file's path relative to rootDir, webapp/channels for the harness's wrapper config as for the repo's; 279 in src/components, 79 of them in admin_console, 18 in utils, 8 in plugins), with --forceExit as in the repo CI (the harness's 2 workers, not in band: --detectOpenHandles is left out, and --coverage, so the run is not CI's process layout). The whole channels suite in band takes about 36 minutes of Jest time on GitHub's runners with coverage; 3 rounds x 3 configurations plus warm-ups of the whole suite would not fit the 355-minute job, and of one shard they do with room (shard 1/2 would also fit). Not measured: the other three shards, mattermost-redux, the platform packages and the e2e suites (Cypress, Playwright). TZ=Etc/UTC, LC_ALL and LANG en_US.UTF-8 and NODE_OPTIONS --max_old_space_size=5120 (package env) as the test-ci script and CI set them. npm 11.6.2 (packageManager; package-lock.json lockfileVersion 3), engines node 24.11.1 and npm 11.6.2 exactly, and webapp/.npmrc sets engine-strict=true, so npm on Node 22.23.3 refuses to install: the install is npx -y npm@11.6.2 ci --include=dev --engine-strict=false --no-audit --no-fund in webapp (as CI's make node_modules: npm ci --include=dev), with its scripts: the postinstall runs patch-package (patches dom-accessibility-api 0.6.3, react-intl 7.1.14, react-overlays 5.2.1, redux-batched-actions 0.5.0 and @types/react-bootstrap, which the tests depend on) and builds platform/types, client, shared and components, as CI does on every run. The repository root has no package.json, so the install runs as the build step with \"install\": false (the harness installs only in the checkout root, and the build step runs once per job); the versions mode, which reinstalls through the install command, does not apply to this entry. Runs on Node 22.23.3 (the corpus Node), below the exact engines version. Pinned at the newest master commit whose push workflows all passed (Web App CI run 41799583654, Server CI, API, Tools CI, Docs CI; one of the four E2E Tests (master/release - merge) runs failed); the newer head 69d345c failed Web App CI (check-types and all four channels shards). Not run locally: install and the first results come from the timing workflow.",
+      "install": false,
+      "build": "cd webapp && npx -y npm@11.6.2 ci --include=dev --engine-strict=false --no-audit --no-fund",
+      "packages": [
+        {
+          "dir": "webapp/channels",
+          "runner": "jest",
+          "config": "jest.config.channels.js",
+          "args": [
+            "--shard=1/4",
+            "--forceExit"
+          ],
+          "env": {
+            "TZ": "Etc/UTC",
+            "LC_ALL": "en_US.UTF-8",
+            "LANG": "en_US.UTF-8",
+            "NODE_OPTIONS": "--max_old_space_size=5120"
+          }
+        }
+      ]
     }
   ]
 }

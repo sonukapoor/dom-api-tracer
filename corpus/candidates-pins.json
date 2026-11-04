@@ -34,5 +34,11 @@
     "commit": "32b28a81313b48a7f0065783699dcf2c78e5a29d",
     "date": "2026-11-03T12:25:34Z",
     "pinnedAt": "2026-11-03T13:21:22Z"
+  },
+  "mattermost": {
+    "repo": "https://github.com/mattermost/mattermost",
+    "commit": "18c8573aa970b88edc29036ea6cb6cf876fff7dc",
+    "date": "2026-11-04T08:26:57Z",
+    "pinnedAt": "2026-11-04T12:45:39Z"
   }
 }
