@@ -1,10 +1,3 @@
-  # An entry that installs in its build step (install: false, as Mattermost,
-  # whose manifest is under webapp/) cannot take versions mode, which writes
-  # each override to the root manifest and installs there.
-  if [ -z "$(nodex "$V" install "$CORPUS" "$dir" "$p" --frozen)" ]; then
-    echo "VERSIONS $p: skipped (install: false; versions mode installs at the repository root)"
-    continue
-  fi
 #!/usr/bin/env bash
 # Version dependence without warpdom (warpdom docs/research/revision-plan.md
 # item 9): a project's suite on jsdom only, on its own jsdom and on other
@@ -65,6 +58,13 @@ meta() {
 
 for p in "$@"; do
   dir=$(nodex "$V" dir "$CORPUS" "$REPOS_DIR" "$p") || continue
+  # An entry that installs in its build step (install: false, as Mattermost,
+  # whose manifest is under webapp/) cannot take versions mode, which writes
+  # each override to the root manifest and installs there.
+  if [ -z "$(nodex "$V" install "$CORPUS" "$dir" "$p" --frozen)" ]; then
+    echo "VERSIONS $p: skipped (install: false; versions mode installs at the repository root)"
+    continue
+  fi
   variants=${VARIANTS:-"jsdom@20.0.3 jsdom@26.1.0 jsdom@30.1.2"}
   [ -z "$VARIANTS" ] && [ "$p" = svelte ] && variants="$variants cssstyle@4.1.0 cssstyle@4.6.0"
   backup=$WORK_DIR/versions-backup/$p
