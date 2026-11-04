@@ -1,3 +1,10 @@
+  # An entry that installs in its build step (install: false, as Mattermost,
+  # whose manifest is under webapp/) cannot take versions mode, which writes
+  # each override to the root manifest and installs there.
+  if [ -z "$(nodex "$V" install "$CORPUS" "$dir" "$p" --frozen)" ]; then
+    echo "VERSIONS $p: skipped (install: false; versions mode installs at the repository root)"
+    continue
+  fi
 #!/usr/bin/env bash
 # Version dependence without warpdom (warpdom docs/research/revision-plan.md
 # item 9): a project's suite on jsdom only, on its own jsdom and on other
