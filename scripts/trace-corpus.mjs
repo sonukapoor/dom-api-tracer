@@ -37,6 +37,8 @@ Options:
                      is linked from this repo for the run.
   --warpdom <dir>    warpdom checkout for --environment warpdom (default: ../warpdom)
   --extra-args <s>   extra runner arguments, space-separated (e.g. a test file filter)
+  --no-package-shard leave out --shard from the packages' corpus args (for a
+                     run that names its test files: Vitest would shard them)
   --first-setup <f>  a Vitest setup file to run before the project's own
                      (repeatable: several run in the order given)
   --project-setup <f>  as --first-setup (after it), but copied next to the
@@ -86,6 +88,7 @@ export function parseArgs(argv) {
     else if (a === '--profile') args.profile = true;
     else if (a === '--warpdom') args.warpdom = argv[++i];
     else if (a === '--extra-args') args.extraArgs = argv[++i].split(' ').filter(Boolean);
+    else if (a === '--no-package-shard') args.noPackageShard = true;
     else if (a === '--first-setup') args.firstSetup = [...(args.firstSetup ?? []), path.resolve(argv[++i])];
     else if (a === '--project-setup') args.projectSetup = path.resolve(argv[++i]);
     else if (a === '--fast-cli') args.fastCli = argv[++i];
@@ -94,6 +97,16 @@ export function parseArgs(argv) {
     else args.corpus = a;
   }
   return args;
+}
+
+// The runner arguments of a run: the package's corpus args, then --extra-args.
+// With --no-package-shard the package's --shard (--shard=1/4 or --shard 1/4)
+// is left out: a run that names its test files must run all of them (#15).
+export function runArgs(pkg, opts) {
+  let own = pkg.args ?? [];
+  if (opts.noPackageShard)
+    own = own.filter((a, i) => !(a === '--shard' || a.startsWith('--shard=') || (i > 0 && own[i - 1] === '--shard')));
+  return [...own, ...(opts.extraArgs ?? [])];
 }
 
 const expandHome = (p) => p.replace(/^~(?=$|\/)/, os.homedir());
@@ -779,16 +792,12 @@ function runEnvironment({ pkg, projectDir, logDir, tmpDir, profileDir, opts }) {
   const resultsFile = path.join(tmpDir, `${slug}.${opts.environment}.json`);
   let res;
   try {
-    res = run(
-      bin,
-      runnerArgs(runner, bin, wrapper, resultsFile, opts.maxWorkers, [...(pkg.args ?? []), ...(opts.extraArgs ?? [])]),
-      {
-        cwd: pkgDir,
-        timeoutMin: opts.timeout,
-        logFile: path.join(logDir, `${slug}.${opts.environment}.log`),
-        env,
-      },
-    );
+    res = run(bin, runnerArgs(runner, bin, wrapper, resultsFile, opts.maxWorkers, runArgs(pkg, opts)), {
+      cwd: pkgDir,
+      timeoutMin: opts.timeout,
+      logFile: path.join(logDir, `${slug}.${opts.environment}.log`),
+      env,
+    });
   } finally {
     removeWrappers([wrapper, ...created]);
   }
@@ -880,7 +889,7 @@ function runFastCli({
   }
   if (!supportsFastCli(version))
     return fail(`fast-cli unsupported: Vitest ${version} (warpdom vitest run needs >= 3.2)`);
-  const args = [...(pkg.args ?? []), ...(opts.extraArgs ?? [])];
+  const args = runArgs(pkg, opts);
   // Vitest's --project values, as --project NAME or --project=NAME.
   const projects = args.flatMap((a, i) => {
     if (a === '--project') return [args[i + 1]];
@@ -1056,16 +1065,12 @@ function tracePackage({ pkg, projectDir, traceDir, logDir, tmpDir, opts, project
   let traced;
   try {
     const resultsFile = path.join(tmpDir, `${slug}.traced.json`);
-    traced = run(
-      bin,
-      runnerArgs(runner, bin, wrapper, resultsFile, opts.maxWorkers, [...(pkg.args ?? []), ...(opts.extraArgs ?? [])]),
-      {
-        cwd: pkgDir,
-        timeoutMin: opts.timeout,
-        logFile: path.join(logDir, `${slug}.traced.log`),
-        env: { ...pkg.env, DOM_TRACE_DIR: traceDir, DOM_TRACE_PROJECT: projectName, DOM_TRACE_CORPUS_META: metaFile },
-      },
-    );
+    traced = run(bin, runnerArgs(runner, bin, wrapper, resultsFile, opts.maxWorkers, runArgs(pkg, opts)), {
+      cwd: pkgDir,
+      timeoutMin: opts.timeout,
+      logFile: path.join(logDir, `${slug}.traced.log`),
+      env: { ...pkg.env, DOM_TRACE_DIR: traceDir, DOM_TRACE_PROJECT: projectName, DOM_TRACE_CORPUS_META: metaFile },
+    });
     traced.results = readResults(resultsFile);
   } finally {
     removeWrappers([wrapper]);
@@ -1079,16 +1084,12 @@ function tracePackage({ pkg, projectDir, traceDir, logDir, tmpDir, opts, project
 
   if (opts.baseline) {
     const resultsFile = path.join(tmpDir, `${slug}.baseline.json`);
-    const baseline = run(
-      bin,
-      runnerArgs(runner, bin, config, resultsFile, opts.maxWorkers, [...(pkg.args ?? []), ...(opts.extraArgs ?? [])]),
-      {
-        cwd: pkgDir,
-        timeoutMin: opts.timeout,
-        logFile: path.join(logDir, `${slug}.baseline.log`),
-        env: pkg.env,
-      },
-    );
+    const baseline = run(bin, runnerArgs(runner, bin, config, resultsFile, opts.maxWorkers, runArgs(pkg, opts)), {
+      cwd: pkgDir,
+      timeoutMin: opts.timeout,
+      logFile: path.join(logDir, `${slug}.baseline.log`),
+      env: pkg.env,
+    });
     result.baseline = { ...readResults(resultsFile), ms: baseline.ms, exitCode: baseline.code };
   }
 

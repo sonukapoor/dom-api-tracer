@@ -179,7 +179,7 @@ for p in "$@"; do
   files=$(nodex "$RESEARCH_DIR/g2-report.cjs" files $D)
   if [ -n "$files" ]; then
     for n in $(seq 1 $CONFIRM_RUNS); do
-      t=$(labelled confirm-$n --environment warpdom --first-setup $ORDER --extra-args "--passWithNoTests $files")
+      t=$(labelled confirm-$n --environment warpdom --first-setup $ORDER --no-package-shard --extra-args "--passWithNoTests $files")
       done_run confirm-$n confirm "" "$t"
     done
   fi

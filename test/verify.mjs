@@ -565,6 +565,25 @@ try {
     ['/a.mjs', '/b.mjs'],
     'harness: --first-setup repeatable',
   );
+  // A run naming its test files leaves out the package's --shard (#15).
+  const { runArgs } = await import(path.join(root, 'scripts/trace-corpus.mjs'));
+  const sharded = { args: ['--shard=1/4', '--reporter', 'dot', '--shard', '2/4'] };
+  const files = parseArgs(['--no-package-shard', '--extra-args', 'a.test.ts b.test.ts']);
+  assert.deepEqual(
+    runArgs(sharded, files),
+    ['--reporter', 'dot', 'a.test.ts', 'b.test.ts'],
+    'harness: --no-package-shard',
+  );
+  assert.deepEqual(
+    runArgs(sharded, parseArgs(['--extra-args', 'x'])),
+    ['--shard=1/4', '--reporter', 'dot', '--shard', '2/4', 'x'],
+    'harness: package args kept by default',
+  );
+  assert.match(
+    fs.readFileSync(path.join(root, 'scripts/research/g2-shuffle.sh'), 'utf8'),
+    /labelled confirm-\$n [^\n]*--no-package-shard/,
+    'g2-shuffle: confirmation runs leave out the package shard',
+  );
   console.log('• file order              ok');
 } catch (err) {
   failures++;
