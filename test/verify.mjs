@@ -565,6 +565,81 @@ try {
     ['/a.mjs', '/b.mjs'],
     'harness: --first-setup repeatable',
   );
+  // A run naming its test files leaves out the package's --shard (#15).
+  const { runArgs } = await import(path.join(root, 'scripts/trace-corpus.mjs'));
+  const sharded = { args: ['--shard=1/4', '--reporter', 'dot', '--shard', '2/4'] };
+  const files = parseArgs(['--no-package-shard', '--extra-args', 'a.test.ts b.test.ts']);
+  assert.deepEqual(
+    runArgs(sharded, files),
+    ['--reporter', 'dot', 'a.test.ts', 'b.test.ts'],
+    'harness: --no-package-shard',
+  );
+  assert.deepEqual(
+    runArgs(sharded, parseArgs(['--extra-args', 'x'])),
+    ['--shard=1/4', '--reporter', 'dot', '--shard', '2/4', 'x'],
+    'harness: package args kept by default',
+  );
+  assert.match(
+    fs.readFileSync(path.join(root, 'scripts/research/g2-shuffle.sh'), 'utf8'),
+    /labelled confirm-\$n [^\n]*--no-package-shard/,
+    'g2-shuffle: confirmation runs leave out the package shard',
+  );
+  // Through the harness (#21 review): traced, baseline and environment runs
+  // of a package whose corpus args shard pass named files without the shard.
+  const corpusDir = path.join(root, 'test/fixtures/corpus');
+  const shardCorpus = path.join(corpusDir, 'shard-corpus.json');
+  const shardOut = path.join(out, 'shard-corpus');
+  fs.writeFileSync(
+    shardCorpus,
+    JSON.stringify({
+      projects: [
+        {
+          name: 'shard-corpus',
+          path: '.',
+          install: false,
+          packages: [
+            {
+              dir: 'vitest-pkg',
+              runner: 'vitest',
+              args: ['--shard=1/2', '--passWithNoTests'],
+              env: { FIXTURE_ENV: 'from-corpus' },
+            },
+          ],
+        },
+      ],
+    }),
+  );
+  try {
+    const logs = (extra) => {
+      fs.rmSync(shardOut, { recursive: true, force: true });
+      execFileSync(
+        process.execPath,
+        [path.join(root, 'scripts/trace-corpus.mjs'), shardCorpus, '--out', shardOut, '--max-workers', '1', ...extra],
+        { cwd: root, stdio: 'pipe' },
+      );
+      const dir = path.join(shardOut, 'logs/shard-corpus');
+      return fs.readdirSync(dir).map((f) => [f, fs.readFileSync(path.join(dir, f), 'utf8').split('\n')[0]]);
+    };
+    for (const extra of [[], ['--environment', 'jsdom']]) {
+      const runs = logs([...extra, '--no-package-shard', '--extra-args', 'dom.test.mjs']);
+      assert.ok(runs.length >= (extra.length ? 1 : 2), `harness: runs logged (${runs.map(([f]) => f)})`);
+      for (const [file, command] of runs) {
+        assert.doesNotMatch(command, /--shard/, `harness: ${file} without the package shard`);
+        assert.match(command, /--passWithNoTests .*dom\.test\.mjs/, `harness: ${file} keeps the other args`);
+      }
+      // The named file runs whole: all four of its tests pass in each run.
+      const [pkg] = JSON.parse(fs.readFileSync(path.join(shardOut, 'status.json'), 'utf8')).projects['shard-corpus']
+        .packages;
+      for (const mode of extra.length ? ['run'] : ['traced', 'baseline']) {
+        assert.equal(pkg[mode]?.passed, 4, `harness: ${mode} passes the named file`);
+        assert.equal(pkg[mode]?.exitCode, 0, `harness: ${mode} exit code`);
+      }
+      for (const [file, command] of logs([...extra, '--extra-args', 'dom.test.mjs']))
+        assert.match(command, /--shard=1\/2/, `harness: ${file} keeps the shard by default`);
+    }
+  } finally {
+    fs.rmSync(shardCorpus, { force: true });
+  }
   console.log('• file order              ok');
 } catch (err) {
   failures++;
