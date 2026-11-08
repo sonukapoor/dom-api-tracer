@@ -16,7 +16,9 @@
 // "jsdom resolved" also lists the versions of jsdom's dependencies it loads
 // (versions.cjs DEPS), marked "outside" when not in jsdom's declared range,
 // and the dependencies versions.sh forced to jsdom's ranges; the CSV has
-// them in columns of their own.
+// them in columns of their own. Projects versions.sh skipped
+// (<project>/skipped.json) are listed with the reason. Exits 1 when the
+// directory holds neither results nor skipped projects.
 const fs = require('fs');
 const path = require('path');
 const S = require('./statuses.cjs');
@@ -115,6 +117,18 @@ const projects = fs.existsSync(outDir)
       .filter((p) => fs.existsSync(path.join(outDir, p, 'own-a')))
       .sort()
   : [];
+const skipped = fs.existsSync(outDir)
+  ? fs
+      .readdirSync(outDir)
+      .filter((p) => !projects.includes(p))
+      .map((p) => ({ project: p, record: readJson(path.join(outDir, p, 'skipped.json')) }))
+      .filter((s) => s.record?.status === 'skipped')
+      .sort((a, b) => a.project.localeCompare(b.project))
+  : [];
+if (!projects.length && !skipped.length) {
+  process.stderr.write(`No versions results in ${outDir}\n`);
+  process.exit(1);
+}
 for (const p of projects) {
   const dir = path.join(outDir, p);
   const variants = fs
@@ -183,6 +197,11 @@ for (const r of rows) {
   console.log(
     `| ${r.project} | ${r.variant} | ${r.jsdom || '—'} | ${r.forced || '—'} | ${r.status === 'ok' ? r.tests : '—'} | ${cell(r, 'tests_differ')} | ${cell(r, 'files_differ')} | ${r.flaky_tests ?? '—'} / ${r.flaky_files ?? '—'} | ${r.seconds ?? '—'} | ${r.status === 'ok' ? '' : (r.reason || '').replace(/\|/g, '\\|').slice(0, 160)} |`,
   );
+}
+
+if (skipped.length) {
+  console.log('\n**Skipped by versions.sh**\n');
+  for (const s of skipped) console.log(`- ${s.project}: ${s.record.reason || 'no reason given'}`);
 }
 
 // Matrix: tests differing per suite and variant.
