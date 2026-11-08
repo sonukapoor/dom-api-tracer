@@ -597,7 +597,14 @@ try {
           name: 'shard-corpus',
           path: '.',
           install: false,
-          packages: [{ dir: 'vitest-pkg', runner: 'vitest', args: ['--shard=1/2', '--passWithNoTests'] }],
+          packages: [
+            {
+              dir: 'vitest-pkg',
+              runner: 'vitest',
+              args: ['--shard=1/2', '--passWithNoTests'],
+              env: { FIXTURE_ENV: 'from-corpus' },
+            },
+          ],
         },
       ],
     }),
@@ -619,6 +626,13 @@ try {
       for (const [file, command] of runs) {
         assert.doesNotMatch(command, /--shard/, `harness: ${file} without the package shard`);
         assert.match(command, /--passWithNoTests .*dom\.test\.mjs/, `harness: ${file} keeps the other args`);
+      }
+      // The named file runs whole: all four of its tests pass in each run.
+      const [pkg] = JSON.parse(fs.readFileSync(path.join(shardOut, 'status.json'), 'utf8')).projects['shard-corpus']
+        .packages;
+      for (const mode of extra.length ? ['run'] : ['traced', 'baseline']) {
+        assert.equal(pkg[mode]?.passed, 4, `harness: ${mode} passes the named file`);
+        assert.equal(pkg[mode]?.exitCode, 0, `harness: ${mode} exit code`);
       }
       for (const [file, command] of logs([...extra, '--extra-args', 'dom.test.mjs']))
         assert.match(command, /--shard=1\/2/, `harness: ${file} keeps the shard by default`);
