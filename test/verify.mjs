@@ -584,6 +584,48 @@ try {
     /labelled confirm-\$n [^\n]*--no-package-shard/,
     'g2-shuffle: confirmation runs leave out the package shard',
   );
+  // Through the harness (#21 review): traced, baseline and environment runs
+  // of a package whose corpus args shard pass named files without the shard.
+  const corpusDir = path.join(root, 'test/fixtures/corpus');
+  const shardCorpus = path.join(corpusDir, 'shard-corpus.json');
+  const shardOut = path.join(out, 'shard-corpus');
+  fs.writeFileSync(
+    shardCorpus,
+    JSON.stringify({
+      projects: [
+        {
+          name: 'shard-corpus',
+          path: '.',
+          install: false,
+          packages: [{ dir: 'vitest-pkg', runner: 'vitest', args: ['--shard=1/2', '--passWithNoTests'] }],
+        },
+      ],
+    }),
+  );
+  try {
+    const logs = (extra) => {
+      fs.rmSync(shardOut, { recursive: true, force: true });
+      execFileSync(
+        process.execPath,
+        [path.join(root, 'scripts/trace-corpus.mjs'), shardCorpus, '--out', shardOut, '--max-workers', '1', ...extra],
+        { cwd: root, stdio: 'pipe' },
+      );
+      const dir = path.join(shardOut, 'logs/shard-corpus');
+      return fs.readdirSync(dir).map((f) => [f, fs.readFileSync(path.join(dir, f), 'utf8').split('\n')[0]]);
+    };
+    for (const extra of [[], ['--environment', 'jsdom']]) {
+      const runs = logs([...extra, '--no-package-shard', '--extra-args', 'dom.test.mjs']);
+      assert.ok(runs.length >= (extra.length ? 1 : 2), `harness: runs logged (${runs.map(([f]) => f)})`);
+      for (const [file, command] of runs) {
+        assert.doesNotMatch(command, /--shard/, `harness: ${file} without the package shard`);
+        assert.match(command, /--passWithNoTests .*dom\.test\.mjs/, `harness: ${file} keeps the other args`);
+      }
+      for (const [file, command] of logs([...extra, '--extra-args', 'dom.test.mjs']))
+        assert.match(command, /--shard=1\/2/, `harness: ${file} keeps the shard by default`);
+    }
+  } finally {
+    fs.rmSync(shardCorpus, { force: true });
+  }
   console.log('• file order              ok');
 } catch (err) {
   failures++;
