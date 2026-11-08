@@ -36,6 +36,8 @@
 # jsdom's DEPS it loads, with jsdom's ranges and the ones outside them,
 # linked: the version linked into packages without one, forced_deps: the
 # dependencies forced to jsdom's ranges }), harness.log, install.log.
+# A skipped entry (install: false) writes <out dir>/<project>/skipped.json
+# ({ status: "skipped", reason }) instead.
 # Summarize with versions-report.cjs <out dir>.
 #
 # TIMEOUT_MIN (default 45) per package run.
@@ -62,7 +64,13 @@ for p in "$@"; do
   # whose manifest is under webapp/) cannot take versions mode, which writes
   # each override to the root manifest and installs there.
   if [ -z "$(nodex "$V" install "$CORPUS" "$dir" "$p" --frozen)" ]; then
-    echo "VERSIONS $p: skipped (install: false; versions mode installs at the repository root)"
+    reason="install: false; versions mode installs at the repository root"
+    echo "VERSIONS $p: skipped ($reason)"
+    # A record of the skip, so a run of skipped projects only ends green
+    # (versions-report.cjs lists it; #19).
+    mkdir -p "$OUT/$p"
+    nodex -e 'require("fs").writeFileSync(process.argv[1], JSON.stringify({ status: "skipped", reason: process.argv[2] }, null, 2));' \
+      "$OUT/$p/skipped.json" "$reason"
     continue
   fi
   variants=${VARIANTS:-"jsdom@20.0.3 jsdom@26.1.0 jsdom@30.1.2"}

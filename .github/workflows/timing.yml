@@ -188,11 +188,16 @@ jobs:
           shopt -s nullglob
           files=()
           if [ "${{ inputs.mode }}" = versions ]; then
-            # versions.sh output: <project>/<variant>/meta.json under results (the
+            # versions.sh output: <project>/<variant>/meta.json, or
+            # <project>/skipped.json for a skipped project, under results (the
             # artifact root depends on which paths matched).
             meta=$(find results -path '*/own-a/meta.json' | head -1)
-            if [ -z "$meta" ]; then echo 'No versions results (see the time jobs).' | tee -a "$GITHUB_STEP_SUMMARY"; exit 1; fi
-            vdir=$(dirname "$(dirname "$(dirname "$meta")")")
+            [ -n "$meta" ] && vdir=$(dirname "$(dirname "$(dirname "$meta")")")
+            if [ -z "$meta" ]; then
+              skip=$(find results -name skipped.json | head -1)
+              if [ -z "$skip" ]; then echo 'No versions results (see the time jobs).' | tee -a "$GITHUB_STEP_SUMMARY"; exit 1; fi
+              vdir=$(dirname "$(dirname "$skip")")
+            fi
             node scripts/research/versions-report.cjs "$vdir" --csv results/versions.csv --groups results/versions-groups.json | tee results/report.md
             { echo '## jsdom version dependence'; echo; cat results/report.md; } >> "$GITHUB_STEP_SUMMARY"
             exit 0

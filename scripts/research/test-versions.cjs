@@ -6,7 +6,7 @@ const assert = require('assert/strict');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { execFileSync } = require('child_process');
+const { execFileSync, spawnSync } = require('child_process');
 const V = require('./versions.cjs');
 
 // Install commands.
@@ -307,6 +307,29 @@ assert.match(
 assert.match(
   fs.readFileSync(csv, 'utf8'),
   /\nproj,jsdom-21\.1\.0,ok,"21\.1\.0 \(.*\)",yes,3\.0\.0,2\.2\.2 outside \^2\.2\.3,,,cssstyle \^3\.0\.0,/,
+);
+// A project versions.sh skipped (install: false; #19): listed with the
+// reason, alone or next to results; only an empty directory fails.
+const skip = (dir, p) => {
+  fs.mkdirSync(path.join(dir, p), { recursive: true });
+  fs.writeFileSync(path.join(dir, p, 'skipped.json'), JSON.stringify({ status: 'skipped', reason: 'install: false' }));
+};
+const runReport = (dir) =>
+  spawnSync(process.execPath, [path.join(__dirname, 'versions-report.cjs'), dir], { encoding: 'utf8' });
+skip(out, 'mm');
+assert.match(runReport(out).stdout, /\*\*Skipped by versions\.sh\*\*\n\n- mm: install: false\n/);
+const onlySkipped = path.join(tmp, 'only-skipped');
+skip(onlySkipped, 'mm');
+const skippedRun = runReport(onlySkipped);
+assert.equal(skippedRun.status, 0, skippedRun.stderr);
+assert.match(skippedRun.stdout, /- mm: install: false/);
+const empty = path.join(tmp, 'empty');
+fs.mkdirSync(empty);
+assert.equal(runReport(empty).status, 1, 'no results and no skipped projects');
+assert.match(
+  fs.readFileSync(path.join(__dirname, 'versions.sh'), 'utf8'),
+  /echo "VERSIONS \$p: skipped[^\n]*\n(?:[^\n]*\n){0,6}[^\n]*"\$OUT\/\$p\/skipped\.json"/,
+  'versions.sh records a skipped project',
 );
 fs.rmSync(tmp, { recursive: true, force: true });
 console.log('versions: ok');
