@@ -815,6 +815,82 @@ try {
     'warpdom copy (pnpm): packages copied, not linked',
   );
   removeWrappers([pnpmCopy]);
+
+  // Two pnpm graphs with one installed package reached twice (#17). A pnpm
+  // stand-in: each package in .pnpm/<name>@<version>/node_modules/<name>,
+  // its dependencies links beside it; each package's next(name) requires
+  // that dependency when called (so a cycle loads).
+  const pnpmGraph = (dir, rootDeps, packages) => {
+    fs.rmSync(dir, { recursive: true, force: true });
+    pkg(dir, { name: 'warpdom', dependencies: Object.fromEntries(Object.keys(rootDeps).map((n) => [n, '*'])) });
+    fs.mkdirSync(path.join(dir, 'src'));
+    fs.writeFileSync(path.join(dir, 'src', 'node.js'), '');
+    const graphStore = path.join(dir, 'node_modules', '.pnpm');
+    const at = (id) => path.join(graphStore, id, 'node_modules', id.slice(0, id.lastIndexOf('@')));
+    for (const [id, deps] of Object.entries(packages)) {
+      const name = id.slice(0, id.lastIndexOf('@'));
+      pkg(at(id), {
+        name,
+        version: id.slice(id.lastIndexOf('@') + 1),
+        dependencies: Object.fromEntries(Object.keys(deps).map((n) => [n, '*'])),
+      });
+      fs.writeFileSync(
+        path.join(at(id), 'index.js'),
+        `exports.id = ${JSON.stringify(id)}; exports.next = (name) => require(name);`,
+      );
+      for (const [dep, depId] of Object.entries(deps)) link(path.join(path.dirname(at(id)), dep), at(depId));
+    }
+    for (const [name, id] of Object.entries(rootDeps)) link(path.join(dir, 'node_modules', name), at(id));
+    return dir;
+  };
+  // A cycle across versions: a@1 -> b@1 -> a@2 -> b@2 -> a@1. The back-edge
+  // links to the copy already made, not a new one (which recursed until
+  // "Maximum call stack size exceeded").
+  const cycle = pnpmGraph(
+    path.join(out, 'warpdom-deps-cycle'),
+    { a: 'a@1' },
+    {
+      'a@1': { b: 'b@1' },
+      'b@1': { a: 'a@2' },
+      'a@2': { b: 'b@2' },
+      'b@2': { a: 'a@1' },
+    },
+  );
+  const cycleCopy = copyWarpdom(cycle, project);
+  const fromCycle = createRequire(path.join(cycleCopy, 'src', 'node.js'));
+  const a1 = fromCycle('a');
+  const chain = [a1.next('b'), a1.next('b').next('a'), a1.next('b').next('a').next('b')];
+  assert.deepEqual(
+    [a1.id, ...chain.map((m) => m.id)],
+    ['a@1', 'b@1', 'a@2', 'b@2'],
+    'warpdom copy (cycle): each version loads where its dependent finds it',
+  );
+  assert.equal(chain[2].next('a'), a1, 'warpdom copy (cycle): the back-edge is the same a@1');
+  removeWrappers([cycleCopy]);
+  // One installed package from two dependents: a and b share one installed
+  // shared@1 while warpdom needs shared@2. They get one copy of it, so one
+  // module instance (class identity, instanceof).
+  const shared = pnpmGraph(
+    path.join(out, 'warpdom-deps-shared'),
+    { a: 'a@1', b: 'b@1', shared: 'shared@2' },
+    {
+      'a@1': { shared: 'shared@1' },
+      'b@1': { shared: 'shared@1' },
+      'shared@1': {},
+      'shared@2': {},
+    },
+  );
+  const sharedCopy = copyWarpdom(shared, project);
+  const fromShared = createRequire(path.join(sharedCopy, 'src', 'node.js'));
+  assert.equal(fromShared('shared').id, 'shared@2', 'warpdom copy (shared): warpdom loads its version');
+  assert.equal(fromShared('a').next('shared').id, 'shared@1', 'warpdom copy (shared): a loads its version');
+  assert.equal(
+    fromShared('a').next('shared'),
+    fromShared('b').next('shared'),
+    'warpdom copy (shared): a and b load one instance',
+  );
+  removeWrappers([sharedCopy]);
+  assert.equal(fs.existsSync(sharedCopy), false, 'warpdom copy (shared): removed, links and all');
   console.log('• warpdom copy deps       ok');
 } catch (err) {
   failures++;
