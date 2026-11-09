@@ -1004,6 +1004,37 @@ try {
     'jest wrapper: multiline loader options keep their continuation lines',
   );
   assert.ok(tsWrapper.startsWith('// Generated'), 'jest wrapper: no docblock when the config has no loader');
+  // A .cts config (#10): the wrapper is a .cts file too, CommonJS, so Jest's
+  // TypeScript loader transpiles it and the config it requires.
+  const { wrapperName } = await import(path.join(root, 'scripts/trace-corpus.mjs'));
+  assert.equal(wrapperName('jest', 'jest.config.cts'), 'jest.config.dom-trace.cts', 'jest wrapper: .cts name');
+  assert.equal(wrapperName('jest', 'jest.config.ts'), 'jest.config.dom-trace.ts', 'jest wrapper: .ts name');
+  assert.equal(wrapperName('jest', 'jest.config.js'), 'jest.config.dom-trace.cjs', 'jest wrapper: .js name');
+  assert.equal(wrapperName('vitest', 'vitest.config.cts'), 'vitest.config.dom-trace.mts', 'vitest wrapper: .cts name');
+  fs.writeFileSync(
+    path.join(dir, 'jest.config.cts'),
+    "/**\n * @jest-config-loader ts-node\n */\nmodule.exports = { testEnvironment: 'jsdom' as string };\n",
+  );
+  const ctsWrapper = jestWrapper(path.join(dir, 'jest.config.cts'));
+  assert.ok(
+    ctsWrapper.startsWith('/**\n * @jest-config-loader ts-node\n */\n'),
+    'jest wrapper: .cts keeps the loader docblock',
+  );
+  assert.match(ctsWrapper, /^module\.exports = async/m, 'jest wrapper: .cts wrapper is CommonJS');
+  assert.match(
+    ctsWrapper,
+    /require\('\.\/jest\.config\.cts'\)/,
+    'jest wrapper: .cts config required with its extension',
+  );
+  assert.match(ctsWrapper, /\(c: any\)/, 'jest wrapper: .cts wrapper is typed like the .ts one');
+  if (process.features.typescript) {
+    const cts = path.join(dir, 'cts');
+    fs.mkdirSync(cts, { recursive: true });
+    fs.copyFileSync(path.join(dir, 'jest.config.cts'), path.join(cts, 'jest.config.cts'));
+    fs.writeFileSync(path.join(cts, 'jest.config.dom-trace.cts'), jestWrapper(path.join(cts, 'jest.config.cts')));
+    const ctsCfg = await createRequire(import.meta.url)(path.join(cts, 'jest.config.dom-trace.cts'))();
+    assert.equal(ctsCfg.testEnvironment, 'jsdom', 'jest wrapper: .cts config with TypeScript syntax loads');
+  }
   if (process.features.typescript) {
     // Native path, in an ESM package. (CommonJS packages go through Jest's
     // ts-node fallback, which the real corpus exercises: mantine, ngx-formly.)
