@@ -444,11 +444,19 @@ export function copyWarpdom(warpdomDir, pkgDir) {
   setPending((list) => [...list.filter((f) => f !== target), target]);
   fs.cpSync(path.join(warpdomDir, 'src'), path.join(target, 'src'), { recursive: true });
   fs.copyFileSync(path.join(warpdomDir, 'package.json'), path.join(target, 'package.json'));
-  for (const { dir, at } of runtimeDependencies(warpdomDir)) {
+  for (const { dir, at, link } of runtimeDependencies(warpdomDir)) {
+    const to = path.join(target, at);
+    if (link !== undefined) {
+      // (a second place for a package already copied: a link to that copy,
+      // which Node follows to its real path and resolves from there)
+      fs.mkdirSync(path.dirname(to), { recursive: true });
+      fs.symlinkSync(path.relative(path.dirname(to), path.join(target, link)), to, 'junction');
+      continue;
+    }
     // A package's own node_modules is not copied: what it needs from there
     // has its own entry.
     const own = path.join(dir, 'node_modules');
-    fs.cpSync(dir, path.join(target, at), { recursive: true, filter: (src) => src !== own });
+    fs.cpSync(dir, to, { recursive: true, filter: (src) => src !== own });
   }
   return target;
 }
@@ -463,7 +471,11 @@ export function copyWarpdom(warpdomDir, pkgDir) {
 // dependencies beside it) resolves like npm's. In the copy, a package goes
 // to node_modules/<name> unless another version is already found from its
 // dependent's place there; then it goes under the dependent's node_modules.
-// A missing optional dependency is skipped.
+// A missing optional dependency is skipped. An installed package is copied
+// once: a second place for it (a cycle across versions, a@1 -> b@1 -> a@2 ->
+// b@2 -> a@1, or two dependents of one installation) is an entry
+// { name, dir, at, link } that links to the first place, so it is one module
+// instance and the walk ends there (#17).
 export function runtimeDependencies(root) {
   const realRoot = fs.realpathSync(root);
   const installed = (from, name) => {
@@ -477,6 +489,7 @@ export function runtimeDependencies(root) {
   };
   const layout = [];
   const placed = new Map(); // copy-relative directory -> real directory
+  const copies = new Map(); // real directory -> where it is copied
   // The real directory Node would load name from at a copy-relative place.
   const seenFrom = (at, name) => {
     for (let d = at; ; d = path.dirname(d)) {
@@ -502,6 +515,12 @@ export function runtimeDependencies(root) {
       if (seen === real) continue;
       const to = seen === null ? path.join('node_modules', name) : path.join(at, 'node_modules', name);
       placed.set(to, real);
+      const copied = copies.get(real);
+      if (copied !== undefined) {
+        layout.push({ name, dir: real, at: to, link: copied });
+        continue;
+      }
+      copies.set(real, to);
       layout.push({ name, dir: real, at: to });
       added.push([real, to]);
     }
