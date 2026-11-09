@@ -1049,7 +1049,11 @@ try {
   );
   const jestBin = path.join(root, 'node_modules', 'jest', 'bin', 'jest.js');
   for (const strip of [false, true]) {
-    const env = { ...process.env, NODE_OPTIONS: strip ? '--experimental-strip-types --no-warnings' : '' };
+    // (stripping is on by default from Node 22.18: off is said explicitly)
+    const env = {
+      ...process.env,
+      NODE_OPTIONS: strip ? '--experimental-strip-types --no-warnings' : '--no-experimental-strip-types',
+    };
     try {
       execFileSync(process.execPath, [jestBin, '--config', ctsWrapperFile, '--ci'], { cwd: cts, env, stdio: 'pipe' });
     } catch (err) {
