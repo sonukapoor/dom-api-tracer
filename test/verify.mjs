@@ -1004,6 +1004,64 @@ try {
     'jest wrapper: multiline loader options keep their continuation lines',
   );
   assert.ok(tsWrapper.startsWith('// Generated'), 'jest wrapper: no docblock when the config has no loader');
+  // A .cts config (#10): the wrapper is a .cts file too, CommonJS, so Jest's
+  // TypeScript loader transpiles it and the config it requires.
+  const { wrapperName } = await import(path.join(root, 'scripts/trace-corpus.mjs'));
+  assert.equal(wrapperName('jest', 'jest.config.cts'), 'jest.config.dom-trace.cts', 'jest wrapper: .cts name');
+  assert.equal(wrapperName('jest', 'jest.config.ts'), 'jest.config.dom-trace.ts', 'jest wrapper: .ts name');
+  assert.equal(wrapperName('jest', 'jest.config.js'), 'jest.config.dom-trace.cjs', 'jest wrapper: .js name');
+  assert.equal(wrapperName('vitest', 'vitest.config.cts'), 'vitest.config.dom-trace.mts', 'vitest wrapper: .cts name');
+  fs.writeFileSync(
+    path.join(dir, 'jest.config.cts'),
+    "/**\n * @jest-config-loader ts-node\n */\nmodule.exports = { testEnvironment: 'jsdom' as string };\n",
+  );
+  const ctsWrapper = jestWrapper(path.join(dir, 'jest.config.cts'));
+  assert.ok(
+    ctsWrapper.startsWith('/**\n * @jest-config-loader ts-node\n */\n'),
+    'jest wrapper: .cts keeps the loader docblock',
+  );
+  assert.match(ctsWrapper, /^module\.exports = async/m, 'jest wrapper: .cts wrapper is CommonJS');
+  assert.match(
+    ctsWrapper,
+    /require\('\.\/jest\.config\.cts'\)/,
+    'jest wrapper: .cts config required with its extension',
+  );
+  assert.match(ctsWrapper, /\(c: any\)/, 'jest wrapper: .cts wrapper is typed like the .ts one');
+  // Through Jest itself (#22 review): a .cts config with an enum (no
+  // native type stripping can read it) and its loader in a single-star
+  // comment, which Jest also reads. Jest loads the wrapper with that
+  // loader, without native type stripping; with it, the wrapper's own load
+  // fails on the config it requires first, so Jest falls back to the loader.
+  const cts = path.join(dir, 'cts');
+  fs.rmSync(cts, { recursive: true, force: true });
+  fs.mkdirSync(cts, { recursive: true });
+  const ctsBase = path.join(cts, 'jest.config.cts');
+  fs.writeFileSync(
+    ctsBase,
+    "/* @jest-config-loader esbuild-register */\nenum Env { Node = 'node' }\nmodule.exports = { testEnvironment: Env.Node };\n",
+  );
+  fs.writeFileSync(path.join(cts, 'env.test.js'), "test('env', () => expect(typeof window).toBe('undefined'));\n");
+  const ctsWrapperFile = path.join(cts, wrapperName('jest', ctsBase));
+  fs.writeFileSync(ctsWrapperFile, jestWrapper(ctsBase, { trace: false }));
+  assert.ok(
+    fs.readFileSync(ctsWrapperFile, 'utf8').startsWith('/**\n * @jest-config-loader esbuild-register\n */\n'),
+    'jest wrapper: a single-star loader comment is carried too',
+  );
+  const jestBin = path.join(root, 'node_modules', 'jest', 'bin', 'jest.js');
+  for (const strip of [false, true]) {
+    // (stripping is on by default from Node 22.18: off is said explicitly)
+    const env = {
+      ...process.env,
+      NODE_OPTIONS: strip ? '--experimental-strip-types --no-warnings' : '--no-experimental-strip-types',
+    };
+    try {
+      execFileSync(process.execPath, [jestBin, '--config', ctsWrapperFile, '--ci'], { cwd: cts, env, stdio: 'pipe' });
+    } catch (err) {
+      throw new Error(
+        `jest wrapper: .cts config through Jest (type stripping ${strip ? 'on' : 'off'})\n${String(err.stderr).slice(-1200)}`,
+      );
+    }
+  }
   if (process.features.typescript) {
     // Native path, in an ESM package. (CommonJS packages go through Jest's
     // ts-node fallback, which the real corpus exercises: mantine, ngx-formly.)
