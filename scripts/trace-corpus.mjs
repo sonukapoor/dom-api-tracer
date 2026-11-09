@@ -341,7 +341,8 @@ function jestLoaderDocblock(base) {
   } catch {
     return '';
   }
-  const block = /^\s*(\/\*\*[\s\S]*?\*\/)/.exec(source)?.[1] ?? '';
+  // (Jest reads a leading /* comment as well as a /** one; #22 review)
+  const block = /^\s*(\/\*\*?[\s\S]*?\*\/)/.exec(source)?.[1] ?? '';
   const lines = block.split('\n').map((line) =>
     line
       .replace(/^\s*\/?\*+\/?\s?/, '')
@@ -391,8 +392,15 @@ const addTracer = (c${any}) => (${trace} ? {
 const switchDom = (c${any}) => (ENVIRONMENT && /jsdom|happy-dom/.test(String(c.testEnvironment ?? ''))
   ? { ...c, testEnvironment: ENVIRONMENT } : c);
 
-${ts ? 'export default' : 'module.exports ='} async () => {
-  let cfg${any} = ${load};
+${
+  cts
+    ? `// Required when the wrapper loads, so a config native type stripping cannot
+// read fails the wrapper's own load and Jest falls back to its loader (#22).
+const CONFIG${any} = ${load};
+`
+    : ''
+}${ts ? 'export default' : 'module.exports ='} async () => {
+  let cfg${any} = ${cts ? 'CONFIG' : load};
   // \`export default\` arrives as { default } (ts-node) or a namespace (require of ESM).
   if (cfg && typeof cfg === 'object' && 'default' in cfg) cfg = cfg.default;
   if (typeof cfg === 'function') cfg = await cfg();

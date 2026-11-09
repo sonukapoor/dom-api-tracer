@@ -1027,13 +1027,36 @@ try {
     'jest wrapper: .cts config required with its extension',
   );
   assert.match(ctsWrapper, /\(c: any\)/, 'jest wrapper: .cts wrapper is typed like the .ts one');
-  if (process.features.typescript) {
-    const cts = path.join(dir, 'cts');
-    fs.mkdirSync(cts, { recursive: true });
-    fs.copyFileSync(path.join(dir, 'jest.config.cts'), path.join(cts, 'jest.config.cts'));
-    fs.writeFileSync(path.join(cts, 'jest.config.dom-trace.cts'), jestWrapper(path.join(cts, 'jest.config.cts')));
-    const ctsCfg = await createRequire(import.meta.url)(path.join(cts, 'jest.config.dom-trace.cts'))();
-    assert.equal(ctsCfg.testEnvironment, 'jsdom', 'jest wrapper: .cts config with TypeScript syntax loads');
+  // Through Jest itself (#22 review): a .cts config with an enum (no
+  // native type stripping can read it) and its loader in a single-star
+  // comment, which Jest also reads. Jest loads the wrapper with that
+  // loader, without native type stripping; with it, the wrapper's own load
+  // fails on the config it requires first, so Jest falls back to the loader.
+  const cts = path.join(dir, 'cts');
+  fs.rmSync(cts, { recursive: true, force: true });
+  fs.mkdirSync(cts, { recursive: true });
+  const ctsBase = path.join(cts, 'jest.config.cts');
+  fs.writeFileSync(
+    ctsBase,
+    "/* @jest-config-loader esbuild-register */\nenum Env { Node = 'node' }\nmodule.exports = { testEnvironment: Env.Node };\n",
+  );
+  fs.writeFileSync(path.join(cts, 'env.test.js'), "test('env', () => expect(typeof window).toBe('undefined'));\n");
+  const ctsWrapperFile = path.join(cts, wrapperName('jest', ctsBase));
+  fs.writeFileSync(ctsWrapperFile, jestWrapper(ctsBase, { trace: false }));
+  assert.ok(
+    fs.readFileSync(ctsWrapperFile, 'utf8').startsWith('/**\n * @jest-config-loader esbuild-register\n */\n'),
+    'jest wrapper: a single-star loader comment is carried too',
+  );
+  const jestBin = path.join(root, 'node_modules', 'jest', 'bin', 'jest.js');
+  for (const strip of [false, true]) {
+    const env = { ...process.env, NODE_OPTIONS: strip ? '--experimental-strip-types --no-warnings' : '' };
+    try {
+      execFileSync(process.execPath, [jestBin, '--config', ctsWrapperFile, '--ci'], { cwd: cts, env, stdio: 'pipe' });
+    } catch (err) {
+      throw new Error(
+        `jest wrapper: .cts config through Jest (type stripping ${strip ? 'on' : 'off'})\n${String(err.stderr).slice(-1200)}`,
+      );
+    }
   }
   if (process.features.typescript) {
     // Native path, in an ESM package. (CommonJS packages go through Jest's
